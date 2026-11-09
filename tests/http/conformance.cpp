@@ -54,7 +54,7 @@ public:
         // may block, which is exactly what the blocking facade is for.
         worker_ = std::thread([this] { engine_->run(); });
         config_.verifyPeer = false;
-        client_ = std::make_unique<HttpClient>(*engine_, config_);
+        client_ = std::make_shared<HttpClient>(*engine_, config_);
         blocking_ = std::make_unique<BlockingClient>(*client_, *engine_);
     }
 
@@ -82,7 +82,7 @@ private:
     std::unique_ptr<IoEngine> engine_;
     ClientConfig config_{};
     std::thread worker_;
-    std::unique_ptr<HttpClient> client_;
+    std::shared_ptr<HttpClient> client_;
     std::unique_ptr<BlockingClient> blocking_;
 };
 
