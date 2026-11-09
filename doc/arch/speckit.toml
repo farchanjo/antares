@@ -21,3 +21,4 @@ specScopeGlobs = [
 
 [architecture]
 corePaths = ["src"]
+layerOrder = "domain application ports adapters"

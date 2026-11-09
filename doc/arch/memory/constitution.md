@@ -1,10 +1,12 @@
 ---
-revision: 2
+revision: 3
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
 amendments:
   - adr: "0001"
+    date: "2026-11-09"
+  - adr: "0002"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -103,6 +105,21 @@ Enforced by: verify
 ## P-04 — Single source root
 Severity: block
 MANDATE: Every production source file lives under `src/` at the project root, and `architecture.corePaths` names `src` so the layer and lint scanners read it. No source file sits at the root, under `doc/`, or in an ad-hoc directory; move the module under `src/` and register the path in configuration.
+Enforced by: config:architecture, verify
+
+## P-05 — macOS first
+Severity: block
+MANDATE: macOS is the delivery target until the first release ships; Linux follows and Windows comes last. A feature is accepted on macOS before any other target is claimed, and platform-specific code lands behind the platform layer instead of inline.
+Enforced by: config:project, verify
+
+## P-06 — C++ and Qt only
+Severity: block
+MANDATE: The application is C++ compiled against Qt, with no second toolkit and no second language; Qt Widgets is the UI stack and QML enters only through an ADR. The domain layer names no Qt type, so the domain compiles without the framework.
+Enforced by: config:project, verify
+
+## P-07 — Architecture model is authoritative
+Severity: block
+MANDATE: Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`. An import that breaks the direction moves, or the layer table widens through an accepted ADR.
 Enforced by: config:architecture, verify
 
 ## Governance

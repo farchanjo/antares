@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: d88f40f355def8fc13d69a2c7f8215f189352c340f58adc0845fb3a8c5ecd3a3
+digest: cbd01d0e3cfe80b1a7770abe64756384e4955be4ef2ce4cee67781913de54467
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -42,6 +42,9 @@ digest: d88f40f355def8fc13d69a2c7f8215f189352c340f58adc0845fb3a8c5ecd3a3
 - P-02 (block): The project scope is bounded; features outside that scope belong in a separate initiative. [config:guard, config:project, llm-context, verify]
 - P-03 (block): Any automated action must yield the same result when run twice on the same input. [verify]
 - P-04 (block): Every production source file lives under `src/` at the project root, and `architecture.corePaths` names `src` so the layer and lint scanners read it. No… [config:architecture, verify]
+- P-05 (block): macOS is the delivery target until the first release ships; Linux follows and Windows comes last. A feature is accepted on macOS before any other target is… [config:project, verify]
+- P-06 (block): The application is C++ compiled against Qt, with no second toolkit and no second language; Qt Widgets is the UI stack and QML enters only through an ADR.… [config:project, verify]
+- P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`.… [config:architecture, verify]
 
 ## Architecture and corpus index
 
