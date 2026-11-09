@@ -57,7 +57,11 @@ Run this procedure when:
 5. Over SSH into `~/dev/antares`, configure the dev preset:
    `cmake --preset dev`.
 6. Build: `cmake --build --preset dev`.
-7. Run the tests: `ctest --preset dev`.
+7. Run the tests: `ctest --preset dev`. The `dev` test preset carries
+   `execution.jobs = 8` and one CTest entry per case, so the suite fans across
+   cores; measured on the 16-core host, 10 cases run in 0.05 s parallel against
+   0.26 s serial. Keep per-case entries — a single binary per backend loses the
+   failure name and the parallelism both.
 8. Prove the behaviour with AppleScript, for example
    `osascript -e 'return 1 + 1'` for the interpreter and
    `osascript -e 'display notification "…" with title "antares"'` for the
