@@ -1,5 +1,7 @@
 #include "adapters/http/tls_context.hpp"
 
+#include <algorithm>
+
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
