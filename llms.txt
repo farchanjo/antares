@@ -22,12 +22,13 @@ Language mode is C++26 with CMake 4.4 as the floor. Layers run inward: `domain`,
 goes through the `IoEngine` port; kqueue is the engine and `poll` the fallback.
 
 Durations are `std::chrono`, instants are `steady_clock::time_point`, byte counts
-are the `Bytes` value type; nothing re-wraps what the standard library gives.
-Exit codes are stable 0-8 and `--json` emits one object. Binary artifacts stay out
-of the tree: everything under `build/` is regenerated.
+are the `Bytes` value type. Timers run on the engine, so a delay costs no thread.
+Tests wait on completions, never on a clock. Exit codes are stable 0-8 and `--json`
+emits one object. Binary artifacts stay out of the tree.
 
-HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection and redirect
-policy on the engine; `ClientConfig` publishes pool, timeouts and auth.
+HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection, retry and
+redirect policy on the engine; `ClientConfig` publishes pool, timeouts, auth and
+retry.
 
 ## Command surface
 
