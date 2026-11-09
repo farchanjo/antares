@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdio>
 #include <cstring>
 
 #include <arpa/inet.h>
@@ -162,6 +163,10 @@ void Connection::driveHandshake()
     }
 
     const int error = SSL_get_error(ssl_, result);
+    if (error != SSL_ERROR_WANT_READ && error != SSL_ERROR_WANT_WRITE) {
+        std::fprintf(stderr, "  handshake fail err=%d verify=%ld\n", error,
+                     static_cast<long>(SSL_get_verify_result(ssl_)));
+    }
     if (error == SSL_ERROR_WANT_READ) {
         readSocket();
         return;
