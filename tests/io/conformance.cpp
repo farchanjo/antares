@@ -222,6 +222,52 @@ void caseStopEndsCallbacks()
     check(after.load() <= 1, "post after stop is not double counted");
 }
 
+void caseNoCallbackAfterStop()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+
+    // A socket pair with nothing to read: the read stays pending.
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    auto runner = makeRunner(**built);
+    std::atomic<int> completions{0};
+    std::atomic<bool> late{false};
+    bool stopped = false;
+
+    (void)(*built)->submitRead(*handle, std::nullopt, Bytes{16},
+                               [&](std::expected<Buffer, IoError>) {
+                                   ++completions;
+                                   if (stopped) {
+                                       late.store(true);
+                                   }
+                               });
+
+    runner.stop();
+    stopped = true;
+
+    // The callback runs on the loop thread; once stopped, none may start.
+    const int settled = completions.load();
+    antares::test::Await tick;
+    std::thread assist([&] {
+        std::this_thread::yield();
+        tick.signal();
+    });
+    assist.join();
+    tick.wait();
+
+    check(completions.load() == settled, "no completion after stop returned");
+    check(!late.load(), "nothing arrived late");
+
+    ::close(pair[1]);
+}
+
 void caseCountersMove()
 {
     auto built = makeEngine();
@@ -277,6 +323,7 @@ std::span<const Case> cases()
         {"socket-read-write", caseSocketReadWrite},
         {"file-read-immediate", caseFileReadIsImmediate},
         {"stop-ends-callbacks", caseStopEndsCallbacks},
+        {"no-callback-after-stop", caseNoCallbackAfterStop},
         {"counters-move", caseCountersMove},
     };
     return table;
