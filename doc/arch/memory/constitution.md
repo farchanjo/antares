@@ -1,5 +1,5 @@
 ---
-revision: 9
+revision: 10
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -19,6 +19,8 @@ amendments:
   - adr: "0010"
     date: "2026-11-09"
   - adr: "0011"
+    date: "2026-11-09"
+  - adr: "0012"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -162,6 +164,11 @@ Enforced by: config:architecture, verify
 ## P-13 — Leak gate always on
 Severity: block
 MANDATE: Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a report names frames. No debug build ships without line information, and a leak report is a finding, not background noise. LeakSanitizer exists on Linux only, and `leaks` cannot inspect an AddressSanitizer binary, so on macOS the leak pass runs a sanitizer-free `dev` build.
+Enforced by: config:project, verify
+
+## P-14 — mimalloc, pinned, and never beside a sanitizer
+Severity: block
+MANDATE: Allocation goes through mimalloc, pinned by URL and SHA-256 at the version the ADR names, with `ANTARES_ALLOCATOR=system` as the escape hatch. Call sites keep using `new` and standard containers and never name the allocator. The sanitizer preset builds with `system`, because AddressSanitizer interposes `malloc` and the two cannot both own it.
 Enforced by: config:project, verify
 
 ## Governance

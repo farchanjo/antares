@@ -10,6 +10,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# FetchContent works outside the tree, so the corpus scanners never read
+# third-party files as project ones.
+set(FETCHCONTENT_BASE_DIR "$ENV{HOME}/.cache/antares/deps" CACHE PATH "")
+
 # Qt is optional while the tree is empty: the presets must configure without it.
 find_package(Qt6 QUIET COMPONENTS Core Widgets)
 
@@ -42,6 +46,21 @@ if(ANTARES_FAST_LINKER AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "antares: lld linker requested")
 endif()
 
+set(ANTARES_ALLOCATOR "mimalloc" CACHE STRING "Allocator: mimalloc or system")
+set_property(CACHE ANTARES_ALLOCATOR PROPERTY STRINGS mimalloc system)
+
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    include(FetchContent)
+    FetchContent_Declare(mimalloc
+        URL https://github.com/microsoft/mimalloc/archive/refs/tags/v3.6.1.tar.gz
+        URL_HASH SHA256=2672e6a99d4579fb4bb32d9de0d63aa424ce600d31fbfaf06eb74d940d2e07a6
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
+    set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(mimalloc)
+endif()
+
 set(ANTARES_IO_SOURCES
     src/ports/io/io_engine.cpp
     src/ports/io/io_handle.cpp
@@ -54,8 +73,17 @@ if(APPLE)
     list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/kqueue_engine.cpp)
 endif()
 
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    list(APPEND ANTARES_IO_SOURCES src/platform/common/allocator.cpp)
+    set(ANTARES_MIMALLOC_INCLUDE "${mimalloc_SOURCE_DIR}/include")
+endif()
+
 add_library(antares_io STATIC ${ANTARES_IO_SOURCES})
 target_link_libraries(antares_io PUBLIC antares_core)
+
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_include_directories(antares_io PRIVATE "${ANTARES_MIMALLOC_INCLUDE}")
+endif()
 
 # The port names no Qt type (P-06): MOC off proves it stays that way.
 set_target_properties(antares_io PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
@@ -69,6 +97,16 @@ enable_testing()
 
 add_executable(antares_io_conformance tests/io/conformance.cpp)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
+
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_link_libraries(antares_io_conformance PRIVATE mimalloc-static)
+    if(APPLE)
+        # ld64 needs force_load: it pulls every member in, so mimalloc's
+        # malloc/free win over libSystem's instead of losing to it.
+        target_link_options(antares_io_conformance PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    endif()
+endif()
 set_target_properties(antares_io_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # P-13: symbolize the binary on Apple, so a leak report names frames.

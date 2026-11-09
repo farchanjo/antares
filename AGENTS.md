@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: 2bf9ebd6bf520b9c39096d28ca1c24c501c863ab5960567cdc973762a2244ddd
+digest: 30cb2a61e45051b57fc750170cdd22d2bccf196a39266c3af9e7a6f241624df2
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -51,6 +51,7 @@ digest: 2bf9ebd6bf520b9c39096d28ca1c24c501c863ab5960567cdc973762a2244ddd
 - P-11 (block): The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`,… [config:project, verify]
 - P-12 (block): A raw pointer is non-owning or `nullptr`; ownership is `std::unique_ptr`, and `std::shared_ptr` only where a lifetime is genuinely shared. Non-owning… [config:architecture, verify]
 - P-13 (block): Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a… [config:project, verify]
+- P-14 (block): Allocation goes through mimalloc, pinned by URL and SHA-256 at the version the ADR names, with `ANTARES_ALLOCATOR=system` as the escape hatch. Call sites… [config:project, verify]
 
 ## Architecture and corpus index
 
