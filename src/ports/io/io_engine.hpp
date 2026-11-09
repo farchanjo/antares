@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+
+#include <sys/socket.h>
 #include <string>
 #include <functional>
 #include <span>
