@@ -97,6 +97,7 @@ set(ANTARES_HTTP_SOURCES
     src/adapters/http/connection.cpp
     src/adapters/http/h1_session.cpp
     src/adapters/http/h2_session.cpp
+    src/adapters/http/websocket.cpp
     src/adapters/http/client.cpp
     src/application/http/blocking_client.cpp
 )

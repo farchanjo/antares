@@ -9,6 +9,7 @@
 #include "adapters/http/connection.hpp"
 #include "adapters/http/h1_session.hpp"
 #include "adapters/http/h2_session.hpp"
+#include "adapters/http/websocket.hpp"
 #include "adapters/http/tls_context.hpp"
 #include "application/io/engine_pool.hpp"
 #include "ports/http/client.hpp"
@@ -39,6 +40,14 @@ public:
                     ports::http::Completion done) override;
 
     [[nodiscard]] ports::http::ClientStats stats() const noexcept override { return stats_; }
+
+    /// Open a WebSocket: sends the upgrade and hands over the socket on 101.
+    /// h1 only — the h2 path would need RFC 8441 extended CONNECT.
+    using SocketReady = std::function<void(std::shared_ptr<WebSocket>)>;
+    using SocketFailed = std::function<void(domain::http::HttpError)>;
+
+    void openWebSocket(domain::http::Url url, std::string subprotocol, SocketReady ready,
+                       SocketFailed failed);
 
 private:
     class Attempt;

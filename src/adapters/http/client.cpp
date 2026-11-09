@@ -191,6 +191,53 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
         });
 }
 
+void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, SocketReady ready,
+                               SocketFailed failed)
+{
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    auto connection = std::make_shared<Connection>(pool_.next(), *tls_);
+    auto engine = &connection->engine();
+
+    engine->post([self, connection, url = std::move(url), subprotocol = std::move(subprotocol),
+                  ready = std::move(ready), failed = std::move(failed)]() mutable {
+        connection->open(
+            url,
+            [self, connection, url, subprotocol = std::move(subprotocol),
+             ready = std::move(ready)]() mutable {
+                auto socket = std::make_shared<WebSocket>(connection, self->config_.limits.maxBodyBytes);
+                connection->onData([socket](const std::byte *data, std::size_t length) {
+                    socket->receive(data, length);
+                });
+
+                // RFC 6455 §4.1: an upgrade request is a normal GET with the
+                // handshake headers, and the response must be 101.
+                auto key = std::to_string(static_cast<std::uint32_t>(
+                    reinterpret_cast<std::uintptr_t>(socket.get())));
+                std::string request = "GET " + (url.target.empty() ? "/" : url.target) +
+                                      " HTTP/1.1\r\nHost: " + url.authority +
+                                      "\r\nUpgrade: websocket\r\nConnection: Upgrade"
+                                      "\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: " +
+                                      key + "\r\n";
+                if (!subprotocol.empty()) {
+                    request += "Sec-WebSocket-Protocol: " + subprotocol + "\r\n";
+                }
+                request += "\r\n";
+
+                connection->write(
+                    ports::io::Buffer{reinterpret_cast<const std::byte *>(request.data()),
+                                      reinterpret_cast<const std::byte *>(request.data()) +
+                                          request.size()},
+                    [socket](WriteOutcome wrote) {
+                        if (!wrote.ok) {
+                            socket->close();
+                        }
+                    });
+                ready(std::move(socket));
+            },
+            std::move(failed));
+    });
+}
+
 std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
                                                   const std::string &authority,
                                                   std::shared_ptr<Connection> connection)
