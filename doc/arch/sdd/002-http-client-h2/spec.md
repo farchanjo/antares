@@ -144,6 +144,17 @@ WebSocket needs the 101 upgrade and then raw framing over the same connection;
 the handler already exposes the byte pipe, so it is a layer on top, not a
 transport change.
 
+### FR-023 Event streams and sockets
+
+`text/event-stream` is parsed by `SseParser`: bytes in, whole events out, with
+the `Last-Event-ID` of the last one for reconnection.
+
+WebSocket framing is `WsCodec` (RFC 6455 §5): client masks, control payloads
+stay at 125 bytes or less, and a close frame closes the codec.
+
+Both are pure domain types over the chunked transport, so neither blocks and
+neither owns I/O.
+
 ### FR-018 A dedicated pool of loops
 
 The engine owns a fixed set of loops and their threads; a caller takes one and

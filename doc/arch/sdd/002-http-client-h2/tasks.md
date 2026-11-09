@@ -33,19 +33,20 @@ Ordered so each task compiles on its own and proves one requirement.
 
 - [x] T014 Add a timer to the engine port so a deadline costs no thread
       (FR-012).
-- [ ] T015 Apply the configured credential when headers are built, covering
+- [x] T015 Apply the configured credential when headers are built, covering
       bearer, basic and client certificate (FR-013).
 
 - [x] T016 Add the engine timer, retry policy and backoff (FR-012, FR-015).
 
-- [ ] T017 Move name resolution behind the engine port so no call blocks the
+- [x] T017 Move name resolution behind the engine port so no call blocks the
       loop, with the numeric path kept as the fast route (FR-016).
 
 - [x] T018 Give the engine a loop pool and key the connection pool by loop (FR-018).
 
 - [x] T019 Negotiate ALPN, speak h2, multiplex and fall back to 1.1 (FR-019, FR-020).
 - [x] T020 Streaming completion with an idle timeout (FR-022).
-- [ ] T021 SSE framing and the WebSocket upgrade (FR-021).
+- [x] T021 SSE framing and the WebSocket codec (FR-023).
+- [ ] T022 Complete the 101 upgrade path so a socket is opened from a response.
 
 ## Dependencies
 
