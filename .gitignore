@@ -18,6 +18,10 @@ Desktop.ini
 *~
 
 # --- Build outputs ---------------------------------------------------------
+build/
+cmake-build-*/
+compile_commands.json
+*.dSYM/
 # TODO (maintainer): add this project's build artifacts here — e.g. build/,
 # out/, *.o, *.class, coverage/, .gradle/.
 target/

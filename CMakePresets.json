@@ -1,0 +1,149 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_C_COMPILER_LAUNCHER": "sccache",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "sccache",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development \u2014 fastest loop",
+      "description": "Unoptimized, line debug info, lld, sccache, PCH. The default for every edit.",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "OFF",
+        "CMAKE_PCH_INSTANTIATE_TEMPLATES": "ON",
+        "CMAKE_UNITY_BUILD": "OFF"
+      },
+      "environment": {
+        "SCCACHE_BASEDIR": "${sourceDir}"
+      }
+    },
+    {
+      "name": "dev-unity",
+      "displayName": "Development \u2014 unity build",
+      "description": "Same as dev with unity build on. Use when header churn is low and the tree is wide.",
+      "inherits": "dev",
+      "cacheVariables": {
+        "CMAKE_UNITY_BUILD": "ON",
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "16"
+      }
+    },
+    {
+      "name": "dev-asan",
+      "displayName": "Development \u2014 AddressSanitizer",
+      "description": "dev plus ASan and UBSan. Slower; run before a release, not during a rename.",
+      "inherits": "dev",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release \u2014 optimized, gated by P-08",
+      "description": "O3, thin LTO, full debug info, strip, universal binary on macOS. Slow; only with authorization.",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
+        "CMAKE_PCH_INSTANTIATE_TEMPLATES": "ON"
+      },
+      "environment": {
+        "SCCACHE_BASEDIR": "${sourceDir}"
+      }
+    },
+    {
+      "name": "release-darwin",
+      "displayName": "Release \u2014 macOS universal",
+      "description": "release plus both Apple architectures and dSYM. Doubles link time.",
+      "inherits": "release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.4",
+        "CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "displayName": "Build dev",
+      "jobs": 0,
+      "verbose": false
+    },
+    {
+      "name": "dev-unity",
+      "configurePreset": "dev-unity",
+      "displayName": "Build dev (unity)",
+      "jobs": 0
+    },
+    {
+      "name": "dev-asan",
+      "configurePreset": "dev-asan",
+      "displayName": "Build dev (sanitizers)",
+      "jobs": 0
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "displayName": "Build release",
+      "jobs": 0,
+      "verbose": true
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "displayName": "Test dev",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 0,
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "dev-asan",
+      "configurePreset": "dev-asan",
+      "displayName": "Test dev (sanitizers)",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 0,
+        "noTestsAction": "error"
+      }
+    }
+  ]
+}

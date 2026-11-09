@@ -17,6 +17,12 @@ mode = "enforce"               # "enforce" (default) | "advisory"
 overrideFlag = "--allow-out-of-spec"
 specScopeGlobs = [
   "src/**",
+  "cmake/**",
+  "CMakeLists.txt",
+  "CMakePresets.json",
+  ".clang-tidy",
+  ".clang-format",
+  ".gitignore",
 ]
 
 [architecture]
