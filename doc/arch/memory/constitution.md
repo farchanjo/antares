@@ -133,7 +133,7 @@ Enforced by: config:project, verify
 
 ## P-07 — Architecture model is authoritative
 Severity: block
-MANDATE: Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`. An import that breaks the direction moves, or the layer table widens through an accepted ADR.
+MANDATE: Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform`. An import that breaks the direction moves, or the layer table widens through an accepted ADR.
 Enforced by: config:architecture, verify
 
 ## P-08 — Fast dev loop, release on authorization
