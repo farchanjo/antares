@@ -17,6 +17,7 @@
 #include "application/http/blocking_client.hpp"
 #include "application/io/engine_pool.hpp"
 #include "loopback_server.hpp"
+#include "tls_server.hpp"
 #include "support/await.hpp"
 
 namespace {
@@ -299,6 +300,60 @@ void casePoolSpreadsAcrossLoops()
     check(busy == 2, "both loops took work");
 }
 
+void caseHttpsNegotiatesH2()
+{
+    antares::test::TlsServer server{"hello", /*h2=*/true};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "h2 request returned");
+    if (result) {
+        check(result->status == 200, "status 200 over h2");
+        check(result->version == antares::domain::http::Version::http2, "spoke HTTP/2");
+    }
+}
+
+void caseHttpsFallsBackToH11()
+{
+    antares::test::TlsServer server{"fallback", /*h2=*/false};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "fallback request returned");
+    if (result) {
+        check(result->status == 200, "status 200 over http/1.1");
+        check(result->version == antares::domain::http::Version::http11, "stayed on 1.1");
+    }
+}
+
+void caseH2MultiplexesOneConnection()
+{
+    antares::test::TlsServer server{"multi", /*h2=*/true};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    // Warm the session so the concurrent streams share it.
+    (void)stack.blocking().send(get(server.url() + "/warm"));
+
+    antares::test::Await first;
+    antares::test::Await second;
+    (void)stack.client().submit(get(server.url() + "/a"), [&](auto) { first.signal(); });
+    (void)stack.client().submit(get(server.url() + "/b"), [&](auto) { second.signal(); });
+    check(first.wait(), "first stream completed");
+    check(second.wait(), "second stream completed");
+
+    check(server.connections() == 1, "one connection carried every stream");
+    check(server.maxConcurrentStreams() >= 2, "streams overlapped");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -317,6 +372,9 @@ std::span<const Case> cases()
         {"post-not-retried", casePostNotRetried},
         {"idle-timer-fires", caseIdleTimerFires},
         {"pool-spreads-across-loops", casePoolSpreadsAcrossLoops},
+        {"https-negotiates-h2", caseHttpsNegotiatesH2},
+        {"https-falls-back-to-h11", caseHttpsFallsBackToH11},
+        {"h2-multiplexes-one-connection", caseH2MultiplexesOneConnection},
     };
     return table;
 }
