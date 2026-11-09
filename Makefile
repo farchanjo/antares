@@ -7,7 +7,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test check validate verify analyze spec-status
+.PHONY: help build test lint check validate verify analyze spec-status
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,11 +16,17 @@ help: ## Show this help
 # Build / Test — placeholders: replace with antares's real toolchain.
 # ---------------------------------------------------------------------------
 
-build: ## Build the project (TODO: wire to your build system)
-	@echo "TODO: build antares — replace this recipe with your build command"
+build: ## Configure and build the dev preset
+	cmake --preset dev
+	cmake --build --preset dev
 
-test: ## Run the test suite (TODO: wire to your test runner)
-	@echo "TODO: test antares — replace this recipe with your test command"
+test: ## Run the dev test preset
+	ctest --preset dev
+
+lint: ## Run the C++ rule checkers the validator registry cannot express
+	@tools/check-include-paths.sh
+	@tools/check-domain-purity.sh
+	@tools/check-pins.sh
 
 # ---------------------------------------------------------------------------
 # Spec — speckit spec-driven workflow gates (ready to use).
@@ -38,4 +44,4 @@ analyze: ## Analyze the spec corpus for gaps and drift
 spec-status: ## Show the active feature and current workflow phase
 	speckit status
 
-check: validate verify analyze test ## Run the full gate (spec corpus + tests)
+check: validate verify analyze lint build test ## Run the full gate (corpus + rules + build)

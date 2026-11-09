@@ -23,6 +23,8 @@ specScopeGlobs = [
   ".clang-tidy",
   ".clang-format",
   ".gitignore",
+  "tools/**",
+  "Makefile",
 ]
 
 [architecture]
