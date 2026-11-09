@@ -152,6 +152,7 @@ private:
             unsigned int length = 0;
             SSL_get0_alpn_selected(ssl, &selected, &length);
             const bool h2 = length == 2 && std::memcmp(selected, "h2", 2) == 0;
+            std::fprintf(stderr, "  server alpn h2=%d\n", static_cast<int>(h2));
             if (h2) {
                 serveHttp2(ssl);
             } else {
@@ -266,6 +267,7 @@ private:
             std::uint8_t scratch[16384];
             while (!stopping_.load()) {
                 const int got = SSL_read(ssl, scratch, sizeof scratch);
+                std::fprintf(stderr, "  server read %d\n", got);
                 if (got <= 0) {
                     break;
                 }
