@@ -25,6 +25,8 @@ counts are the `Bytes` value type; nothing re-wraps what the standard library
 already gives. Exit codes are stable 0-8; `--json` emits one object.
 
 Binary artifacts stay out of the tree: everything under `build/` is regenerated.
+HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection and redirect
+policy on the engine; `ClientConfig` publishes pool, timeouts and auth.
 
 ## Command surface
 

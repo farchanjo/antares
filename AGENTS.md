@@ -180,6 +180,9 @@ The corpus is governed; use the binary for every loop step.
 - **Clean old builds.** Delete a build tree as soon as it stops being used and
   delete the tree before a release build. Disk exhaustion fails
   the loop silently.
+- **Use the native types.** Durations are `std::chrono`, instants are
+  `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
+  standard library already provides is a defect, not a defence.
 - **Commit no artifacts.** Binaries, objects, caches and generated reports stay
   out of the tree; `.gitignore` already covers them, so a `git add -A` that
   stages a `.o` means a rule is missing, not that the file belongs.
