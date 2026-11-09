@@ -273,11 +273,15 @@ void casePoolSpreadsAcrossLoops()
     Stack stack{config, /*loops=*/2};
     check(stack.pool().size() == 2, "two loops");
 
-    (void)stack.blocking().send(get(server.url() + "/a"));
-    (void)stack.blocking().send(get(server.url() + "/b"));
+    // Concurrent, so neither can reuse the other's connection: each opens its
+    // own and must land on its own loop.
+    antares::test::Await first;
+    antares::test::Await second;
+    (void)stack.client().submit(get(server.url() + "/a"), [&](auto) { first.signal(); });
+    (void)stack.client().submit(get(server.url() + "/b"), [&](auto) { second.signal(); });
+    check(first.wait(), "first completed");
+    check(second.wait(), "second completed");
 
-    // Round-robin: the two attempts must land on different loops, which means
-    // neither loop owns more than the connections it was given.
     const auto &engines = stack.pool().engines();
     std::size_t busy = 0;
     for (const auto &engine : engines) {
