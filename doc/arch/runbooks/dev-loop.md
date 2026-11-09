@@ -51,7 +51,9 @@ Run this procedure when:
 1. Validate the corpus locally: `speckit validate` — must exit `0`.
 2. Run the rule checkers locally: `make lint` — must exit `0`.
 3. Commit the change.
-4. Push it to the host: `git push mac HEAD` — the checkout updates in place.
+4. Push it to the host as `main`: `git push mac HEAD:main` — the checkout
+   updates in place. Pushing the bare branch name creates a branch the host
+   does not check out, because `updateInstead` only acts on the checked-out ref.
 5. Over SSH into `~/dev/antares`, configure the dev preset:
    `cmake --preset dev`.
 6. Build: `cmake --build --preset dev`.
@@ -63,12 +65,12 @@ Run this procedure when:
 9. Read the sccache counters with `sccache --show-stats` when build time moves
    without a source change.
 10. Publish from the workstation only, and only when the loop is green:
-    `git push origin main`.
+    `git push origin HEAD` for the branch, `git push origin main` after merge.
 
 ## Verification
 
 - Steps 5, 6 and 7 exit `0`.
-- `git push mac HEAD` fast-forwards; a rejection means the host tree diverged.
+- `git push mac HEAD:main` fast-forwards; a rejection means the host tree diverged.
 - The AppleScript assertion prints the expected value; a notification appears.
 - `sccache --show-stats` reports a hit rate that does not collapse to zero
   after a no-op rebuild.
