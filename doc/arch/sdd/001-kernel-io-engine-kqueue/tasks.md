@@ -2,9 +2,9 @@
 
 ## Task Breakdown
 
-- [ ] T001 Declare `IoError` and the seven port operations in
+- [x] T001 Declare `IoError` and the seven port operations in
       `src/ports/io/io_engine.hpp`; no definition, header only (FR-001, FR-005).
-- [ ] T002 Declare `PendingOp` and the stable-address operation store in
+- [x] T002 Declare `PendingOp` and the stable-address operation store in
       `src/ports/io/pending_op.hpp` (FR-002).
 - [ ] T003 Write `src/application/io/engine_factory.cpp` selecting by platform
       and honouring `ANTARES_IO_BACKEND`; expose `name()` (FR-004).

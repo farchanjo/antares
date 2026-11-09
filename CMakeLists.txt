@@ -47,6 +47,9 @@ add_library(antares_io STATIC
 )
 target_link_libraries(antares_io PUBLIC antares_core)
 
+# The port names no Qt type (P-06): MOC off proves it stays that way.
+set_target_properties(antares_io PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
 # -ffile-prefix-map keeps sccache keys stable across checkouts (P-08).
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options("-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=.")
