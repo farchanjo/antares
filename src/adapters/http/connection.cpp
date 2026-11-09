@@ -275,7 +275,8 @@ void Connection::write(ports::io::Buffer bytes, WriteDone done)
     }
 
     writeQueue_.push_back(std::move(done));
-    (void)SSL_write(ssl_, bytes.data(), static_cast<int>(bytes.size()));
+    const int put = SSL_write(ssl_, bytes.data(), static_cast<int>(bytes.size()));
+    std::fprintf(stderr, "  ssl_write %d of %zu\n", put, bytes.size());
     drainOutgoing();
 }
 
