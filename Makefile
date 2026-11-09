@@ -7,7 +7,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test asan leak lint check validate verify analyze spec-status
+.PHONY: help build test asan leak clean clean-all lint check validate verify analyze spec-status
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -36,6 +36,12 @@ leak: ## Run the suite under LeakSanitizer (Linux) or leaks(1) (macOS)
 		ASAN_OPTIONS=detect_leaks=1 cmake --build --preset dev-asan >/dev/null && \
 		ASAN_OPTIONS=detect_leaks=1 ./build/dev-asan/antares_io_conformance; \
 	fi
+
+clean: ## Remove the build trees
+	rm -rf build/dev build/dev-unity build/dev-asan build/release build/release-darwin
+
+clean-all: clean ## Also drop the fetched dependency cache
+	rm -rf "$$HOME/.cache/antares"
 
 lint: ## Run the C++ rule checkers the validator registry cannot express
 	@tools/check-include-paths.sh
