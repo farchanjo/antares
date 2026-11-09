@@ -153,7 +153,10 @@ private:
         PostedTask task;
     };
 
+    /// Guarded: a caller thread arms a timer while the loop walks the same
+    /// vector, and a reallocation under an open reference is a use-after-free.
     std::vector<Timer> timers_;
+    mutable std::mutex timerMutex_;
     struct ResolveJob {
         std::string host;
         std::uint16_t port = 0;

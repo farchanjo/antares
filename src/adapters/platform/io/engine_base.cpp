@@ -223,7 +223,10 @@ std::expected<void, IoError> EngineBase::submitTimer(domain::Duration delay, Pos
         return std::unexpected(IoError::system);
     }
 
-    timers_.push_back(Timer{domain::afterFromNow(delay), std::move(task)});
+    {
+        const std::lock_guard<std::mutex> guard{timerMutex_};
+        timers_.push_back(Timer{domain::afterFromNow(delay), std::move(task)});
+    }
     poke();
     return {};
 }
@@ -392,6 +395,7 @@ void EngineBase::stop()
 
 void EngineBase::fireDueTimers()
 {
+    const std::lock_guard<std::mutex> guard{timerMutex_};
     if (timers_.empty()) {
         return;
     }
@@ -416,6 +420,8 @@ int EngineBase::nextWaitMilliseconds() const
     if (!tasks_.empty()) {
         return 0;
     }
+
+    const std::lock_guard<std::mutex> guard{timerMutex_};
 
     // Nothing pending: block until the wakeup pipe says otherwise. A fixed
     // timeout here would cost an idle wakeup per period for no work.
