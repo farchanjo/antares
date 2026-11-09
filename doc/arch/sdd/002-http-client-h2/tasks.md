@@ -44,7 +44,8 @@ Ordered so each task compiles on its own and proves one requirement.
 - [x] T018 Give the engine a loop pool and key the connection pool by loop (FR-018).
 
 - [x] T019 Negotiate ALPN, speak h2, multiplex and fall back to 1.1 (FR-019, FR-020).
-- [ ] T020 Streaming completion, SSE and the WebSocket upgrade (FR-021).
+- [x] T020 Streaming completion with an idle timeout (FR-022).
+- [ ] T021 SSE framing and the WebSocket upgrade (FR-021).
 
 ## Dependencies
 

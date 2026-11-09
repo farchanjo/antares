@@ -147,3 +147,11 @@ Feature: Http Client H2
     Given a streaming response
     When  bytes arrive
     Then  the handler receives them before the body ends
+
+  @planned
+  Scenario: FR-022 chunks are delivered, not buffered
+    Given a chunked response
+    When  it streams
+    Then  the head arrives once
+    And   each chunk reaches the sink separately
+    And   a silent stream still times out

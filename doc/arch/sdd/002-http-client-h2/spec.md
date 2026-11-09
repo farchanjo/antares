@@ -126,6 +126,15 @@ above it waits rather than opening a second connection.
 A GOAWAY stops new streams; the streams above its last id were never processed
 and are retried on a fresh connection.
 
+### FR-022 Chunks are delivered, not buffered
+
+`submitStreaming` hands the head once and every body chunk as it decodes, on
+both protocols: h1 by Content-Length or chunked framing, h2 per DATA frame. The
+sink runs on the loop thread and must not block.
+
+The read timeout is idle, not total: every chunk re-arms it, so a slow
+`text/event-stream` survives while a silent one still times out.
+
 ### FR-021 Streaming, SSE and WebSocket
 
 The data handler delivers bytes as they decrypt, so a response can be consumed
