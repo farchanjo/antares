@@ -1,6 +1,7 @@
 #include "adapters/http/connection.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 
 #include <arpa/inet.h>
@@ -280,6 +281,8 @@ void Connection::write(ports::io::Buffer bytes, WriteDone done)
 
 void Connection::drainOutgoing()
 {
+    std::fprintf(stderr, "  drain writing=%d pending=%ld\n", static_cast<int>(writing_),
+                 outgoing_ == nullptr ? -1L : static_cast<long>(BIO_ctrl_pending(outgoing_)));
     if (outgoing_ == nullptr || writing_) {
         return;
     }
@@ -314,6 +317,7 @@ void Connection::drainOutgoing()
 
 void Connection::onSocketWritten(std::expected<std::size_t, ports::io::IoError> wrote)
 {
+    std::fprintf(stderr, "  wrote ok=%d\n", static_cast<int>(wrote.has_value()));
     writing_ = false;
     if (!wrote) {
         fail(domain::http::HttpError::closed);
