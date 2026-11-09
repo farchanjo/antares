@@ -58,6 +58,10 @@ if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
     set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
     set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
     set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    # mimalloc's own debug build aborts on macOS during process teardown
+    # (exit 134 after a clean run). The release runtime is stable there and our
+    # own -g line info is unaffected.
+    set(MI_DEBUG OFF CACHE STRING "" FORCE)
     FetchContent_MakeAvailable(mimalloc)
 endif()
 

@@ -64,6 +64,11 @@ call site changes: everything keeps calling `new`, `std::vector` and
 The fetch is a URL with `URL_HASH SHA256=2672e6a9…`, not a moving tag, so a
 rebuild resolves the bytes this record was written against (D-17).
 
+`MI_DEBUG` is forced off. A debug mimalloc build aborts on macOS during process
+teardown — exit 134 after `21 check(s), 0 failure(s)` — while the release runtime
+exits clean. Our own `-g` line information is unaffected; what is lost is
+mimalloc's internal assertions.
+
 ### Consequences
 
 - Good: the hot path stops paying the system allocator.
@@ -75,6 +80,8 @@ rebuild resolves the bytes this record was written against (D-17).
   an allocator bug can hide behind the sanitizer preset.
 - Bad: mimalloc's own debugging state (`MI_OPTION_VERBOSE`, `mi_stats`) is a new
   surface to learn.
+- Bad: its debug build is unusable on macOS, so internal invariant checks never
+  run in development.
 
 ### Confirmation
 
