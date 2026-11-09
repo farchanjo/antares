@@ -1,5 +1,5 @@
 ---
-revision: 4
+revision: 5
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -9,6 +9,8 @@ amendments:
   - adr: "0002"
     date: "2026-11-09"
   - adr: "0003"
+    date: "2026-11-09"
+  - adr: "0004"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -47,11 +49,11 @@ Enforced by: fqcn.glob-import, fqcn.relative-super
 ## D-07 — Enforced lints and exact pinning
 Severity: block
 MANDATE: The project commits `clang-tidy` and `clang-format` at their strongest level and pins every dependency to an exact version. A CMake dependency names an exact tag or a commit hash — never a branch, a range, or a floating `latest`.
-Enforced by: lint.rust.lints-missing, lint.js.eslint-missing, lint.ts.strict-missing, lint.java.config-missing, lint.go.golangci-missing, lint.c.clang-tidy-missing, lint.python.ruff-missing, lint.php.phpcs-missing, lint.react.plugin-missing, lint.html.htmlhint-missing, pin.cargo.lockfile-missing, pin.npm.save-exact-missing, pin.npm.range-version, pin.maven.dynamic-version, pin.gradle.dynamic-version, pin.python.range-version, pin.docker.unpinned-image, pin.ci.unpinned-action
+Enforced by: lint.c.clang-tidy-missing, pin.docker.unpinned-image, pin.ci.unpinned-action
 ## D-08 — Fail loud
 Severity: block
 MANDATE: Production code never aborts on recoverable absence. An unchecked `std::optional::value()`, a raw `.at()` on an unproven index, a raw `new` and a raw `delete` are denied; the failure returns `std::expected` and is handled or propagated as a typed domain error.
-Enforced by: calisthenics-code.bare-unwrap, no-unwrap, clippy
+Enforced by: calisthenics-code.bare-unwrap
 ## D-09 — Declared licence
 Severity: block
 MANDATE: A project declares its licence id and commits first matching `LICENSE` file; the two never drift. Run `speckit license set <id> --write-file` and keep the declared id equal to the committed text.
@@ -86,8 +88,8 @@ MANDATE: Every public contract declares its version and first breaking change is
 Enforced by: contract.openapi.version, contract.asyncapi.version
 ## D-17 — Reproducible dependency surface
 Severity: advisory
-MANDATE: A library publishes an exact, lockfile-anchored dependency set so first consumer resolves what its author tested. Commit the lockfile and pin direct dependencies to exact versions.
-Enforced by: pin.cargo.lockfile-missing, pin.php.composer-lock-missing, pin.php.range-version, pin.npm.save-exact-missing, pin.maven.dynamic-version
+MANDATE: Every dependency enters by an exact version, and the resolution is committed so a rebuild resolves what the author built. Pin the CMake fetch to an exact tag or commit hash, vendor third-party code under `src/adapters`, and never track a branch.
+Enforced by: pin.ci.unpinned-action, pin.docker.unpinned-image
 
 ## Principles
 
@@ -129,8 +131,8 @@ Enforced by: config:architecture, verify
 Changes to this constitution require a recorded Architecture Decision
 (MADR) with status `accepted`, a non-empty `deciders` list, and an
 `amendments` entry naming that ADR. Trivial corrections (typos,
-formatting) may be committed directly. The MSRV pin and the frozen
-`Cargo.toml [lints.*]` tables move only via accepted ADR.
+formatting) may be committed directly. The C++ standard pin and the frozen
+`clang-tidy` configuration move only via accepted ADR.
 
 ## Maintenance
 
