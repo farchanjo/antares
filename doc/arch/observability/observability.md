@@ -52,3 +52,22 @@ Export telemetry from the application boundary over OTLP: gRPC on port 4317 or
 HTTP on port 4318. Resource attributes name the service
 (`service.name = "antares"`) so every signal is attributable to its
 origin.
+
+## antares client signals
+
+The HTTP client (feature 002) publishes counters only, so its label set stays
+bounded:
+
+| Label | Bounded Value Set | Signal |
+|-------|-------------------|--------|
+| `http.version` | `h2`, `http/1.1` | request metrics |
+| `http.outcome` | `ok`, `connect`, `tls`, `timeout`, `cancelled`, `refused`, `protocol` | request metrics |
+| `pool.state` | `opened`, `reused`, `idle_closed` | connection metrics |
+
+`ClientStats` is the source: it is a snapshot, never a label carrier. Stream
+count per connection is a gauge, not a label. The engine publishes `submitted`,
+`completed` and `failed` per backend so a stalled loop is visible without
+tracing.
+
+Log records name their level and their source category (`http`, `io`); the
+credential is never logged, only its kind.

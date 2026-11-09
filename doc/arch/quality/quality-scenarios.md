@@ -25,3 +25,14 @@ keep it accurate and cover every attribute that matters for this system.
 | QS-07 | maintainability | a developer changes one isolated module | the current codebase under CI | the change ships without edits to unrelated modules | the change stays within one module and CI is green |
 | QS-08 | flexibility | the system is deployed to a new supported target | the supported platform matrix | it runs with only configuration changes | it deploys to each supported platform from one build |
 | QS-09 | safety | an operator supplies invalid or hazardous input | production with guardrails enabled | the system refuses the unsafe operation | every hazardous input is blocked before any side effect |
+
+## Client scenarios
+
+| Stimulus | Environment | Response | Criterion |
+|----------|-------------|----------|-----------|
+| 100 concurrent requests to one origin | TLS with h2 | Multiplexed on the connections the peer allows | No request waits on another's completion |
+| Server answers 503 for a while | Idle client | Retry with backoff, honouring `Retry-After` | Non-idempotent method is not duplicated |
+| `text/event-stream` open for minutes | Idle network | Chunks delivered as they arrive | Idle timeout re-arms per chunk; a silent stream still fails |
+| Loop is busy | Caller thread | Sync facade detects the loop thread | Returns `reentrant` instead of deadlocking |
+| Name resolution is slow | Non-literal host | Loop keeps serving other connections | Resolution runs off the loop |
+| Certificate chain is unknown | `verifyPeer` on | Handshake fails | Reported as `tls`, never silently accepted |

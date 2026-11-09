@@ -63,3 +63,21 @@ The conformance suite grows a loopback TLS server with a self-signed
 certificate, so h2, h1 fallback, redirects and cancellation are proven without a
 network. Each case runs on both the engine backends, and the reentrancy case
 runs its sync call from inside a callback to prove the deadlock is gone.
+
+## Constitution
+
+The plan answers the doctrines that bind it:
+
+- **D-01** — this plan follows `spec.md`; the FR list is the source of truth and
+  the code cites it.
+- **D-03** — the transport stays behind the `IoEngine` port; the domain keeps
+  only types, with no I/O.
+- **D-06** — every production include names its full path from `src/`.
+- **D-08** — no bare `value()` or raw `new`; absence is `std::expected`.
+- **P-05** — acceptance runs on macOS first.
+- **P-09** — nothing reaches the kernel except through the engine port.
+- **P-10** — every log call names a level and its source category.
+- **P-11** — C++26 with `std::expected` and `std::span`, native chrono types.
+- **P-12** — ownership is `unique_ptr`; `shared_ptr` only where a stream or a
+  completion genuinely shares a lifetime.
+- **P-13** — `asan` and `leak` gate every run.
