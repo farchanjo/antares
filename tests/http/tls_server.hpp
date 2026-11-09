@@ -267,7 +267,7 @@ private:
             std::uint8_t scratch[16384];
             while (!stopping_.load()) {
                 const int got = SSL_read(ssl, scratch, sizeof scratch);
-                std::fprintf(stderr, "  server read %d\n", got);
+                std::fprintf(stderr, "  [s] read %d\n", got);
                 if (got <= 0) {
                     break;
                 }

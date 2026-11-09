@@ -204,14 +204,13 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
     }
 
     if (ssl_ != nullptr) {
-        std::fprintf(stderr, "  sock read %zu\n", chunk->size());
-        std::fprintf(stderr, "  bio before=%ld\n", static_cast<long>(BIO_ctrl_pending(incoming_)));
+        std::fprintf(stderr, "  [c] sock read %zu\n", chunk->size());
         (void)BIO_write(incoming_, chunk->data(), static_cast<int>(chunk->size()));
         if (state_ == State::handshaking) {
             driveHandshake();
             return;
         }
-        std::fprintf(stderr, "  bio after=%ld\n", static_cast<long>(BIO_ctrl_pending(incoming_)));
+
         drainPlaintext();
         drainOutgoing();
         return;
@@ -247,7 +246,8 @@ void Connection::drainPlaintext()
             continue;
         }
         const int error = SSL_get_error(ssl_, got);
-        std::fprintf(stderr, "  ssl_read got=%d err=%d\n", got, error);
+        std::fprintf(stderr, "  [c] ssl_read got=%d err=%d init=%d\n", got, error,
+                     static_cast<int>(SSL_is_init_finished(ssl_)));
         if (error == SSL_ERROR_WANT_READ) {
             readSocket();
             return;
