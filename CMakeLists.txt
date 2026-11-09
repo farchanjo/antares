@@ -259,7 +259,8 @@ set(ANTARES_HTTP_CASES
     retries-then-succeeds
     retry-stops-at-ceiling
     post-not-retried
-    idle-timer-fires)
+    idle-timer-fires
+    pool-spreads-across-loops)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

@@ -265,6 +265,30 @@ void caseIdleTimerFires()
     check(fired.wait(), "timer fired");
 }
 
+void casePoolSpreadsAcrossLoops()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx"};
+    ClientConfig config;
+    Stack stack{config, /*loops=*/2};
+    check(stack.pool().size() == 2, "two loops");
+
+    (void)stack.blocking().send(get(server.url() + "/a"));
+    (void)stack.blocking().send(get(server.url() + "/b"));
+
+    // Round-robin: the two attempts must land on different loops, which means
+    // neither loop owns more than the connections it was given.
+    const auto &engines = stack.pool().engines();
+    std::size_t busy = 0;
+    for (const auto &engine : engines) {
+        if (engine && !engine->stats().submitted) {
+            continue;
+        }
+        ++busy;
+    }
+    check(busy == 2, "both loops took work");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -282,6 +306,7 @@ std::span<const Case> cases()
         {"retry-stops-at-ceiling", caseRetryStopsAtCeiling},
         {"post-not-retried", casePostNotRetried},
         {"idle-timer-fires", caseIdleTimerFires},
+        {"pool-spreads-across-loops", casePoolSpreadsAcrossLoops},
     };
     return table;
 }
