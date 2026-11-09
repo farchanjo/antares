@@ -440,5 +440,4 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_error.hpp`
 - `src/ports/io/io_handle.cpp`
 - `src/ports/io/io_handle.hpp`
-
 <!-- notes:end -->
