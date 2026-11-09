@@ -155,6 +155,12 @@ stay at 125 bytes or less, and a close frame closes the codec.
 Both are pure domain types over the chunked transport, so neither blocks and
 neither owns I/O.
 
+### FR-025 Every port method is exercised
+
+A virtual on a port has a test that reaches it. A counter with no increment and
+a sink with no call site are defects, not future work: streaming survives a
+redirect and a retry, and the client logs through the port.
+
 ### FR-024 The upgrade is the transport change
 
 A socket is opened by sending the handshake GET and requiring a 101; the head is

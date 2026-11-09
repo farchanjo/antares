@@ -50,6 +50,9 @@ Ordered so each task compiles on its own and proves one requirement.
 - [ ] T023 Answer pings and drive a close handshake (RFC 6455 §5.5) — the codec
       replies to ping; the close handshake and reconnect policy are open.
 
+- [x] T024 Wire the log port into the client and keep stream sinks across
+      redirect and retry (FR-025).
+
 ## Dependencies
 
 - T002 before T003; T004 and T005 before T006; T006 before T011.
