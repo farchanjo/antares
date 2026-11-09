@@ -155,6 +155,11 @@ EngineStats EngineBase::stats() const noexcept
     return snapshot;
 }
 
+bool EngineBase::isEngineThread() const noexcept
+{
+    return std::this_thread::get_id() == loopThread_.load(std::memory_order_relaxed);
+}
+
 void EngineBase::poke() noexcept
 {
     if (wake_[1] >= 0) {
@@ -176,6 +181,7 @@ void EngineBase::run()
 {
     // Do not reset the flag here: a stop() issued before the thread reaches the
     // loop must survive, or the loop runs forever.
+    loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
     armWakeup();
     while (!stopped_.load()) {
         drainWakeup();

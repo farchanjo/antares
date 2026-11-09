@@ -50,6 +50,10 @@ public:
     /// Snapshot the counters named in the spec's Observability section.
     [[nodiscard]] virtual EngineStats stats() const noexcept = 0;
 
+    /// True when the caller already runs on the loop thread. A blocking wrapper
+    /// must not wait there, or it deadlocks (FR-008).
+    [[nodiscard]] virtual bool isEngineThread() const noexcept = 0;
+
     /// Read at most `maxBytes` into an engine-owned buffer.
     ///
     /// `offset` is required for a file handle (positional read) and ignored for

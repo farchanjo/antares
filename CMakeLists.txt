@@ -222,6 +222,35 @@ set(ANTARES_IO_CASES
     stop-ends-callbacks
     counters-move)
 
+add_executable(antares_http_conformance tests/http/conformance.cpp)
+target_link_libraries(antares_http_conformance PRIVATE antares_http)
+target_include_directories(antares_http_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests/http)
+set_target_properties(antares_http_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_link_libraries(antares_http_conformance PRIVATE mimalloc-static)
+    if(APPLE)
+        target_link_options(antares_http_conformance PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    endif()
+endif()
+if(APPLE)
+    add_custom_command(TARGET antares_http_conformance POST_BUILD
+        COMMAND dsymutil $<TARGET_FILE:antares_http_conformance>
+        COMMENT "dsymutil antares_http_conformance"
+        VERBATIM)
+endif()
+
+set(ANTARES_HTTP_CASES
+    async-get
+    sync-get
+    redirect-followed
+    reentrant-from-callback
+    pool-reuses-connection)
+
+foreach(case IN LISTS ANTARES_HTTP_CASES)
+    add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
+endforeach()
+
 foreach(case IN LISTS ANTARES_IO_CASES)
     add_test(NAME "poll/${case}" COMMAND antares_io_conformance "${case}")
     set_tests_properties("poll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")

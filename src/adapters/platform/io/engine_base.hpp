@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <thread>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -69,6 +70,7 @@ public:
                   ConnectCompletion done) override;
 
     [[nodiscard]] EngineStats stats() const noexcept override;
+    [[nodiscard]] bool isEngineThread() const noexcept override;
 
     void post(PostedTask task) override;
     void run() override;
@@ -133,6 +135,7 @@ private:
     std::deque<PostedTask> tasks_;
     std::mutex mutex_;
     std::atomic<bool> stopped_{false};
+    std::atomic<std::thread::id> loopThread_{};
     int wake_[2] = {-1, -1};
 };
 

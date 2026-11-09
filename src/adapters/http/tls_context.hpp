@@ -14,7 +14,9 @@ namespace antares::adapters::http {
 class TlsContext {
 public:
     /// Build the context. Returns nullptr on failure; the caller maps it.
-    [[nodiscard]] static std::unique_ptr<TlsContext> create(bool verifyPeer);
+    /// `http2` offers h2 first; false offers only http/1.1 so an h1-only
+    /// client never negotiates a protocol it cannot frame.
+    [[nodiscard]] static std::unique_ptr<TlsContext> create(bool verifyPeer, bool http2);
 
     ~TlsContext();
     TlsContext(const TlsContext &) = delete;

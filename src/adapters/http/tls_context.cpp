@@ -48,7 +48,7 @@ TlsContext::~TlsContext()
     }
 }
 
-std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer)
+std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2)
 {
     SSL_CTX *context = SSL_CTX_new(TLS_client_method());
     if (context == nullptr) {
@@ -56,8 +56,12 @@ std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer)
     }
 
     SSL_CTX_set_min_proto_version(context, TLS1_2_VERSION);
-    SSL_CTX_set_alpn_protos(context, nullptr, 0);
-    SSL_CTX_set_alpn_select_cb(context, &selectProtocol, nullptr);
+    if (http2) {
+        SSL_CTX_set_alpn_select_cb(context, &selectProtocol, nullptr);
+    } else {
+        static constexpr unsigned char H11[] = {8, 'h', 't', 't', 'p', '/', '1', '.', '1'};
+        SSL_CTX_set_alpn_protos(context, H11, sizeof H11);
+    }
     SSL_CTX_set_mode(context, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
     if (verifyPeer) {

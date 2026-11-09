@@ -1,0 +1,56 @@
+#pragma once
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "adapters/http/connection.hpp"
+#include "adapters/http/h1_session.hpp"
+#include "adapters/http/tls_context.hpp"
+#include "ports/http/client.hpp"
+
+namespace antares::adapters::http {
+
+/// HTTP client over the engine. All state lives on the engine thread, so no
+/// mutex guards the pool and a completion never waits (FR-002).
+class HttpClient final : public ports::http::Client {
+public:
+    HttpClient(ports::io::IoEngine &engine, domain::http::ClientConfig config);
+    ~HttpClient() override;
+
+    HttpClient(const HttpClient &) = delete;
+    HttpClient &operator=(const HttpClient &) = delete;
+
+    [[nodiscard]] const domain::http::ClientConfig &config() const noexcept override
+    {
+        return config_;
+    }
+
+    [[nodiscard]] std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
+    submit(domain::http::Request request, ports::http::Completion done) override;
+
+    [[nodiscard]] ports::http::ClientStats stats() const noexcept override { return stats_; }
+
+private:
+    class Attempt;
+
+    void start(const std::shared_ptr<Attempt> &attempt);
+    void connect(const std::shared_ptr<Attempt> &attempt);
+    void onReady(const std::shared_ptr<Attempt> &attempt);
+    void readMore(const std::shared_ptr<Attempt> &attempt);
+    void finish(const std::shared_ptr<Attempt> &attempt,
+                std::expected<domain::http::Response, domain::http::HttpError> result);
+    void followRedirect(const std::shared_ptr<Attempt> &attempt, domain::http::Response response);
+
+    void release(std::shared_ptr<Connection> connection);
+    [[nodiscard]] std::shared_ptr<Connection> acquire(const domain::http::Url &url);
+
+    ports::io::IoEngine &engine_;
+    domain::http::ClientConfig config_;
+    std::unique_ptr<TlsContext> tls_;
+    std::map<std::string, std::vector<std::shared_ptr<Connection>>> idle_;
+    ports::http::ClientStats stats_{};
+};
+
+} // namespace antares::adapters::http
