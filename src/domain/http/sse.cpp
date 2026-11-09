@@ -1,6 +1,7 @@
 #include "domain/http/sse.hpp"
 
 #include <charconv>
+#include <cstdio>
 
 namespace antares::domain::http {
 namespace {
@@ -27,6 +28,8 @@ SseParser::SseParser(Bytes ceiling)
 
 void SseParser::dispatch()
 {
+    std::fprintf(stderr, "  dispatch hasData=%d ready=%zu\n", static_cast<int>(hasData_),
+                 ready_.size());
     // A block with no data line is not an event (the grammar requires data).
     if (!hasData_) {
         pending_ = SseEvent{};
