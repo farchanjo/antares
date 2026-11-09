@@ -69,6 +69,7 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
         ops_.pop_back();
         return std::unexpected(IoError::tooManyDescriptors);
     }
+    poke();
     return {};
 }
 
@@ -96,6 +97,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
         ops_.pop_back();
         return std::unexpected(IoError::tooManyDescriptors);
     }
+    poke();
     return {};
 }
 
@@ -114,6 +116,7 @@ std::expected<void, IoError> EngineBase::submitAccept(const IoHandle &listener,
         ops_.pop_back();
         return std::unexpected(IoError::tooManyDescriptors);
     }
+    poke();
     return {};
 }
 
@@ -135,7 +138,16 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle, c
         ops_.pop_back();
         return std::unexpected(IoError::tooManyDescriptors);
     }
+    poke();
     return {};
+}
+
+void EngineBase::poke() noexcept
+{
+    if (wake_[1] >= 0) {
+        const char byte = 1;
+        (void)::write(wake_[1], &byte, 1);
+    }
 }
 
 void EngineBase::post(PostedTask task)
@@ -144,16 +156,14 @@ void EngineBase::post(PostedTask task)
         const std::lock_guard<std::mutex> guard(mutex_);
         tasks_.push_back(std::move(task));
     }
-    if (wake_[1] >= 0) {
-        const char byte = 1;
-        (void)::write(wake_[1], &byte, 1);
-    }
+    poke();
 }
 
 void EngineBase::run()
 {
     // Do not reset the flag here: a stop() issued before the thread reaches the
     // loop must survive, or the loop runs forever.
+    armWakeup();
     while (!stopped_.load()) {
         drainWakeup();
         drainTasks();

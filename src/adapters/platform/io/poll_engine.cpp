@@ -20,6 +20,8 @@ short wantedEvents(OpKind kind) noexcept
 
 std::string_view PollEngine::name() const noexcept { return "poll"; }
 
+void PollEngine::armWakeup() {}
+
 bool PollEngine::armRead(PendingOp &) { return true; }
 
 bool PollEngine::armWrite(PendingOp &) { return true; }
@@ -30,17 +32,23 @@ bool PollEngine::armConnect(PendingOp &) { return true; }
 
 bool PollEngine::waitReady(int timeoutMilliseconds)
 {
-    if (ops_.empty()) {
+    if (ops_.empty() && wakeReader() < 0) {
         return false;
     }
 
     std::vector<struct pollfd> descriptors;
     std::vector<PendingOp *> tracked;
-    descriptors.reserve(ops_.size() < MAX_SWEEP ? ops_.size() : MAX_SWEEP);
+
+    // Index 0 is always the wakeup pipe: an idle engine still blocks in poll
+    // instead of spinning on an empty descriptor set.
+    descriptors.push_back({wakeReader(), POLLIN, 0});
+    tracked.push_back(nullptr);
+
+    descriptors.reserve(descriptors.size() + (ops_.size() < MAX_SWEEP ? ops_.size() : MAX_SWEEP));
     tracked.reserve(descriptors.capacity());
 
     for (auto &owned : ops_) {
-        if (descriptors.size() == MAX_SWEEP) {
+        if (descriptors.size() == MAX_SWEEP + 1) {
             break;
         }
         if (!owned->readiness) {
@@ -66,7 +74,9 @@ bool PollEngine::waitReady(int timeoutMilliseconds)
         }
 
         PendingOp *op = tracked[index];
-        (void)revents;
+        if (op == nullptr) {
+            continue;
+        }
 
         switch (op->kind) {
         case OpKind::read:

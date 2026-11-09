@@ -49,6 +49,16 @@ bool KqueueEngine::arm(PendingOp &op, std::int16_t filter)
     return ::kevent(queue_, &change, 1, nullptr, 0, nullptr) == 0;
 }
 
+void KqueueEngine::armWakeup()
+{
+    if (queue_ < 0 || wakeReader() < 0) {
+        return;
+    }
+    struct kevent change {};
+    EV_SET(&change, static_cast<uintptr_t>(wakeReader()), EVFILT_READ, EV_ADD, 0, 0, nullptr);
+    (void)::kevent(queue_, &change, 1, nullptr, 0, nullptr);
+}
+
 bool KqueueEngine::armRead(PendingOp &op) { return arm(op, EVFILT_READ); }
 
 bool KqueueEngine::armWrite(PendingOp &op) { return arm(op, EVFILT_WRITE); }

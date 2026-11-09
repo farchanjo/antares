@@ -21,6 +21,7 @@ public:
 
 protected:
     bool waitReady(int timeoutMilliseconds) override;
+    void armWakeup() override;
     bool armRead(PendingOp &op) override;
     bool armWrite(PendingOp &op) override;
     bool armAccept(PendingOp &op) override;

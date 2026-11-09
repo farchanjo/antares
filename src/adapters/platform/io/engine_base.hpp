@@ -70,8 +70,12 @@ public:
 
 protected:
     /// Wait for readiness. Returns true when at least one op made progress.
-    /// Implemented by the backend; the timeout bounds an idle loop.
+    /// Implemented by the backend; the timeout bounds an idle loop. The wait
+    /// must cover the wakeup pipe, otherwise an idle engine spins.
     virtual bool waitReady(int timeoutMilliseconds) = 0;
+
+    /// Register the wakeup pipe with the backend's wait set, once per run.
+    virtual void armWakeup() = 0;
 
     /// Ask the backend to observe `op`. False means the backend cannot, and the
     /// op completes through the immediate strategy instead.
@@ -97,6 +101,9 @@ protected:
 
     [[nodiscard]] int wakeReader() const noexcept;
     [[nodiscard]] std::size_t pendingCount() const noexcept;
+
+    /// Make an idle wait return, so a submit from another thread is seen.
+    void poke() noexcept;
 
     PendingOp *allocate(OpKind kind, const IoHandle &handle);
 
