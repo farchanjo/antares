@@ -84,6 +84,17 @@ through the engine makes progress and does not spin the loop.
 at offset equal to the file size completes with `closed`, which the caller reads
 as end-of-file.
 
+### FR-012 Idle costs nothing
+
+With no pending operation and no timer, the loop blocks in the kernel until the
+wakeup pipe reports work. It never wakes on a fixed period. Timers wait exactly
+until their deadline.
+
+### FR-013 The loop thread is identified
+
+The loop thread carries a name and the interactive latency class, so a sampler
+shows it and the scheduler prefers it over batch work.
+
 ## Security Requirements
 
 - **Data sensitivity/classification.** The engine moves opaque bytes between a

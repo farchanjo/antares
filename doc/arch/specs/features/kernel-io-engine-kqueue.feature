@@ -81,3 +81,16 @@ Feature: Kernel Io Engine Kqueue
     When  a read is submitted at offset equal to the size
     Then  the completion carries closed
     And   the caller reads it as end-of-file
+
+  @planned
+  Scenario: FR-012 idle costs nothing
+    Given an engine with nothing pending
+    When  it waits
+    Then  it blocks in the kernel
+    And   no periodic wakeup happens
+
+  @planned
+  Scenario: FR-013 the loop thread is identified
+    Given a running loop
+    When  a sampler inspects the process
+    Then  the loop thread carries a name
