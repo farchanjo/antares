@@ -78,6 +78,7 @@ pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2=1.69.0)
 set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
     src/domain/http/url.cpp
+    src/domain/http/auth.cpp
     src/adapters/http/tls_context.cpp
 )
 

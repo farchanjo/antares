@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <string>
 
+#include "domain/http/client_config.hpp"
 #include "domain/http/http_error.hpp"
 #include "domain/http/request.hpp"
 #include "domain/http/response.hpp"
@@ -12,27 +12,36 @@
 
 namespace antares::ports::http {
 
-/// Opaque in-flight request. Cancelling is idempotent.
+/// Opaque in-flight request. Cancelling is idempotent and safe from any thread.
 class Ticket {
 public:
+    Ticket() = default;
+    Ticket(const Ticket &) = delete;
+    Ticket &operator=(const Ticket &) = delete;
+    Ticket(Ticket &&) = delete;
+    Ticket &operator=(Ticket &&) = delete;
     virtual ~Ticket() = default;
+
     virtual void cancel() = 0;
 };
 
+/// Live pool counters. Read-only; the client owns the values.
 struct ClientStats {
     std::uint64_t opened = 0;
     std::uint64_t reused = 0;
     std::uint64_t completed = 0;
     std::uint64_t redirects = 0;
     std::uint64_t tlsFailures = 0;
+    std::uint64_t timeouts = 0;
+    std::uint64_t idleClosed = 0;
 };
 
 /// Completion runs on the engine thread, exactly once (FR-007).
 using Completion =
     std::function<void(std::expected<domain::http::Response, domain::http::HttpError>)>;
 
-/// Async HTTP client. Every operation is submitted to the engine and returns;
-/// nothing here blocks (FR-002).
+/// Async HTTP client. Every call submits to the engine and returns; nothing here
+/// blocks the loop (FR-002). Configuration is taken once, at construction.
 class Client {
 public:
     Client() = default;
@@ -41,6 +50,9 @@ public:
     Client(Client &&) = delete;
     Client &operator=(Client &&) = delete;
     virtual ~Client() = default;
+
+    /// The configuration this client was built with.
+    [[nodiscard]] virtual const domain::http::ClientConfig &config() const noexcept = 0;
 
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::http::HttpError>
     submit(domain::http::Request request, Completion done) = 0;
