@@ -239,11 +239,12 @@ void caseRetryStopsAtCeiling()
     stack.config().retry.maxAttempts = 2;
     stack.config().retry.baseDelay = std::chrono::milliseconds{5};
 
+    // Exhausting the attempts returns the last response, not an error: the
+    // server did answer, it just answered 503.
     auto result = stack.blocking().send(get(server.url() + "/always-busy"));
-    check(!result, "gave up");
-    if (!result) {
-        check(result.error() == HttpError::protocol || result.error() == HttpError::closed,
-              "surfaced a transport-ish error");
+    check(result.has_value(), "returned the final response");
+    if (result) {
+        check(result->status == 503, "last status surfaced");
     }
     check(stack.client().stats().retries == 1, "stopped at the ceiling");
 }
