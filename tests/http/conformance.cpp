@@ -634,6 +634,44 @@ void caseWsCloseCloses()
     check(codec.isClosed(), "close frame closes the codec");
 }
 
+void caseWebSocketUpgrades()
+{
+    // 101 plus one unmasked text frame ("hi") from the server.
+    std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+                           "Connection: Upgrade\r\nSec-WebSocket-Accept: x\r\n\r\n";
+    response.push_back(static_cast<char>(0x81));
+    response.push_back(static_cast<char>(0x02));
+    response += "hi";
+
+    antares::test::LoopbackServer server{response};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await opened;
+    antares::test::Await messaged;
+    std::string received;
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "chat",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onMessage([&](const auto &frame) {
+                received = frame.payload;
+                messaged.signal();
+            });
+            opened.signal();
+        },
+        [&](HttpError) { opened.signal(); });
+
+    check(opened.wait(), "upgrade opened");
+    check(messaged.wait(), "server frame delivered");
+    check(received == "hi", "payload decoded");
+    check(server.lastRequest().find("Upgrade: websocket") != std::string::npos, "upgrade sent");
+    check(server.lastRequest().find("Sec-WebSocket-Version: 13") != std::string::npos,
+          "version 13 sent");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -668,6 +706,7 @@ std::span<const Case> cases()
         {"ws-round-trips-frames", caseWsRoundTripsFrames},
         {"ws-splits-across-reads", caseWsSplitsAcrossReads},
         {"ws-close-closes", caseWsCloseCloses},
+        {"websocket-upgrades", caseWebSocketUpgrades},
     };
     return table;
 }

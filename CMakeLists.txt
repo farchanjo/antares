@@ -282,7 +282,8 @@ set(ANTARES_HTTP_CASES
     sse-ceiling-holds
     ws-round-trips-frames
     ws-splits-across-reads
-    ws-close-closes)
+    ws-close-closes
+    websocket-upgrades)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
