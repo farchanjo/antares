@@ -20,14 +20,17 @@ public:
     explicit LoopbackServer(std::string response)
         : responses_{std::move(response)}
     {
+        start();
     }
 
     /// Answer successive requests from `responses`, repeating the last one.
     explicit LoopbackServer(std::vector<std::string> responses)
         : responses_(std::move(responses))
     {
+        start();
     }
 
+private:
     void start()
     {
         listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
