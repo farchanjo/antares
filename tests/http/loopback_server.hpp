@@ -45,6 +45,10 @@ public:
         std::vector<std::thread> workers;
         {
             const std::lock_guard<std::mutex> guard{mutex_};
+            // A blocked read only returns once the peer socket is shut down.
+            for (const int client : clients_) {
+                ::shutdown(client, SHUT_RDWR);
+            }
             workers.swap(workers_);
         }
         for (auto &worker : workers) {
@@ -97,6 +101,7 @@ private:
                 return;
             }
             const std::lock_guard<std::mutex> guard{mutex_};
+            clients_.push_back(client);
             workers_.emplace_back([this, client] { serve(client); });
         }
     }
@@ -137,6 +142,7 @@ private:
     std::atomic<bool> stopping_{false};
     std::atomic<int> accepted_{0};
     std::thread accepting_;
+    std::vector<int> clients_;
     std::vector<std::thread> workers_;
 };
 
