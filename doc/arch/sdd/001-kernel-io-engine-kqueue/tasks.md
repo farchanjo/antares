@@ -29,6 +29,17 @@
 - [ ] T014 Add the counters named in the spec's Observability section and read
       them from a suite case (FR-001).
 
+- [x] T015 Declare `IoHandle` with `fstat` classification and RAII close in
+      `src/ports/io/io_handle.hpp` (FR-009).
+- [x] T016 Implement adoption, `openFile` and ownership transfer in
+      `src/ports/io/io_handle.cpp` (FR-009).
+- [x] T017 Retarget every port operation to `const IoHandle &` plus an optional
+      offset (FR-009, FR-011).
+- [ ] T018 Give the `poll` backend the immediate strategy for `file` handles and
+      cover it with a suite case (FR-010).
+- [ ] T019 Give the kqueue backend the same immediate strategy and assert the
+      loop stays idle on a file read (FR-010).
+
 ## Dependencies
 
 - The `dev` preset and `lld` on the host — done.

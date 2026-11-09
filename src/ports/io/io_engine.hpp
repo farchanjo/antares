@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "ports/io/io_error.hpp"
+#include "ports/io/io_handle.hpp"
 
 namespace antares::ports::io {
 
@@ -45,20 +46,26 @@ public:
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
 
     /// Read at most `maxBytes` into an engine-owned buffer.
+    ///
+    /// `offset` is required for a file handle (positional read) and ignored for
+    /// a stream. The engine picks the strategy from `handle.kind()`; the caller
+    /// never branches.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitRead(int descriptor, std::size_t maxBytes, ReadCompletion done) = 0;
+    submitRead(const IoHandle &handle, std::optional<std::uint64_t> offset, std::size_t maxBytes,
+               ReadCompletion done) = 0;
 
     /// Write the whole buffer, then release it to the completion.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitWrite(int descriptor, Buffer bytes, WriteCompletion done) = 0;
+    submitWrite(const IoHandle &handle, std::optional<std::uint64_t> offset, Buffer bytes,
+                WriteCompletion done) = 0;
 
-    /// Accept one connection on a listening descriptor.
+    /// Accept one connection on a listening handle.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitAccept(int listener, AcceptCompletion done) = 0;
+    submitAccept(const IoHandle &listener, AcceptCompletion done) = 0;
 
-    /// Connect a descriptor to `address` with `length` bytes of sockaddr.
+    /// Connect a handle to `address` with `length` bytes of sockaddr.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitConnect(int descriptor, const void *address, std::uint32_t length,
+    submitConnect(const IoHandle &handle, const void *address, std::uint32_t length,
                   ConnectCompletion done) = 0;
 
     /// Enqueue work onto the engine thread.

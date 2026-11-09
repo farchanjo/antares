@@ -44,6 +44,7 @@ endif()
 
 add_library(antares_io STATIC
     src/ports/io/io_engine.cpp
+    src/ports/io/io_handle.cpp
 )
 target_link_libraries(antares_io PUBLIC antares_core)
 

@@ -9,6 +9,24 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - [Agent context](AGENTS.md): dense LLM context
 - [Human overview](README.md): approachable overview
 - [Spec corpus](doc/arch/): the validated source of truth
+## Specs
+
+- [001 kernel-io-engine-kqueue](doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md)
+
+## Layers, contracts and configuration
+
+Source layers run inward: `domain`, `application`, `ports`, `adapters`, with
+`platform` beside them and `src/platform` as the only OS-specific root.
+
+The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`;
+`QNetworkAccessManager` stays out of that path.
+
+Contracts: exit codes are stable from 0 to 8 and never renumbered; `--json`
+emits exactly one object on stdout.
+
+Configuration families: `adr`, `architecture`, `compliance`, `context`,
+`decision`, `dedupe`, `git`, `guard`, `hygiene`, `model`, `privacy`,
+`project`, `providers`, `roles`.
 
 ## Command surface
 
@@ -65,16 +83,3 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - verify: `speckit verify`
 - version: `speckit version`
 - workflow: `speckit workflow` · `speckit workflow render`
-
-## Layers, contracts and configuration
-
-Source layers run inward: `domain`, `application`, `ports`, `adapters`, with
-`platform` beside them and `src/platform` as the only OS-specific root.
-
-Contracts: exit codes are stable from 0 to 8 and never renumbered; `--json`
-emits exactly one object on stdout.
-
-Configuration families: `adr`, `architecture`, `compliance`, `context`,
-`decision`, `dedupe`, `git`, `guard`, `hygiene`, `model`, `privacy`,
-`project`, `providers`, `roles`.
-

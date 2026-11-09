@@ -237,139 +237,208 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0001-src-only-source-root.md`
 - `doc/arch/adr/0002-macos-first-cpp-qt-only.md`
 - `doc/arch/adr/0003-port-doctrines-to-cpp.md`
+- `doc/arch/adr/0004-drop-rust-enforcement-targets.md`
+- `doc/arch/adr/0005-fast-dev-loop-release-gated.md`
+- `doc/arch/adr/0006-io-engine-port.md`
+- `doc/arch/adr/0007-kernel-io-engine-kqueue.md`
+- `doc/arch/adr/0008-io-handle-abstraction.md`
 - `doc/arch/agents/implement-lead.md`
-- `doc/arch/agents/review-lead.md`  `doc/arch/commands/README.md`
+- `doc/arch/agents/review-lead.md`
+- `doc/arch/commands/README.md`
 - `doc/arch/commands/agent.md`
 - `doc/arch/commands/agent/confirm.md`
 - `doc/arch/commands/agent/index.md`
-- `doc/arch/commands/agent/list.md`  `doc/arch/commands/agent/propose.md`  `doc/arch/commands/agent/regenerate.md`
+- `doc/arch/commands/agent/list.md`
+- `doc/arch/commands/agent/propose.md`
+- `doc/arch/commands/agent/regenerate.md`
 - `doc/arch/commands/agent/reject.md`
 - `doc/arch/commands/agent/remove.md`
 - `doc/arch/commands/agent/score.md`
-- `doc/arch/commands/agent/show.md`  `doc/arch/commands/agent/source.md`
+- `doc/arch/commands/agent/show.md`
+- `doc/arch/commands/agent/source.md`
 - `doc/arch/commands/agent/stats.md`
 - `doc/arch/commands/analyze.md`
-- `doc/arch/commands/ask.md`  `doc/arch/commands/brief.md`
-- `doc/arch/commands/check.md`  `doc/arch/commands/clarify.md`
+- `doc/arch/commands/ask.md`
+- `doc/arch/commands/brief.md`
+- `doc/arch/commands/check.md`
+- `doc/arch/commands/clarify.md`
 - `doc/arch/commands/commit.md`
 - `doc/arch/commands/commit/check.md`
 - `doc/arch/commands/commit/suggest.md`
-- `doc/arch/commands/completions.md`  `doc/arch/commands/config.md`
+- `doc/arch/commands/completions.md`
+- `doc/arch/commands/config.md`
 - `doc/arch/commands/config/drift.md`
-- `doc/arch/commands/config/get.md`  `doc/arch/commands/config/list.md`
+- `doc/arch/commands/config/get.md`
+- `doc/arch/commands/config/list.md`
 - `doc/arch/commands/config/set.md`
-- `doc/arch/commands/config/unset.md`  `doc/arch/commands/constitution.md`
+- `doc/arch/commands/config/unset.md`
+- `doc/arch/commands/constitution.md`
 - `doc/arch/commands/context.md`
 - `doc/arch/commands/context/pack.md`
 - `doc/arch/commands/context/score.md`
-- `doc/arch/commands/contract.md`  `doc/arch/commands/contract/approve.md`
-- `doc/arch/commands/contract/check.md`  `doc/arch/commands/contract/deprecate.md`
+- `doc/arch/commands/contract.md`
+- `doc/arch/commands/contract/approve.md`
+- `doc/arch/commands/contract/check.md`
+- `doc/arch/commands/contract/deprecate.md`
 - `doc/arch/commands/contract/diff.md`
 - `doc/arch/commands/contract/list.md`
-- `doc/arch/commands/contract/new.md`  `doc/arch/commands/contract/review.md`
+- `doc/arch/commands/contract/new.md`
+- `doc/arch/commands/contract/review.md`
 - `doc/arch/commands/contract/show.md`
 - `doc/arch/commands/contract/undeprecate.md`
 - `doc/arch/commands/contract/withdraw.md`
-- `doc/arch/commands/crew.md`  `doc/arch/commands/crew/backfill.md`  `doc/arch/commands/crew/review.md`
+- `doc/arch/commands/crew.md`
+- `doc/arch/commands/crew/backfill.md`
+- `doc/arch/commands/crew/review.md`
 - `doc/arch/commands/decision.md`
 - `doc/arch/commands/decision/eval.md`
 - `doc/arch/commands/decision/probe-rule.md`
-- `doc/arch/commands/decision/probe.md`  `doc/arch/commands/decision/status.md`
+- `doc/arch/commands/decision/probe.md`
+- `doc/arch/commands/decision/status.md`
 - `doc/arch/commands/dedupe.md`
 - `doc/arch/commands/diagram.md`
 - `doc/arch/commands/diagram/render.md`
-- `doc/arch/commands/dismiss.md`  `doc/arch/commands/doctrine.md`  `doc/arch/commands/doctrine/list.md`
+- `doc/arch/commands/dismiss.md`
+- `doc/arch/commands/doctrine.md`
+- `doc/arch/commands/doctrine/list.md`
 - `doc/arch/commands/doctrine/show.md`
 - `doc/arch/commands/explain.md`
 - `doc/arch/commands/feature.md`
-- `doc/arch/commands/feature/archive.md`  `doc/arch/commands/feature/compact.md`
+- `doc/arch/commands/feature/archive.md`
+- `doc/arch/commands/feature/compact.md`
 - `doc/arch/commands/feature/insert.md`
 - `doc/arch/commands/feature/list.md`
-- `doc/arch/commands/feature/new.md`  `doc/arch/commands/feature/renumber.md`
-- `doc/arch/commands/feature/reorder.md`  `doc/arch/commands/feature/restore.md`
+- `doc/arch/commands/feature/new.md`
+- `doc/arch/commands/feature/renumber.md`
+- `doc/arch/commands/feature/reorder.md`
+- `doc/arch/commands/feature/restore.md`
 - `doc/arch/commands/feature/select.md`
 - `doc/arch/commands/generate.md`
 - `doc/arch/commands/gitlab.md`
-- `doc/arch/commands/gitlab/status.md`  `doc/arch/commands/gitlab/sync.md`
+- `doc/arch/commands/gitlab/status.md`
+- `doc/arch/commands/gitlab/sync.md`
 - `doc/arch/commands/guard.md`
-- `doc/arch/commands/guard/check.md`  `doc/arch/commands/guard/hook.md`
+- `doc/arch/commands/guard/check.md`
+- `doc/arch/commands/guard/hook.md`
 - `doc/arch/commands/guide.md`
-- `doc/arch/commands/hook.md`  `doc/arch/commands/hook/post-edit.md`
+- `doc/arch/commands/hook.md`
+- `doc/arch/commands/hook/post-edit.md`
 - `doc/arch/commands/hook/pre-commit.md`
 - `doc/arch/commands/hook/session-start.md`
 - `doc/arch/commands/hook/user-prompt.md`
-- `doc/arch/commands/implement.md`  `doc/arch/commands/init.md`
-- `doc/arch/commands/library.md`  `doc/arch/commands/library/add.md`
+- `doc/arch/commands/implement.md`
+- `doc/arch/commands/init.md`
+- `doc/arch/commands/library.md`
+- `doc/arch/commands/library/add.md`
 - `doc/arch/commands/library/ask.md`
 - `doc/arch/commands/library/browse.md`
-- `doc/arch/commands/library/export.md`  `doc/arch/commands/library/extract.md`
+- `doc/arch/commands/library/export.md`
+- `doc/arch/commands/library/extract.md`
 - `doc/arch/commands/library/import.md`
 - `doc/arch/commands/library/list.md`
 - `doc/arch/commands/library/open.md`
-- `doc/arch/commands/library/remove.md`  `doc/arch/commands/library/search.md`  `doc/arch/commands/library/serve.md`
+- `doc/arch/commands/library/remove.md`
+- `doc/arch/commands/library/search.md`
+- `doc/arch/commands/library/serve.md`
 - `doc/arch/commands/library/show.md`
 - `doc/arch/commands/library/update.md`
 - `doc/arch/commands/library/validate.md`
-- `doc/arch/commands/license.md`  `doc/arch/commands/license/check.md`
+- `doc/arch/commands/license.md`
+- `doc/arch/commands/license/check.md`
 - `doc/arch/commands/license/list.md`
 - `doc/arch/commands/license/set.md`
 - `doc/arch/commands/license/show.md`
-- `doc/arch/commands/manual.md`  `doc/arch/commands/mermaid.md`  `doc/arch/commands/mermaid/render.md`
+- `doc/arch/commands/manual.md`
+- `doc/arch/commands/mermaid.md`
+- `doc/arch/commands/mermaid/render.md`
 - `doc/arch/commands/migrate.md`
 - `doc/arch/commands/missing.md`
 - `doc/arch/commands/model.md`
-- `doc/arch/commands/model/api.md`  `doc/arch/commands/model/api/apply.md`
+- `doc/arch/commands/model/api.md`
+- `doc/arch/commands/model/api/apply.md`
 - `doc/arch/commands/model/api/list.md`
 - `doc/arch/commands/model/api/select.md`
-- `doc/arch/commands/module.md`  `doc/arch/commands/module/add.md`
-- `doc/arch/commands/module/check.md`  `doc/arch/commands/module/list.md`
+- `doc/arch/commands/module.md`
+- `doc/arch/commands/module/add.md`
+- `doc/arch/commands/module/check.md`
+- `doc/arch/commands/module/list.md`
 - `doc/arch/commands/module/remove.md`
 - `doc/arch/commands/module/retire.md`
 - `doc/arch/commands/module/show.md`
-- `doc/arch/commands/next.md`  `doc/arch/commands/nexttest.md`
+- `doc/arch/commands/next.md`
+- `doc/arch/commands/nexttest.md`
 - `doc/arch/commands/off.md`
-- `doc/arch/commands/on.md`  `doc/arch/commands/pack.md`
+- `doc/arch/commands/on.md`
+- `doc/arch/commands/pack.md`
 - `doc/arch/commands/pack/add.md`
-- `doc/arch/commands/pack/export.md`  `doc/arch/commands/pack/import.md`
+- `doc/arch/commands/pack/export.md`
+- `doc/arch/commands/pack/import.md`
 - `doc/arch/commands/pack/list.md`
 - `doc/arch/commands/pack/remove.md`
 - `doc/arch/commands/pack/update.md`
-- `doc/arch/commands/plan.md`  `doc/arch/commands/plan/setup.md`
-- `doc/arch/commands/provider.md`  `doc/arch/commands/provider/list.md`
+- `doc/arch/commands/plan.md`
+- `doc/arch/commands/plan/setup.md`
+- `doc/arch/commands/provider.md`
+- `doc/arch/commands/provider/list.md`
 - `doc/arch/commands/provider/probe.md`
 - `doc/arch/commands/provider/status.md`
-- `doc/arch/commands/reindex.md`  `doc/arch/commands/search.md`
+- `doc/arch/commands/reindex.md`
+- `doc/arch/commands/search.md`
 - `doc/arch/commands/semantic.md`
 - `doc/arch/commands/semantic/deep-status.md`
 - `doc/arch/commands/semantic/enable.md`
-- `doc/arch/commands/semantic/off.md`  `doc/arch/commands/semantic/status.md`  `doc/arch/commands/skill.md`
+- `doc/arch/commands/semantic/off.md`
+- `doc/arch/commands/semantic/status.md`
+- `doc/arch/commands/skill.md`
 - `doc/arch/commands/skill/confirm.md`
 - `doc/arch/commands/skill/index.md`
 - `doc/arch/commands/skill/list.md`
-- `doc/arch/commands/skill/propose.md`  `doc/arch/commands/skill/regenerate.md`
+- `doc/arch/commands/skill/propose.md`
+- `doc/arch/commands/skill/regenerate.md`
 - `doc/arch/commands/skill/reject.md`
 - `doc/arch/commands/skill/remove.md`
 - `doc/arch/commands/skill/score.md`
-- `doc/arch/commands/skill/show.md`  `doc/arch/commands/skill/source.md`  `doc/arch/commands/skill/stats.md`
+- `doc/arch/commands/skill/show.md`
+- `doc/arch/commands/skill/source.md`
+- `doc/arch/commands/skill/stats.md`
 - `doc/arch/commands/spec.md`
 - `doc/arch/commands/spec/score.md`
 - `doc/arch/commands/specify.md`
-- `doc/arch/commands/stats.md`  `doc/arch/commands/stats/attributes.md`
+- `doc/arch/commands/stats.md`
+- `doc/arch/commands/stats/attributes.md`
 - `doc/arch/commands/stats/compliance.md`
 - `doc/arch/commands/stats/corpus.md`
-- `doc/arch/commands/stats/findings.md`  `doc/arch/commands/stats/guard.md`
-- `doc/arch/commands/stats/profile.md`  `doc/arch/commands/stats/recommendations.md`
+- `doc/arch/commands/stats/findings.md`
+- `doc/arch/commands/stats/guard.md`
+- `doc/arch/commands/stats/profile.md`
+- `doc/arch/commands/stats/recommendations.md`
 - `doc/arch/commands/status.md`
 - `doc/arch/commands/tasks.md`
 - `doc/arch/commands/tasks/setup.md`
-- `doc/arch/commands/validate.md`  `doc/arch/commands/verify.md`
+- `doc/arch/commands/validate.md`
+- `doc/arch/commands/verify.md`
 - `doc/arch/commands/version.md`
-- `doc/arch/commands/workflow.md`  `doc/arch/commands/workflow/render.md`
+- `doc/arch/commands/workflow.md`
+- `doc/arch/commands/workflow/render.md`
 - `doc/arch/functional/product-overview.md`
-- `doc/arch/memory/constitution.md`  `doc/arch/observability/observability.md`
+- `doc/arch/memory/constitution.md`
+- `doc/arch/observability/observability.md`
 - `doc/arch/quality/quality-scenarios.md`
 - `doc/arch/runbooks/deploy.md`
+- `doc/arch/runbooks/dev-loop.md`
+- `doc/arch/schemas/kernel-io-engine-kqueue.cue`
+- `doc/arch/sdd/001-kernel-io-engine-kqueue/plan.md`
+- `doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md`
+- `doc/arch/sdd/001-kernel-io-engine-kqueue/tasks.md`
 - `doc/arch/skills/implement.md`
-- `doc/arch/skills/review.md`  `doc/arch/speckit.toml`
+- `doc/arch/skills/review.md`
+- `doc/arch/speckit.toml`
+- `doc/arch/specs/features/kernel-io-engine-kqueue.feature`
 - `doc/arch/threat-model/privacy-threat-model.md`
+- `src/ports/io/io_engine.cpp`
+- `src/ports/io/io_engine.hpp`
+- `src/ports/io/io_error.hpp`
+- `src/ports/io/io_handle.cpp`
+- `src/ports/io/io_handle.hpp`
+
 <!-- notes:end -->

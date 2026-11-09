@@ -66,6 +66,24 @@ thread. A callback never executes on the submitting thread.
 One suite exercises every backend through the port only. `kqueue` and `poll`
 both pass it. Adding a backend means adding a case, not editing the suite.
 
+### FR-009 Handle classification
+
+`IoHandle::adopt` classifies a descriptor with one `fstat` into `stream`, `file`
+or `other`. The port operations take `const IoHandle &`. No caller inspects the
+kind to choose a call.
+
+### FR-010 Immediate strategy for files
+
+A `file` handle completes through a posted task performing `pread`/`pwrite` at
+the requested offset, without registering a readiness filter. Reading a file
+through the engine makes progress and does not spin the loop.
+
+### FR-011 Offset discipline
+
+`offset` is required for a `file` handle and ignored for a `stream`. A file read
+at offset equal to the file size completes with `closed`, which the caller reads
+as end-of-file.
+
 ## Security Requirements
 
 - **Data sensitivity/classification.** The engine moves opaque bytes between a
@@ -78,8 +96,8 @@ both pass it. Adding a backend means adding a case, not editing the suite.
   read is rejected before submission.
 - **Cryptography in transit/at rest.** None here. The port carries ciphertext
   without inspection once TLS is above it.
-- **Logging/audit.** The engine logs backend name, registration count and error
-  family. It never logs buffer contents.
+- **Logging/audit.** The engine logs backend name, registration count, handle
+  kind and error family. It never logs buffer contents or a file path.
 - **Error-handling information exposure.** `IoError` carries the `errno` value
   but not a formatted system string, so a message cannot leak a path or host.
 

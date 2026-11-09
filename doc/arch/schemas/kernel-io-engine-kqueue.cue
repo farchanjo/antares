@@ -9,6 +9,10 @@ package schemas
 // #IoOperation names one operation the port declares.
 #IoOperation: "submitRead" | "submitWrite" | "submitAccept" | "submitConnect" | "post" | "run" | "stop"
 
+// #HandleKind is the classification IoHandle assigns at adoption (ADR 0008).
+// A file completes through the immediate strategy; a stream waits on readiness.
+#HandleKind: "stream" | "file" | "other"
+
 // #IoBackend names a selectable backend. kqueue is the macOS production
 // backend; poll is the portable reference the conformance suite compares against.
 #IoBackend: "kqueue" | "poll"
@@ -18,4 +22,5 @@ package schemas
     name:       #IoBackend
     operations: [...#IoOperation]
     errors: [...#IoError]
+    kinds:  [...#HandleKind]
 }

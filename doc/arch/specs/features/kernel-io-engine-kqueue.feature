@@ -60,3 +60,24 @@ Feature: Kernel Io Engine Kqueue
     When  it runs against kqueue and against poll
     Then  both backends pass every case
     And   the suite names no backend
+
+  @planned
+  Scenario: FR-009 handle classification
+    Given a socket and a regular file adopted through IoHandle
+    When  each handle is read through the port
+    Then  both use the same call
+    And   the caller branches on nothing
+
+  @planned
+  Scenario: FR-010 immediate strategy for files
+    Given a file handle read through the engine
+    When  the loop is idle
+    Then  the read completes without a readiness filter
+    And   the loop does not spin
+
+  @planned
+  Scenario: FR-011 offset discipline
+    Given a file of known size
+    When  a read is submitted at offset equal to the size
+    Then  the completion carries closed
+    And   the caller reads it as end-of-file
