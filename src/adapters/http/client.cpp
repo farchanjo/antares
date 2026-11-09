@@ -1,5 +1,7 @@
 #include "adapters/http/client.hpp"
 
+#include <algorithm>
+#include <charconv>
 #include <utility>
 
 namespace antares::adapters::http {
@@ -31,6 +33,7 @@ public:
     std::shared_ptr<Connection> connection_;
     H1Session session_;
     std::uint8_t hops_ = 0;
+    std::uint8_t attempts_ = 1;
     bool cancelled_ = false;
     ports::http::Completion done_;
 
@@ -125,7 +128,7 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
                 return;
             }
             if (!wrote) {
-                self->finish(attempt, std::unexpected(wrote.error()));
+                self->settle(attempt, std::unexpected(wrote.error()));
                 return;
             }
             self->readMore(attempt);
@@ -146,13 +149,13 @@ void HttpClient::readMore(const std::shared_ptr<Attempt> &attempt)
                     self->followRedirect(attempt, attempt->session_.take());
                     return;
                 }
-                self->finish(attempt, std::unexpected(chunk.error()));
+                self->settle(attempt, std::unexpected(chunk.error()));
                 return;
             }
 
             auto consumed = attempt->session_.consume(chunk->data(), chunk->size());
             if (!consumed) {
-                self->finish(attempt, std::unexpected(consumed.error()));
+                self->settle(attempt, std::unexpected(consumed.error()));
                 return;
             }
             if (attempt->session_.isComplete()) {
@@ -170,7 +173,7 @@ void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
     const std::string *location = response.find("Location");
 
     if (!followable || location == nullptr) {
-        finish(attempt, std::move(response));
+        settle(attempt, std::move(response));
         return;
     }
 
@@ -211,6 +214,101 @@ void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
     ++stats_.redirects;
 
     connect(attempt);
+}
+
+bool HttpClient::shouldRetry(const std::shared_ptr<Attempt> &attempt,
+                             const std::expected<domain::http::Response,
+                                                 domain::http::HttpError> &result) const
+{
+    const domain::http::RetryPolicy &policy = config_.retry;
+    if (attempt->cancelled() || attempt->attempts_ >= policy.maxAttempts) {
+        return false;
+    }
+
+    const bool idempotent = attempt->request_.method == domain::http::Method::get ||
+                            attempt->request_.method == domain::http::Method::head ||
+                            attempt->request_.method == domain::http::Method::put ||
+                            attempt->request_.method == domain::http::Method::del ||
+                            attempt->request_.method == domain::http::Method::options;
+    if (!idempotent && !policy.retryNonIdempotent) {
+        return false;
+    }
+
+    if (result) {
+        return policy.isRetryableStatus(result->status);
+    }
+
+    switch (result.error()) {
+    case domain::http::HttpError::connect:
+    case domain::http::HttpError::closed:
+        return policy.retryOnConnect;
+    case domain::http::HttpError::timeout:
+        return policy.retryOnTimeout;
+    default:
+        return false;
+    }
+}
+
+domain::Duration HttpClient::backoffFor(std::uint8_t attempt) const
+{
+    const domain::http::RetryPolicy &policy = config_.retry;
+
+    double delay = static_cast<double>(policy.baseDelay.count());
+    for (std::uint8_t step = 1; step < attempt; ++step) {
+        delay *= policy.factor;
+    }
+    delay = std::min(delay, static_cast<double>(policy.maxDelay.count()));
+
+    if (policy.jitter > 0.0) {
+        // xorshift64: no <random> state, and the loop thread is the only caller.
+        rng_ ^= rng_ << 13;
+        rng_ ^= rng_ >> 7;
+        rng_ ^= rng_ << 17;
+        const double unit = static_cast<double>(rng_ % 1000) / 1000.0;
+        delay *= 1.0 - policy.jitter + (2.0 * policy.jitter * unit);
+    }
+
+    return domain::Duration{static_cast<std::int64_t>(delay)};
+}
+
+void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::Duration delay)
+{
+    ++attempt->attempts_;
+    ++stats_.retries;
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    (void)engine_.submitTimer(delay, [self, attempt] { self->start(attempt); });
+}
+
+void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
+                        std::expected<domain::http::Response, domain::http::HttpError> result)
+{
+    if (shouldRetry(attempt, result)) {
+        domain::Duration delay = backoffFor(attempt->attempts_);
+
+        if (result && config_.retry.honorRetryAfter) {
+            if (const std::string *after = result->find("Retry-After"); after != nullptr) {
+                std::uint32_t seconds = 0;
+                if (std::from_chars(after->data(), after->data() + after->size(), seconds).ec ==
+                        std::errc{} &&
+                    seconds > 0) {
+                    delay = std::chrono::seconds{seconds};
+                }
+            }
+        }
+
+        // A pooled connection is only worth keeping when the response arrived.
+        if (result && attempt->connection_ && attempt->connection_->isReady()) {
+            release(std::move(attempt->connection_));
+        } else if (attempt->connection_) {
+            attempt->connection_->close();
+        }
+
+        attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes};
+        scheduleRetry(attempt, delay);
+        return;
+    }
+
+    finish(attempt, std::move(result));
 }
 
 void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "domain/units/bytes.hpp"
+#include "domain/units/duration.hpp"
 #include "ports/io/io_error.hpp"
 #include "ports/io/io_handle.hpp"
 #include "ports/io/io_stats.hpp"
@@ -49,6 +50,11 @@ public:
 
     /// Snapshot the counters named in the spec's Observability section.
     [[nodiscard]] virtual EngineStats stats() const noexcept = 0;
+
+    /// Run `task` on the loop thread no sooner than `delay` from now. The timer
+    /// costs no thread: the loop shortens its wait to the nearest deadline.
+    [[nodiscard]] virtual std::expected<void, IoError> submitTimer(domain::Duration delay,
+                                                                  PostedTask task) = 0;
 
     /// True when the caller already runs on the loop thread. A blocking wrapper
     /// must not wait there, or it deadlocks (FR-008).

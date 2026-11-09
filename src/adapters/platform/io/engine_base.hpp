@@ -72,6 +72,9 @@ public:
     [[nodiscard]] EngineStats stats() const noexcept override;
     [[nodiscard]] bool isEngineThread() const noexcept override;
 
+    [[nodiscard]] std::expected<void, IoError> submitTimer(domain::Duration delay,
+                                                          PostedTask task) override;
+
     void post(PostedTask task) override;
     void run() override;
     void stop() override;
@@ -124,6 +127,8 @@ protected:
 
 private:
     void drainWakeup();
+    void fireDueTimers();
+    [[nodiscard]] int nextWaitMilliseconds() const;
     void drainTasks();
     void completeFileRead(PendingOp &op);
     void completeFileWrite(PendingOp &op);
@@ -132,6 +137,12 @@ private:
     mutable std::atomic<std::uint64_t> completed_{0};
     mutable std::array<std::atomic<std::uint64_t>, FAILURE_FAMILIES> failed_{};
 
+    struct Timer {
+        domain::Instant due;
+        PostedTask task;
+    };
+
+    std::vector<Timer> timers_;
     std::deque<PostedTask> tasks_;
     std::mutex mutex_;
     std::atomic<bool> stopped_{false};

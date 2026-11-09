@@ -1,5 +1,9 @@
 #include "adapters/platform/io/engine_base.hpp"
 
+#include <algorithm>
+
+#include "domain/units/instant.hpp"
+
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -188,6 +192,17 @@ void EngineBase::poke() noexcept
     }
 }
 
+std::expected<void, IoError> EngineBase::submitTimer(domain::Duration delay, PostedTask task)
+{
+    if (!task) {
+        return std::unexpected(IoError::system);
+    }
+
+    timers_.push_back(Timer{domain::afterFromNow(delay), std::move(task)});
+    poke();
+    return {};
+}
+
 void EngineBase::post(PostedTask task)
 {
     {
@@ -206,10 +221,11 @@ void EngineBase::run()
     while (!stopped_.load()) {
         drainWakeup();
         drainTasks();
+        fireDueTimers();
         if (stopped_.load()) {
             break;
         }
-        (void)waitReady(POLL_TIMEOUT_MS);
+        (void)waitReady(nextWaitMilliseconds());
     }
 }
 
@@ -222,6 +238,43 @@ void EngineBase::stop()
         const char byte = 1;
         (void)::write(wake_[1], &byte, 1);
     }
+}
+
+void EngineBase::fireDueTimers()
+{
+    if (timers_.empty()) {
+        return;
+    }
+
+    const domain::Instant now = domain::Instant::now();
+    std::vector<Timer> pending;
+    pending.reserve(timers_.size());
+
+    for (Timer &timer : timers_) {
+        if (timer.due <= now) {
+            tasks_.push_back(std::move(timer.task));
+            continue;
+        }
+        pending.push_back(std::move(timer));
+    }
+    timers_.swap(pending);
+}
+
+int EngineBase::nextWaitMilliseconds() const
+{
+    if (timers_.empty()) {
+        return POLL_TIMEOUT_MS;
+    }
+
+    const auto nearest = std::min_element(
+        timers_.begin(), timers_.end(),
+        [](const Timer &left, const Timer &right) { return left.due < right.due; });
+
+    const domain::Duration until = nearest->due - domain::Instant::now();
+    if (until.count() <= 0) {
+        return 0;
+    }
+    return static_cast<int>(std::min<std::int64_t>(until.count(), POLL_TIMEOUT_MS));
 }
 
 void EngineBase::drainWakeup()

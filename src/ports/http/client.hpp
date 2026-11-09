@@ -32,6 +32,7 @@ struct ClientStats {
     std::uint64_t completed = 0;
     std::uint64_t redirects = 0;
     std::uint64_t tlsFailures = 0;
+    std::uint64_t retries = 0;
     std::uint64_t timeouts = 0;
     std::uint64_t idleClosed = 0;
 };

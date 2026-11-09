@@ -87,6 +87,7 @@ set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
     src/domain/http/url.cpp
     src/domain/http/auth.cpp
+    src/domain/http/retry_policy.cpp
     src/domain/http/request.cpp
     src/domain/units/bytes.cpp
     src/adapters/http/tls_context.cpp
@@ -249,7 +250,10 @@ set(ANTARES_HTTP_CASES
     sync-get
     redirect-followed
     reentrant-from-callback
-    pool-reuses-connection)
+    pool-reuses-connection
+    retries-then-succeeds
+    retry-stops-at-ceiling
+    post-not-retried)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

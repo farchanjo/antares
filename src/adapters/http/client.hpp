@@ -44,6 +44,13 @@ private:
     void finish(const std::shared_ptr<Attempt> &attempt,
                 std::expected<domain::http::Response, domain::http::HttpError> result);
     void followRedirect(const std::shared_ptr<Attempt> &attempt, domain::http::Response response);
+    void settle(const std::shared_ptr<Attempt> &attempt,
+                std::expected<domain::http::Response, domain::http::HttpError> result);
+    void scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::Duration delay);
+    [[nodiscard]] bool shouldRetry(const std::shared_ptr<Attempt> &attempt,
+                                   const std::expected<domain::http::Response,
+                                                       domain::http::HttpError> &result) const;
+    [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt) const;
 
     void release(std::shared_ptr<Connection> connection);
     [[nodiscard]] std::shared_ptr<Connection> acquire(const domain::http::Url &url);
@@ -53,6 +60,7 @@ private:
     std::unique_ptr<TlsContext> tls_;
     std::map<std::string, std::vector<std::shared_ptr<Connection>>> idle_;
     ports::http::ClientStats stats_{};
+    std::uint64_t rng_ = 0x9e3779b97f4a7c15ULL;
 };
 
 } // namespace antares::adapters::http

@@ -5,6 +5,7 @@
 #include "domain/http/auth.hpp"
 #include "domain/http/limits.hpp"
 #include "domain/http/pool_config.hpp"
+#include "domain/http/retry_policy.hpp"
 #include "domain/http/timeouts.hpp"
 
 namespace antares::domain::http {
@@ -15,6 +16,7 @@ struct ClientConfig {
     Limits limits;
     PoolConfig pool;
     Timeouts timeouts;
+    RetryPolicy retry;
     Auth auth;
 
     /// Hop policy: whether to follow and whether to re-send the credential.

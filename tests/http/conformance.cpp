@@ -207,6 +207,66 @@ void casePoolReusesConnection()
     check(stats.reused >= 1, "second request reused the connection");
 }
 
+void caseRetriesThenSucceeds()
+{
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"}};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
+    stack.config().retry.jitter = 0.0;
+
+    auto result = stack.blocking().send(get(server.url() + "/flaky"));
+    check(result.has_value(), "eventually succeeded");
+    if (result) {
+        check(result->status == 200, "third attempt returned 200");
+    }
+    check(stack.client().stats().retries == 2, "two retries recorded");
+}
+
+void caseRetryStopsAtCeiling()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n"};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+    stack.config().retry.maxAttempts = 2;
+    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
+
+    auto result = stack.blocking().send(get(server.url() + "/always-busy"));
+    check(!result, "gave up");
+    if (!result) {
+        check(result.error() == HttpError::protocol || result.error() == HttpError::closed,
+              "surfaced a transport-ish error");
+    }
+    check(stack.client().stats().retries == 1, "stopped at the ceiling");
+}
+
+void casePostNotRetried()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n"};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
+
+    Request request;
+    request.method = Method::post;
+    request.url = server.url() + "/submit";
+    request.setBody("payload");
+
+    (void)stack.blocking().send(std::move(request));
+    check(stack.client().stats().retries == 0, "POST is not retried by default");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -220,6 +280,9 @@ std::span<const Case> cases()
         {"redirect-followed", caseRedirectFollowed},
         {"reentrant-from-callback", caseReentrantFromCallback},
         {"pool-reuses-connection", casePoolReusesConnection},
+        {"retries-then-succeeds", caseRetriesThenSucceeds},
+        {"retry-stops-at-ceiling", caseRetryStopsAtCeiling},
+        {"post-not-retried", casePostNotRetried},
     };
     return table;
 }
