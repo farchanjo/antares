@@ -83,6 +83,28 @@ std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2,
         SSL_CTX_set_verify(context, SSL_VERIFY_NONE, nullptr);
     }
 
+    // A supplied bundle replaces the system store: tests and private CAs must
+    // not depend on what the machine happens to trust.
+    if (!trustBundlePem.empty()) {
+        X509_STORE *store = SSL_CTX_get_cert_store(context);
+        BIO *bundle = BIO_new_mem_buf(trustBundlePem.data(),
+                                      static_cast<int>(trustBundlePem.size()));
+
+        std::size_t anchors = 0;
+        while (X509 *anchor = PEM_read_bio_X509(bundle, nullptr, nullptr, nullptr)) {
+            if (X509_STORE_add_cert(store, anchor) == 1) {
+                ++anchors;
+            }
+            X509_free(anchor);
+        }
+        BIO_free(bundle);
+
+        if (anchors == 0) {
+            SSL_CTX_free(context);
+            return nullptr;
+        }
+    }
+
     return std::unique_ptr<TlsContext>{new TlsContext{context}};
 }
 
