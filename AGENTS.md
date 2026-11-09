@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: cd8e3061c59b522742ee3bfef588707139956b38d82d21b663ab4948d0dfa09f
+digest: 202d9ffc2063fb36c138fef23790a1e0e105f965c71925bf438feb89d7e5acc7
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -45,6 +45,7 @@ digest: cd8e3061c59b522742ee3bfef588707139956b38d82d21b663ab4948d0dfa09f
 - P-05 (block): macOS is the delivery target until the first release ships; Linux follows and Windows comes last. A feature is accepted on macOS before any other target is… [config:project, verify]
 - P-06 (block): The application is C++ compiled against Qt, with no second toolkit and no second language; Qt Widgets is the UI stack and QML enters only through an ADR.… [config:project, verify]
 - P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`.… [config:architecture, verify]
+- P-08 (block): Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized… [config:project, verify]
 
 ## Architecture and corpus index
 

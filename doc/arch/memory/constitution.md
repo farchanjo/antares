@@ -1,5 +1,5 @@
 ---
-revision: 5
+revision: 6
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -11,6 +11,8 @@ amendments:
   - adr: "0003"
     date: "2026-11-09"
   - adr: "0004"
+    date: "2026-11-09"
+  - adr: "0005"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -125,6 +127,11 @@ Enforced by: config:project, verify
 Severity: block
 MANDATE: Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`. An import that breaks the direction moves, or the layer table widens through an accepted ADR.
 Enforced by: config:architecture, verify
+
+## P-08 — Fast dev loop, release on authorization
+Severity: block
+MANDATE: Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized configuration (`-O3`, thin LTO, dSYM, universal binary, strip, notarization) runs only with explicit operator authorization. A dev artifact never ships as release.
+Enforced by: config:project, verify
 
 ## Governance
 
