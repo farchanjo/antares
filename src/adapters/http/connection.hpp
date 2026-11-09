@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <deque>
 #include <vector>
 
 #include <openssl/ssl.h>
@@ -81,7 +82,7 @@ private:
     State state_ = State::idle;
     Protocol protocol_ = Protocol::none;
     std::string plain_;
-    std::vector<WriteDone> writeQueue_;
+    std::deque<WriteDone> writeQueue_;
     DataHandler handler_;
     Ready ready_;
     Failure failure_;

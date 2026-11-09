@@ -282,8 +282,8 @@ void Connection::drainOutgoing()
     const std::size_t pending = static_cast<std::size_t>(BIO_ctrl_pending(outgoing_));
     if (pending == 0) {
         if (!writeQueue_.empty() && state_ == State::ready) {
-            auto queue = std::move(writeQueue_);
-            writeQueue_.clear();
+            std::deque<WriteDone> queue;
+            queue.swap(writeQueue_);
             for (auto &done : queue) {
                 done(pending);
             }
