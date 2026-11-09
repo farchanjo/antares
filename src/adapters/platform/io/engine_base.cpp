@@ -46,11 +46,11 @@ PendingOp *EngineBase::allocate(OpKind kind, const IoHandle &handle)
 }
 
 std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
-                                                     std::optional<std::uint64_t> offset,
-                                                     std::size_t maxBytes, ReadCompletion done)
+                                                     std::optional<Bytes> offset, Bytes maxBytes,
+                                                     ReadCompletion done)
 {
     submitted_.fetch_add(1, std::memory_order_relaxed);
-    if (!handle.valid() || maxBytes == 0) {
+    if (!handle.valid() || maxBytes.isZero()) {
         return std::unexpected(IoError::system);
     }
 
