@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: dac4325e66283cfebbdaf1f97fce63407427bd4b5d4c63f0774d2cdb46c2c3db
+digest: 1e18940f613fddaa7b9b1ad96d3273fc448a1596afa222ad2e0ddd551bd78e6d
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -50,7 +50,7 @@ digest: dac4325e66283cfebbdaf1f97fce63407427bd4b5d4c63f0774d2cdb46c2c3db
 - P-10 (block): Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an… [config:project, verify]
 - P-11 (block): The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`,… [config:project, verify]
 - P-12 (block): A raw pointer is non-owning or `nullptr`; ownership is `std::unique_ptr`, and `std::shared_ptr` only where a lifetime is genuinely shared. Non-owning… [config:architecture, verify]
-- P-13 (block): Every development run is leak-checked with AddressSanitizer and LeakSanitizer (`ASAN_OPTIONS=detect_leaks=1` on macOS), the binary is symbolized with… [config:project, verify]
+- P-13 (block): Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a… [config:project, verify]
 
 ## Architecture and corpus index
 

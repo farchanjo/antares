@@ -7,7 +7,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test lint check validate verify analyze spec-status
+.PHONY: help build test asan leak lint check validate verify analyze spec-status
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -22,6 +22,20 @@ build: ## Configure and build the dev preset
 
 test: ## Run the dev test preset
 	ctest --preset dev
+
+asan: ## Build and run the suite under AddressSanitizer
+	cmake --preset dev-asan
+	cmake --build --preset dev-asan
+	ctest --preset dev-asan --output-on-failure
+
+leak: ## Run the suite under LeakSanitizer (Linux) or leaks(1) (macOS)
+	@if [ "$$(uname -s)" = "Darwin" ]; then \
+		cmake --preset dev-asan >/dev/null && cmake --build --preset dev-asan >/dev/null && \
+		leaks --atExit -- ./build/dev-asan/antares_io_conformance; \
+	else \
+		ASAN_OPTIONS=detect_leaks=1 cmake --build --preset dev-asan >/dev/null && \
+		ASAN_OPTIONS=detect_leaks=1 ./build/dev-asan/antares_io_conformance; \
+	fi
 
 lint: ## Run the C++ rule checkers the validator registry cannot express
 	@tools/check-include-paths.sh
