@@ -3,6 +3,8 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/socket.h>
+
+#include <netinet/in.h>
 #include <unistd.h>
 
 namespace antares::adapters::platform::io {
@@ -132,8 +134,26 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
         return std::unexpected(IoError::system);
     }
 
+    // Actually connect: the filter alone only reports writability, which an
+    // unconnected socket already has.
+    const int descriptor = handle.native();
+    const int flags = ::fcntl(descriptor, F_GETFL, 0);
+    (void)::fcntl(descriptor, F_SETFL, flags | O_NONBLOCK);
+
     PendingOp *op = allocate(OpKind::connect, handle);
     op->onConnect = std::move(done);
+
+    if (::connect(descriptor, reinterpret_cast<const sockaddr *>(address.data()), address.size()) ==
+        0) {
+        op->readiness = false;
+        completeImmediately(*op);
+        return {};
+    }
+    if (errno != EINPROGRESS) {
+        op->readiness = false;
+        post([this, op] { completeConnect(*op, std::unexpected(IoError::connect)); release(op); });
+        return {};
+    }
 
     if (!armConnect(*op)) {
         op->onConnect = nullptr;
@@ -228,13 +248,22 @@ void EngineBase::drainTasks()
 
 void EngineBase::completeImmediately(PendingOp &op)
 {
-    const bool isRead = op.kind == OpKind::read;
+    const OpKind kind = op.kind;
     PendingOp *target = &op;
-    post([this, target, isRead] {
-        if (isRead) {
+    post([this, target, kind] {
+        switch (kind) {
+        case OpKind::read:
             completeFileRead(*target);
-        } else {
+            break;
+        case OpKind::write:
             completeFileWrite(*target);
+            break;
+        case OpKind::connect:
+            completeConnect(*target, {});
+            break;
+        case OpKind::accept:
+            performAccept(*target);
+            break;
         }
         release(target);
     });

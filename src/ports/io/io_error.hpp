@@ -11,6 +11,7 @@ namespace antares::ports::io {
 /// engine never formats a path or a host into the type.
 enum class IoError : std::uint8_t {
     wouldBlock,
+    connect,
     closed,
     cancelled,
     tooManyDescriptors,
