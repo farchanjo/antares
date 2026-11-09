@@ -261,11 +261,13 @@ private:
         nghttp2_session_callbacks_del(callbacks);
 
         if (session != nullptr) {
+            std::fprintf(stderr, "  [s] settings\n");
             (void)nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, nullptr, 0);
-            (void)nghttp2_session_send(session);
+            std::fprintf(stderr, "  [s] sent=%d\n", static_cast<int>(nghttp2_session_send(session)));
 
             std::uint8_t scratch[16384];
             while (!stopping_.load()) {
+                std::fprintf(stderr, "  [s] reading\n");
                 const int got = SSL_read(ssl, scratch, sizeof scratch);
                 std::fprintf(stderr, "  [s] read %d\n", got);
                 if (got <= 0) {
