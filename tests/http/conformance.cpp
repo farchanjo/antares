@@ -4,6 +4,7 @@
 // own engine, client and loopback server.
 
 #include <atomic>
+#include <expected>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
