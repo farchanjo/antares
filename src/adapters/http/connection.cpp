@@ -204,6 +204,7 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
     }
 
     if (ssl_ != nullptr) {
+        std::fprintf(stderr, "  sock read %zu\n", chunk->size());
         (void)BIO_write(incoming_, chunk->data(), static_cast<int>(chunk->size()));
         if (state_ == State::handshaking) {
             driveHandshake();

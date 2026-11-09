@@ -275,6 +275,7 @@ void H2Session::onGoaway(std::int32_t lastStreamId)
 
 void H2Session::receive(const std::byte *data, std::size_t length)
 {
+    std::fprintf(stderr, "  h2 recv %zu closed=%d\n", length, static_cast<int>(closed_));
     if (session_ == nullptr || closed_) {
         return;
     }
