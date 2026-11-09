@@ -50,7 +50,9 @@ public:
             return;
         }
         engine_ = std::move(*built);
-        engine_->run();
+        // The loop owns its own thread here: cases run on the caller thread and
+        // may block, which is exactly what the blocking facade is for.
+        worker_ = std::thread([this] { engine_->run(); });
         config_.verifyPeer = false;
         client_ = std::make_unique<HttpClient>(*engine_, config_);
         blocking_ = std::make_unique<BlockingClient>(*client_, *engine_);
@@ -61,6 +63,9 @@ public:
         client_.reset();
         if (engine_) {
             engine_->stop();
+        }
+        if (worker_.joinable()) {
+            worker_.join();
         }
     }
 
@@ -76,6 +81,7 @@ public:
 private:
     std::unique_ptr<IoEngine> engine_;
     ClientConfig config_{};
+    std::thread worker_;
     std::unique_ptr<HttpClient> client_;
     std::unique_ptr<BlockingClient> blocking_;
 };
