@@ -97,6 +97,7 @@ private:
     Ready ready_;
     Failure failure_;
     bool writing_ = false;
+    bool reading_ = false;
 };
 
 } // namespace antares::adapters::http

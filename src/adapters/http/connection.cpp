@@ -173,16 +173,23 @@ void Connection::ready()
     if (callback) {
         callback();
     }
-    // Anything that arrived with the handshake is already decrypted.
+    // Anything that arrived with the handshake is already decrypted, so drain
+    // first and only then ask for more.
     drainPlaintext();
+    readSocket();
 }
 
 void Connection::readSocket()
 {
+    if (reading_ || state_ == State::closed) {
+        return;
+    }
+    reading_ = true;
     auto self = shared_from_this();
     auto submitted = engine_.submitRead(handle_, std::nullopt, SOCKET_CHUNK,
                                         [self](auto chunk) { self->onSocketRead(std::move(chunk)); });
     if (!submitted) {
+        reading_ = false;
         fail(domain::http::HttpError::closed);
     }
 }
@@ -194,6 +201,7 @@ void Connection::writeSocket()
 
 void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoError> chunk)
 {
+    reading_ = false;
     if (state_ == State::closed) {
         return;
     }
