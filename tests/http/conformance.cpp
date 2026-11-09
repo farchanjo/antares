@@ -21,6 +21,7 @@
 #include "test_cert.hpp"
 #include "tls_server.hpp"
 #include "domain/http/sse.hpp"
+#include "domain/http/websocket.hpp"
 #include "support/await.hpp"
 
 namespace {
@@ -586,6 +587,53 @@ void caseSseCeilingHolds()
     }
 }
 
+void caseWsRoundTripsFrames()
+{
+    // Client masks, server does not: encode then decode must return the payload.
+    const std::string wire = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::text, "hello", 0xAABBCCDD);
+
+    antares::domain::http::WsCodec codec{antares::domain::Bytes{4096}};
+    auto frames = codec.feed(reinterpret_cast<const std::byte *>(wire.data()), wire.size());
+
+    check(frames.has_value(), "frames decoded");
+    if (!frames) {
+        return;
+    }
+    check(frames->size() == 1, "one frame");
+    if (frames->empty()) {
+        return;
+    }
+    check((*frames)[0].opcode == antares::domain::http::WsOpcode::text, "opcode kept");
+    check((*frames)[0].payload == "hello", "payload unmasked");
+    check((*frames)[0].fin, "fin kept");
+}
+
+void caseWsSplitsAcrossReads()
+{
+    std::string wire = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::binary, "abcdef", 0x01020304);
+    antares::domain::http::WsCodec codec{antares::domain::Bytes{4096}};
+
+    auto first = codec.feed(reinterpret_cast<const std::byte *>(wire.data()), 4);
+    check(first.has_value() && first->empty(), "partial frame buffered");
+
+    auto second = codec.feed(reinterpret_cast<const std::byte *>(wire.data()) + 4, wire.size() - 4);
+    check(second.has_value(), "rest decoded");
+    if (second && !second->empty()) {
+        check((*second)[0].payload == "abcdef", "payload survived the split");
+    }
+}
+
+void caseWsCloseCloses()
+{
+    std::string wire = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::close, "", 0x11223344);
+    antares::domain::http::WsCodec codec{antares::domain::Bytes{4096}};
+    (void)codec.feed(reinterpret_cast<const std::byte *>(wire.data()), wire.size());
+    check(codec.isClosed(), "close frame closes the codec");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -617,6 +665,9 @@ std::span<const Case> cases()
         {"resolves-name-off-loop", caseResolvesNameWithoutBlocking},
         {"sse-parses-events", caseSseParsesEvents},
         {"sse-ceiling-holds", caseSseCeilingHolds},
+        {"ws-round-trips-frames", caseWsRoundTripsFrames},
+        {"ws-splits-across-reads", caseWsSplitsAcrossReads},
+        {"ws-close-closes", caseWsCloseCloses},
     };
     return table;
 }
