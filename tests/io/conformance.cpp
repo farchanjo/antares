@@ -227,6 +227,43 @@ void caseStopEndsCallbacks()
     check(after.load() <= 1, "post after stop is not double counted");
 }
 
+void caseCountersMove(IoEngine &engine)
+{
+    auto runner = makeRunner(engine);
+
+    const auto before = engine.stats();
+    check(before.submitted == 0, "a fresh engine has no submissions");
+
+    int pair[2] = {-1, -1};
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) != 0) {
+        check(false, "socketpair");
+        return;
+    }
+    auto reader = IoHandle::adopt(pair[0]);
+    auto writer = IoHandle::adopt(pair[1]);
+    if (!reader || !writer) {
+        return;
+    }
+
+    std::atomic<bool> done{false};
+    (void)engine.submitRead(*reader, std::nullopt, 32,
+                            [&](std::expected<Buffer, IoError>) { done.store(true); });
+    const char byte = 'x';
+    (void)engine.submitWrite(*writer, std::nullopt,
+                             Buffer(reinterpret_cast<const std::byte *>(&byte),
+                                    reinterpret_cast<const std::byte *>(&byte) + 1),
+                             [](std::expected<std::size_t, IoError>) {});
+
+    for (int spin = 0; spin < 400 && !done.load(); ++spin) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    const auto after = engine.stats();
+    check(after.submitted == 2, "both submissions counted");
+    check(after.completed >= 1, "the completed read counted");
+    check(after.failures() <= after.completed, "failures never exceed completions");
+}
+
 } // namespace
 
 int main()
@@ -245,6 +282,13 @@ int main()
     caseSocketReadWrite();
     caseFileReadIsImmediate();
     caseStopEndsCallbacks();
+
+    {
+        auto built = makeEngine();
+        if (built) {
+            caseCountersMove(**built);
+        }
+    }
 
     std::printf("%d check(s), %d failure(s)\n", checks, failures);
     return failures == 0 ? 0 : 1;

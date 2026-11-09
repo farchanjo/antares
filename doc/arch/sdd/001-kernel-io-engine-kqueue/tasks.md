@@ -26,7 +26,7 @@
       `RLIMIT_NOFILE` (FR-005).
 - [x] T013 Wire `antares_io` into CMake with the kqueue sources behind
       `if(APPLE)`; add the suite to the `dev` test preset (FR-003, FR-008).
-- [ ] T014 Add the counters named in the spec's Observability section and read
+- [x] T014 Add the counters named in the spec's Observability section and read
       them from a suite case (FR-001).
 
 - [x] T015 Declare `IoHandle` with `fstat` classification and RAII close in

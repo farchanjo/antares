@@ -14,6 +14,9 @@ namespace antares::adapters::platform::io {
 using ports::io::AcceptCompletion;
 using ports::io::Buffer;
 using ports::io::ConnectCompletion;
+using ports::io::EngineStats;
+using ports::io::failureIndex;
+using ports::io::FAILURE_FAMILIES;
 using ports::io::IoEngine;
 using ports::io::IoError;
 using ports::io::IoHandle;
@@ -64,6 +67,8 @@ public:
     submitConnect(const IoHandle &handle, std::span<const std::byte> address,
                   ConnectCompletion done) override;
 
+    [[nodiscard]] EngineStats stats() const noexcept override;
+
     void post(PostedTask task) override;
     void run() override;
     void stop() override;
@@ -83,6 +88,8 @@ protected:
     virtual bool armWrite(PendingOp &op) = 0;
     virtual bool armAccept(PendingOp &op) = 0;
     virtual bool armConnect(PendingOp &op) = 0;
+
+    void countCompletion(const IoError *failure) noexcept;
 
     void completeRead(PendingOp &op, std::expected<Buffer, IoError> result);
     void completeWrite(PendingOp &op, std::expected<std::size_t, IoError> result);
@@ -117,6 +124,10 @@ private:
     void drainTasks();
     void completeFileRead(PendingOp &op);
     void completeFileWrite(PendingOp &op);
+
+    mutable std::atomic<std::uint64_t> submitted_{0};
+    mutable std::atomic<std::uint64_t> completed_{0};
+    mutable std::array<std::atomic<std::uint64_t>, FAILURE_FAMILIES> failed_{};
 
     std::deque<PostedTask> tasks_;
     std::mutex mutex_;

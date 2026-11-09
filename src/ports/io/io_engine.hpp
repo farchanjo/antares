@@ -10,6 +10,7 @@
 
 #include "ports/io/io_error.hpp"
 #include "ports/io/io_handle.hpp"
+#include "ports/io/io_stats.hpp"
 
 namespace antares::ports::io {
 
@@ -44,6 +45,9 @@ public:
 
     /// Backend name, for logs and the conformance report. Never branched on.
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+
+    /// Snapshot the counters named in the spec's Observability section.
+    [[nodiscard]] virtual EngineStats stats() const noexcept = 0;
 
     /// Read at most `maxBytes` into an engine-owned buffer.
     ///

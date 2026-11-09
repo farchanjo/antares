@@ -49,6 +49,7 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
                                                      std::optional<std::uint64_t> offset,
                                                      std::size_t maxBytes, ReadCompletion done)
 {
+    submitted_.fetch_add(1, std::memory_order_relaxed);
     if (!handle.valid() || maxBytes == 0) {
         return std::unexpected(IoError::system);
     }
@@ -77,6 +78,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
                                                       std::optional<std::uint64_t> offset,
                                                       Buffer bytes, WriteCompletion done)
 {
+    submitted_.fetch_add(1, std::memory_order_relaxed);
     if (!handle.valid() || bytes.empty()) {
         return std::unexpected(IoError::system);
     }
@@ -104,6 +106,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
 std::expected<void, IoError> EngineBase::submitAccept(const IoHandle &listener,
                                                        AcceptCompletion done)
 {
+    submitted_.fetch_add(1, std::memory_order_relaxed);
     if (!listener.valid()) {
         return std::unexpected(IoError::system);
     }
@@ -124,6 +127,7 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
                                                         std::span<const std::byte> address,
                                                         ConnectCompletion done)
 {
+    submitted_.fetch_add(1, std::memory_order_relaxed);
     if (!handle.valid() || address.empty()) {
         return std::unexpected(IoError::system);
     }
@@ -138,6 +142,17 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
     }
     poke();
     return {};
+}
+
+EngineStats EngineBase::stats() const noexcept
+{
+    EngineStats snapshot;
+    snapshot.submitted = submitted_.load(std::memory_order_relaxed);
+    snapshot.completed = completed_.load(std::memory_order_relaxed);
+    for (std::size_t index = 0; index < FAILURE_FAMILIES; ++index) {
+        snapshot.failed[index] = failed_[index].load(std::memory_order_relaxed);
+    }
+    return snapshot;
 }
 
 void EngineBase::poke() noexcept
@@ -300,8 +315,17 @@ void EngineBase::release(const PendingOp *op)
     }
 }
 
+void EngineBase::countCompletion(const IoError *failure) noexcept
+{
+    completed_.fetch_add(1, std::memory_order_relaxed);
+    if (failure != nullptr) {
+        failed_[failureIndex(*failure)].fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 void EngineBase::completeRead(PendingOp &op, std::expected<Buffer, IoError> result)
 {
+    countCompletion(result.has_value() ? nullptr : &result.error());
     if (op.onRead) {
         op.onRead(std::move(result));
     }
@@ -309,6 +333,7 @@ void EngineBase::completeRead(PendingOp &op, std::expected<Buffer, IoError> resu
 
 void EngineBase::completeWrite(PendingOp &op, std::expected<std::size_t, IoError> result)
 {
+    countCompletion(result.has_value() ? nullptr : &result.error());
     if (op.onWrite) {
         op.onWrite(result);
     }
@@ -316,6 +341,7 @@ void EngineBase::completeWrite(PendingOp &op, std::expected<std::size_t, IoError
 
 void EngineBase::completeAccept(PendingOp &op, std::expected<int, IoError> result)
 {
+    countCompletion(result.has_value() ? nullptr : &result.error());
     if (op.onAccept) {
         op.onAccept(result);
     }
@@ -323,6 +349,7 @@ void EngineBase::completeAccept(PendingOp &op, std::expected<int, IoError> resul
 
 void EngineBase::completeConnect(PendingOp &op, std::expected<void, IoError> result)
 {
+    countCompletion(result.has_value() ? nullptr : &result.error());
     if (op.onConnect) {
         op.onConnect(result);
     }
