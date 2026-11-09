@@ -48,11 +48,12 @@ void check(bool condition, const char *what)
 
 class Stack {
 public:
-    explicit Stack(ClientConfig config = {}, std::size_t loops = 1)
+    explicit Stack(ClientConfig config = {}, std::size_t loops = 1, bool verify = false)
         : config_(std::move(config))
         , pool_(loops)
     {
-        config_.verifyPeer = false;
+        // The test CA is not in the system store, so verification is opt-in.
+        config_.verifyPeer = verify;
         pool_.start();
         client_ = std::make_shared<HttpClient>(pool_, config_);
         blocking_ = std::make_unique<BlockingClient>(*client_, pool_);
@@ -458,7 +459,7 @@ void caseVerifiesAgainstTrustedCa()
     ClientConfig config;
     config.verifyPeer = true;
     config.trustBundlePem = TEST_CA;
-    Stack stack{config};
+    Stack stack{config, /*loops=*/1, /*verify=*/true};
     if (!stack.ok()) {
         return;
     }
@@ -474,8 +475,7 @@ void caseRejectsUntrustedCa()
 {
     antares::test::TlsServer server{"nope", /*h2=*/false};
     ClientConfig config;
-    config.verifyPeer = true; // system store only: our CA is unknown
-    Stack stack{config};
+    Stack stack{config, /*loops=*/1, /*verify=*/true};
     if (!stack.ok()) {
         return;
     }
