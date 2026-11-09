@@ -242,6 +242,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0006-io-engine-port.md`
 - `doc/arch/adr/0007-kernel-io-engine-kqueue.md`
 - `doc/arch/adr/0008-io-handle-abstraction.md`
+- `doc/arch/adr/0009-kqueue-forced-poll-fallback.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
@@ -435,9 +436,18 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/speckit.toml`
 - `doc/arch/specs/features/kernel-io-engine-kqueue.feature`
 - `doc/arch/threat-model/privacy-threat-model.md`
+- `src/adapters/platform/io/engine_base.cpp`
+- `src/adapters/platform/io/engine_base.hpp`
+- `src/adapters/platform/io/kqueue_engine.cpp`
+- `src/adapters/platform/io/kqueue_engine.hpp`
+- `src/adapters/platform/io/poll_engine.cpp`
+- `src/adapters/platform/io/poll_engine.hpp`
+- `src/application/io/engine_factory.cpp`
+- `src/application/io/engine_factory.hpp`
 - `src/ports/io/io_engine.cpp`
 - `src/ports/io/io_engine.hpp`
 - `src/ports/io/io_error.hpp`
 - `src/ports/io/io_handle.cpp`
 - `src/ports/io/io_handle.hpp`
+
 <!-- notes:end -->
