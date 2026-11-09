@@ -50,7 +50,7 @@ private:
     [[nodiscard]] bool shouldRetry(const std::shared_ptr<Attempt> &attempt,
                                    const std::expected<domain::http::Response,
                                                        domain::http::HttpError> &result) const;
-    [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt) const;
+    [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt);
 
     void release(std::shared_ptr<Connection> connection);
     [[nodiscard]] std::shared_ptr<Connection> acquire(const domain::http::Url &url);

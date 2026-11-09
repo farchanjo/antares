@@ -249,7 +249,7 @@ bool HttpClient::shouldRetry(const std::shared_ptr<Attempt> &attempt,
     }
 }
 
-domain::Duration HttpClient::backoffFor(std::uint8_t attempt) const
+domain::Duration HttpClient::backoffFor(std::uint8_t attempt)
 {
     const domain::http::RetryPolicy &policy = config_.retry;
 

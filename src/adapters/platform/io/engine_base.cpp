@@ -270,7 +270,8 @@ int EngineBase::nextWaitMilliseconds() const
         timers_.begin(), timers_.end(),
         [](const Timer &left, const Timer &right) { return left.due < right.due; });
 
-    const domain::Duration until = nearest->due - std::chrono::steady_clock::now();
+    const auto until = std::chrono::duration_cast<domain::Duration>(
+        nearest->due - std::chrono::steady_clock::now());
     if (until.count() <= 0) {
         return 0;
     }
