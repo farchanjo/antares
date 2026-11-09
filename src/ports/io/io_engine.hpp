@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "domain/units/bytes.hpp"
 #include "ports/io/io_error.hpp"
 #include "ports/io/io_handle.hpp"
 #include "ports/io/io_stats.hpp"
@@ -55,12 +56,12 @@ public:
     /// a stream. The engine picks the strategy from `handle.kind()`; the caller
     /// never branches.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitRead(const IoHandle &handle, std::optional<std::uint64_t> offset, std::size_t maxBytes,
-               ReadCompletion done) = 0;
+    submitRead(const IoHandle &handle, std::optional<domain::Bytes> offset,
+               domain::Bytes maxBytes, ReadCompletion done) = 0;
 
     /// Write the whole buffer, then release it to the completion.
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitWrite(const IoHandle &handle, std::optional<std::uint64_t> offset, Buffer bytes,
+    submitWrite(const IoHandle &handle, std::optional<domain::Bytes> offset, Buffer bytes,
                 WriteCompletion done) = 0;
 
     /// Accept one connection on a listening handle.

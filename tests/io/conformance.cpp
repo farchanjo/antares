@@ -14,6 +14,7 @@
 #include <thread>
 
 #include "application/io/engine_factory.hpp"
+#include "domain/units/bytes.hpp"
 #include "ports/io/io_engine.hpp"
 #include "ports/io/io_handle.hpp"
 
@@ -24,6 +25,7 @@ using antares::ports::io::Buffer;
 using antares::ports::io::IoEngine;
 using antares::ports::io::IoError;
 using antares::ports::io::IoHandle;
+using antares::domain::Bytes;
 
 int failures = 0;
 int checks = 0;
@@ -130,7 +132,7 @@ void caseSocketReadWrite()
     std::atomic<bool> done{false};
     std::size_t carried = 0;
     std::expected<void, IoError> submitted =
-        engine.submitRead(*reader, std::nullopt, 64, [&](std::expected<Buffer, IoError> result) {
+        engine.submitRead(*reader, std::nullopt, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
             if (result) {
                 carried = result->size();
             }
@@ -184,7 +186,7 @@ void caseFileReadIsImmediate()
 
     std::atomic<bool> done{false};
     std::size_t carried = 0;
-    (void)engine.submitRead(*handle, 0, 64, [&](std::expected<Buffer, IoError> result) {
+    (void)engine.submitRead(*handle, Bytes{0}, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
         if (result) {
             carried = result->size();
         }
@@ -199,7 +201,7 @@ void caseFileReadIsImmediate()
 
     std::atomic<bool> eof{false};
     std::atomic<bool> sawClosed{false};
-    (void)engine.submitRead(*handle, 5, 64, [&](std::expected<Buffer, IoError> result) {
+    (void)engine.submitRead(*handle, Bytes{5}, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
         sawClosed.store(!result && result.error() == IoError::closed);
         eof.store(true);
     });
@@ -255,7 +257,7 @@ void caseCountersMove()
     }
 
     std::atomic<bool> done{false};
-    (void)engine.submitRead(*reader, std::nullopt, 32,
+    (void)engine.submitRead(*reader, std::nullopt, Bytes{32},
                             [&](std::expected<Buffer, IoError>) { done.store(true); });
     const char byte = 'x';
     (void)engine.submitWrite(*writer, std::nullopt,

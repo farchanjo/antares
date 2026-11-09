@@ -55,8 +55,8 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
     }
 
     PendingOp *op = allocate(OpKind::read, handle);
-    op->offset = offset.value_or(0);
-    op->buffer.resize(maxBytes);
+    op->offset = offset.value_or(Bytes{});
+    op->buffer.resize(maxBytes.count());
     op->onRead = std::move(done);
 
     if (handle.isFile()) {
@@ -75,8 +75,8 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
 }
 
 std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
-                                                      std::optional<std::uint64_t> offset,
-                                                      Buffer bytes, WriteCompletion done)
+                                                      std::optional<Bytes> offset, Buffer bytes,
+                                                      WriteCompletion done)
 {
     submitted_.fetch_add(1, std::memory_order_relaxed);
     if (!handle.valid() || bytes.empty()) {
@@ -84,7 +84,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
     }
 
     PendingOp *op = allocate(OpKind::write, handle);
-    op->offset = offset.value_or(0);
+    op->offset = offset.value_or(Bytes{});
     op->buffer = std::move(bytes);
     op->onWrite = std::move(done);
 
@@ -285,7 +285,7 @@ void EngineBase::performConnect(PendingOp &op)
 void EngineBase::completeFileRead(PendingOp &op)
 {
     const ssize_t got = ::pread(op.handle->native(), op.buffer.data(), op.buffer.size(),
-                                static_cast<off_t>(op.offset));
+                                static_cast<off_t>(op.offset.count()));
     if (got < 0) {
         completeRead(op, std::unexpected(errno == EAGAIN ? IoError::wouldBlock : IoError::system));
         return;
@@ -297,7 +297,7 @@ void EngineBase::completeFileRead(PendingOp &op)
 void EngineBase::completeFileWrite(PendingOp &op)
 {
     const ssize_t put = ::pwrite(op.handle->native(), op.buffer.data(), op.buffer.size(),
-                                 static_cast<off_t>(op.offset));
+                                 static_cast<off_t>(op.offset.count()));
     if (put < 0) {
         completeWrite(op, std::unexpected(IoError::system));
         return;

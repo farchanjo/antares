@@ -20,6 +20,7 @@ using ports::io::FAILURE_FAMILIES;
 using ports::io::IoEngine;
 using ports::io::IoError;
 using ports::io::IoHandle;
+using domain::Bytes;
 using ports::io::PostedTask;
 using ports::io::ReadCompletion;
 using ports::io::WriteCompletion;
@@ -36,7 +37,7 @@ struct PendingOp {
     OpKind kind = OpKind::read;
     const IoHandle *handle = nullptr;
     Buffer buffer;
-    std::uint64_t offset = 0;
+    Bytes offset{};
 
     /// False for the immediate strategy: the op never reaches a readiness
     /// filter, so a sweep must not pick it again.
@@ -56,10 +57,10 @@ public:
     ~EngineBase() override;
 
     [[nodiscard]] std::expected<void, IoError>
-    submitRead(const IoHandle &handle, std::optional<std::uint64_t> offset, std::size_t maxBytes,
+    submitRead(const IoHandle &handle, std::optional<Bytes> offset, Bytes maxBytes,
                ReadCompletion done) override;
     [[nodiscard]] std::expected<void, IoError>
-    submitWrite(const IoHandle &handle, std::optional<std::uint64_t> offset, Buffer bytes,
+    submitWrite(const IoHandle &handle, std::optional<Bytes> offset, Buffer bytes,
                 WriteCompletion done) override;
     [[nodiscard]] std::expected<void, IoError>
     submitAccept(const IoHandle &listener, AcceptCompletion done) override;
