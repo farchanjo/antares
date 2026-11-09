@@ -1,0 +1,38 @@
+# antares — clang-format (D-07).
+Language: Cpp
+BasedOnStyle: LLVM
+
+Standard: c++23
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<.*>'
+    Priority: 3
+  - Regex: '^"antares/'
+    Priority: 1
+  - Regex: '^".*"'
+    Priority: 2
+SortIncludes: CaseSensitive
+SeparateDefinitionBlocks: Always
+
+NamespaceIndentation: None
+FixNamespaceComments: true
+MaxEmptyLinesToKeep: 1
