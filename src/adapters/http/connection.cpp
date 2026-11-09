@@ -14,11 +14,32 @@
 namespace antares::adapters::http {
 namespace {
 
-/// Resolve once, synchronously. The engine has no resolver yet, so this is the
-/// one blocking call left; it happens before any engine operation is submitted.
+/// Resolve a host to an address.
+///
+/// A literal address never leaves the process, so the common case does not
+/// block the loop at all. Only a name falls back to `getaddrinfo`, which is the
+/// single blocking call left on the loop thread.
 [[nodiscard]] std::expected<sockaddr_storage, domain::http::HttpError>
 lookup(const std::string &host, std::uint16_t port)
 {
+    sockaddr_in v4{};
+    v4.sin_family = AF_INET;
+    v4.sin_port = htons(port);
+    if (::inet_pton(AF_INET, host.c_str(), &v4.sin_addr) == 1) {
+        sockaddr_storage storage{};
+        std::memcpy(&storage, &v4, sizeof v4);
+        return storage;
+    }
+
+    sockaddr_in6 v6{};
+    v6.sin6_family = AF_INET6;
+    v6.sin6_port = htons(port);
+    if (::inet_pton(AF_INET6, host.c_str(), &v6.sin6_addr) == 1) {
+        sockaddr_storage storage{};
+        std::memcpy(&storage, &v6, sizeof v6);
+        return storage;
+    }
+
     addrinfo hints{};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
