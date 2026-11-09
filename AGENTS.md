@@ -19,16 +19,16 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: cbd01d0e3cfe80b1a7770abe64756384e4955be4ef2ce4cee67781913de54467
+digest: 72831998dd9651bfdcfe2fa0f456fa64bae99e69ce33b101c2ab9579f560ed6a
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
 - D-03 (block): Dependencies point one way: infrastructure to application to ports and domain, with the domain free of I/O. Tag the model element with its layer, break the… [hexagonal.illegal-dependency, hexagonal.dependency-cycle, arch_boundaries, hexagonal.layers.untagged, layers.inward-import, layers.unknown-dir, layers.undeclared-import, layers.undeclared-dir, layers.cycle, layers.self-edge, layers.duplicate-edge, core.crate-denied, core.orm-import, core.crate-unadjudicated]
 - D-04 (block): Every model element declares its tactical role and every bounded-contact relationship declares one strategic kind. Declare the role, the aggregate root, the… [ddd-role.header.missing, ddd-role.role.unknown, ddd-tactical.missing-role, ddd-tactical.entity-identity, ddd-tactical.value-object-holds-identifiable, ddd-strategic.unknown-relationship, ddd-strategic.mutually-exclusive, ddd-strategic.mixed-relationship-sides, ddd-strategic.mixed-relationship-kinds, ddd-strategic.relationship-via-ref, ddd-strategic.relationship-deprecated, ddd-strategic.two-sources, context.pattern-missing, context.pattern-unknown, context.edge-untyped, context.property-orphan, context.on-layered-container, context.edge-reversed, context.kind-unknown, context.role-unknown, context.multiple-downstream-roles, context.roles-on-symmetric, context.conformist-in-customer-supplier, context.ohs-in-customer-supplier, context.acl-in-customer-supplier, aggregate.membership-missing, aggregate.root-unknown, aggregate.multiple-roots, aggregate.member-before-root, aggregate.cross-reference-object, repository.returns-member, repository.returns-tuple, doctrine.source-missing]
 - D-05 (block): Entities stay small, names stay meaningful, nesting stays shallow, and primitives and collections are wrapped. Split the entity, rename the binding, extract… [calisthenics.small-entities, calisthenics.no-abbreviation, calisthenics-code.small-entities, calisthenics-code.no-abbreviation, calisthenics-code.nesting-depth, calisthenics-code.getter-setter, calisthenics.wrap-primitives, calisthenics.first-class-collection, calisthenics.one-definition-per-file, calisthenics-code.wrap-primitives, calisthenics-code.first-class-collection, calisthenics-code.one-type-per-file, calisthenics-code.no-else, branch.else, chain.one-dot, comment.implementation-in-interface, comment.repeats-code, condition.negative, interface.fat, literal.magic-number, name.hard-to-describe, name.vague, switch.type-code, type.boolean-flag, inheritance.depth, calisthenics-code.two-instance-variables]
-- D-06 (block): Every first-party production import is first full `crate::…` path; glob imports and `crate::domain::` are test-only conveniences. Replace `use x::*;` with… [fqcn.glob-import, fqcn.relative-super]
-- D-07 (block): Every detected ecosystem ships its lint configuration at the strongest level and pins its dependencies exactly. Commit the lint configuration and replace… [lint.rust.lints-missing, lint.js.eslint-missing, lint.ts.strict-missing, lint.java.config-missing, lint.go.golangci-missing, lint.c.clang-tidy-missing, lint.python.ruff-missing, lint.php.phpcs-missing, lint.react.plugin-missing, lint.html.htmlhint-missing, pin.cargo.lockfile-missing, pin.npm.save-exact-missing, pin.npm.range-version, pin.maven.dynamic-version, pin.gradle.dynamic-version, pin.python.range-version, pin.docker.unpinned-image, pin.ci.unpinned-action]
-- D-08 (block): Production code never panics on recoverable absence: `unwrap` and `expect` are denied, and an error is propagated or typed. Return first `Result`/`Option`… [calisthenics-code.bare-unwrap, no-unwrap, clippy]
+- D-06 (block): Every first-party production include names the full path from `src/`; a `../` climb and a bare file name are test-only conveniences. `#include "domain… [fqcn.glob-import, fqcn.relative-super]
+- D-07 (block): The project commits `clang-tidy` and `clang-format` at their strongest level and pins every dependency to an exact version. A CMake dependency names an… [lint.rust.lints-missing, lint.js.eslint-missing, lint.ts.strict-missing, lint.java.config-missing, lint.go.golangci-missing, lint.c.clang-tidy-missing, lint.python.ruff-missing, lint.php.phpcs-missing, lint.react.plugin-missing, lint.html.htmlhint-missing, pin.cargo.lockfile-missing, pin.npm.save-exact-missing, pin.npm.range-version, pin.maven.dynamic-version, pin.gradle.dynamic-version, pin.python.range-version, pin.docker.unpinned-image, pin.ci.unpinned-action]
+- D-08 (block): Production code never aborts on recoverable absence. An unchecked `std::optional::value()`, a raw `.at()` on an unproven index, a raw `new` and a raw… [calisthenics-code.bare-unwrap, no-unwrap, clippy]
 - D-09 (block): A project declares its licence id and commits first matching `LICENSE` file; the two never drift. Run `speckit license set <id> --write-file` and keep the… [project-license.file.missing, project-license.fingerprint.mismatch]
 - D-10 (block): Every mutating command asks the guard before it writes, and the write lands inside the active scope. Call `GuardService::enforce_write` before the… [guard]
 - D-11 (block): The published surface — exit codes, `--json` shapes, and declared artifact contracts — moves only additively. Add first field instead of renaming one, keep… [contract.info.missing, contract.operation.id-missing]
@@ -153,4 +153,221 @@ The corpus is governed; use the binary for every loop step.
 ## Notes
 
 <!-- notes:start -->
+## Command surface
+
+Every verb the binary exposes, grouped by command. Run `speckit <verb> --help`
+before inventing a flag.
+
+- agent: `speckit agent` · `speckit agent confirm` · `speckit agent index` · `speckit agent list` · `speckit agent propose` · `speckit agent regenerate` · `speckit agent reject` · `speckit agent remove` · `speckit agent score` · `speckit agent show` · `speckit agent source` · `speckit agent stats`
+- analyze: `speckit analyze`
+- ask: `speckit ask`
+- brief: `speckit brief`
+- check: `speckit check`
+- clarify: `speckit clarify`
+- commit: `speckit commit` · `speckit commit check` · `speckit commit suggest`
+- completions: `speckit completions`
+- config: `speckit config` · `speckit config drift` · `speckit config get` · `speckit config list` · `speckit config set` · `speckit config unset`
+- constitution: `speckit constitution`
+- context: `speckit context` · `speckit context pack` · `speckit context score`
+- contract: `speckit contract` · `speckit contract approve` · `speckit contract check` · `speckit contract deprecate` · `speckit contract diff` · `speckit contract list` · `speckit contract new` · `speckit contract review` · `speckit contract show` · `speckit contract undeprecate` · `speckit contract withdraw`
+- crew: `speckit crew` · `speckit crew backfill` · `speckit crew review`
+- decision: `speckit decision` · `speckit decision eval` · `speckit decision probe` · `speckit decision probe-rule` · `speckit decision status`
+- dedupe: `speckit dedupe`
+- diagram: `speckit diagram` · `speckit diagram render`
+- dismiss: `speckit dismiss`
+- doctrine: `speckit doctrine` · `speckit doctrine list` · `speckit doctrine show`
+- explain: `speckit explain`
+- feature: `speckit feature` · `speckit feature archive` · `speckit feature compact` · `speckit feature insert` · `speckit feature list` · `speckit feature new` · `speckit feature renumber` · `speckit feature reorder` · `speckit feature restore` · `speckit feature select`
+- generate: `speckit generate`
+- gitlab: `speckit gitlab` · `speckit gitlab status` · `speckit gitlab sync`
+- guard: `speckit guard` · `speckit guard check` · `speckit guard hook`
+- guide: `speckit guide`
+- hook: `speckit hook` · `speckit hook post-edit` · `speckit hook pre-commit` · `speckit hook session-start` · `speckit hook user-prompt`
+- implement: `speckit implement`
+- init: `speckit init`
+- library: `speckit library` · `speckit library add` · `speckit library ask` · `speckit library browse` · `speckit library export` · `speckit library extract` · `speckit library import` · `speckit library list` · `speckit library open` · `speckit library remove` · `speckit library search` · `speckit library serve` · `speckit library show` · `speckit library update` · `speckit library validate`
+- license: `speckit license` · `speckit license check` · `speckit license list` · `speckit license set` · `speckit license show`
+- manual: `speckit manual`
+- mermaid: `speckit mermaid` · `speckit mermaid render`
+- migrate: `speckit migrate`
+- missing: `speckit missing`
+- model: `speckit model` · `speckit model api`
+- module: `speckit module` · `speckit module add` · `speckit module check` · `speckit module list` · `speckit module remove` · `speckit module retire` · `speckit module show`
+- nexttest: `speckit nexttest`
+- off: `speckit off`
+- on: `speckit on`
+- pack: `speckit pack` · `speckit pack add` · `speckit pack export` · `speckit pack import` · `speckit pack list` · `speckit pack remove` · `speckit pack update`
+- plan: `speckit plan` · `speckit plan setup`
+- provider: `speckit provider` · `speckit provider list` · `speckit provider probe` · `speckit provider status`
+- reindex: `speckit reindex`
+- search: `speckit search`
+- semantic: `speckit semantic` · `speckit semantic deep-status` · `speckit semantic enable` · `speckit semantic off` · `speckit semantic status`
+- skill: `speckit skill` · `speckit skill confirm` · `speckit skill index` · `speckit skill list` · `speckit skill propose` · `speckit skill regenerate` · `speckit skill reject` · `speckit skill remove` · `speckit skill score` · `speckit skill show` · `speckit skill source` · `speckit skill stats`
+- spec: `speckit spec` · `speckit spec score`
+- specify: `speckit specify`
+- stats: `speckit stats` · `speckit stats attributes` · `speckit stats compliance` · `speckit stats corpus` · `speckit stats findings` · `speckit stats guard` · `speckit stats profile` · `speckit stats recommendations`
+- tasks: `speckit tasks` · `speckit tasks setup`
+- validate: `speckit validate`
+- verify: `speckit verify`
+- version: `speckit version`
+- workflow: `speckit workflow` · `speckit workflow render`
+
+## Paths and configuration
+
+Real configuration keys used here: `architecture.corePaths`,
+`architecture.layerOrder`, `context.scoreFloor`, `guard.mode`,
+`project.name`, `project.license`, `adr.reviewChangeIntervalMonths`.
+
+Registered configuration families: `adr`, `architecture`, `compliance`,
+`context`, `decision`, `dedupe`, `git`, `guard`, `hygiene`, `model`,
+`project`, `providers`.
+
+Corpus roots: `doc/arch/adr/`, `doc/arch/specs/`, `doc/arch/domain/`,
+`doc/arch/functional/`, `doc/arch/runbooks/`, `doc/arch/schemas/`,
+`doc/arch/commands/`, `doc/arch/agents/`, `doc/arch/skills/`,
+`doc/arch/memory/constitution.md`, `doc/arch/speckit.toml`.
+
+Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
+`src/adapters`.
+
+### Corpus files
+
+- `doc/arch/adr/0001-src-only-source-root.md`
+- `doc/arch/adr/0002-macos-first-cpp-qt-only.md`
+- `doc/arch/adr/0003-port-doctrines-to-cpp.md`
+- `doc/arch/agents/implement-lead.md`
+- `doc/arch/agents/review-lead.md`  `doc/arch/commands/README.md`
+- `doc/arch/commands/agent.md`
+- `doc/arch/commands/agent/confirm.md`
+- `doc/arch/commands/agent/index.md`
+- `doc/arch/commands/agent/list.md`  `doc/arch/commands/agent/propose.md`  `doc/arch/commands/agent/regenerate.md`
+- `doc/arch/commands/agent/reject.md`
+- `doc/arch/commands/agent/remove.md`
+- `doc/arch/commands/agent/score.md`
+- `doc/arch/commands/agent/show.md`  `doc/arch/commands/agent/source.md`
+- `doc/arch/commands/agent/stats.md`
+- `doc/arch/commands/analyze.md`
+- `doc/arch/commands/ask.md`  `doc/arch/commands/brief.md`
+- `doc/arch/commands/check.md`  `doc/arch/commands/clarify.md`
+- `doc/arch/commands/commit.md`
+- `doc/arch/commands/commit/check.md`
+- `doc/arch/commands/commit/suggest.md`
+- `doc/arch/commands/completions.md`  `doc/arch/commands/config.md`
+- `doc/arch/commands/config/drift.md`
+- `doc/arch/commands/config/get.md`  `doc/arch/commands/config/list.md`
+- `doc/arch/commands/config/set.md`
+- `doc/arch/commands/config/unset.md`  `doc/arch/commands/constitution.md`
+- `doc/arch/commands/context.md`
+- `doc/arch/commands/context/pack.md`
+- `doc/arch/commands/context/score.md`
+- `doc/arch/commands/contract.md`  `doc/arch/commands/contract/approve.md`
+- `doc/arch/commands/contract/check.md`  `doc/arch/commands/contract/deprecate.md`
+- `doc/arch/commands/contract/diff.md`
+- `doc/arch/commands/contract/list.md`
+- `doc/arch/commands/contract/new.md`  `doc/arch/commands/contract/review.md`
+- `doc/arch/commands/contract/show.md`
+- `doc/arch/commands/contract/undeprecate.md`
+- `doc/arch/commands/contract/withdraw.md`
+- `doc/arch/commands/crew.md`  `doc/arch/commands/crew/backfill.md`  `doc/arch/commands/crew/review.md`
+- `doc/arch/commands/decision.md`
+- `doc/arch/commands/decision/eval.md`
+- `doc/arch/commands/decision/probe-rule.md`
+- `doc/arch/commands/decision/probe.md`  `doc/arch/commands/decision/status.md`
+- `doc/arch/commands/dedupe.md`
+- `doc/arch/commands/diagram.md`
+- `doc/arch/commands/diagram/render.md`
+- `doc/arch/commands/dismiss.md`  `doc/arch/commands/doctrine.md`  `doc/arch/commands/doctrine/list.md`
+- `doc/arch/commands/doctrine/show.md`
+- `doc/arch/commands/explain.md`
+- `doc/arch/commands/feature.md`
+- `doc/arch/commands/feature/archive.md`  `doc/arch/commands/feature/compact.md`
+- `doc/arch/commands/feature/insert.md`
+- `doc/arch/commands/feature/list.md`
+- `doc/arch/commands/feature/new.md`  `doc/arch/commands/feature/renumber.md`
+- `doc/arch/commands/feature/reorder.md`  `doc/arch/commands/feature/restore.md`
+- `doc/arch/commands/feature/select.md`
+- `doc/arch/commands/generate.md`
+- `doc/arch/commands/gitlab.md`
+- `doc/arch/commands/gitlab/status.md`  `doc/arch/commands/gitlab/sync.md`
+- `doc/arch/commands/guard.md`
+- `doc/arch/commands/guard/check.md`  `doc/arch/commands/guard/hook.md`
+- `doc/arch/commands/guide.md`
+- `doc/arch/commands/hook.md`  `doc/arch/commands/hook/post-edit.md`
+- `doc/arch/commands/hook/pre-commit.md`
+- `doc/arch/commands/hook/session-start.md`
+- `doc/arch/commands/hook/user-prompt.md`
+- `doc/arch/commands/implement.md`  `doc/arch/commands/init.md`
+- `doc/arch/commands/library.md`  `doc/arch/commands/library/add.md`
+- `doc/arch/commands/library/ask.md`
+- `doc/arch/commands/library/browse.md`
+- `doc/arch/commands/library/export.md`  `doc/arch/commands/library/extract.md`
+- `doc/arch/commands/library/import.md`
+- `doc/arch/commands/library/list.md`
+- `doc/arch/commands/library/open.md`
+- `doc/arch/commands/library/remove.md`  `doc/arch/commands/library/search.md`  `doc/arch/commands/library/serve.md`
+- `doc/arch/commands/library/show.md`
+- `doc/arch/commands/library/update.md`
+- `doc/arch/commands/library/validate.md`
+- `doc/arch/commands/license.md`  `doc/arch/commands/license/check.md`
+- `doc/arch/commands/license/list.md`
+- `doc/arch/commands/license/set.md`
+- `doc/arch/commands/license/show.md`
+- `doc/arch/commands/manual.md`  `doc/arch/commands/mermaid.md`  `doc/arch/commands/mermaid/render.md`
+- `doc/arch/commands/migrate.md`
+- `doc/arch/commands/missing.md`
+- `doc/arch/commands/model.md`
+- `doc/arch/commands/model/api.md`  `doc/arch/commands/model/api/apply.md`
+- `doc/arch/commands/model/api/list.md`
+- `doc/arch/commands/model/api/select.md`
+- `doc/arch/commands/module.md`  `doc/arch/commands/module/add.md`
+- `doc/arch/commands/module/check.md`  `doc/arch/commands/module/list.md`
+- `doc/arch/commands/module/remove.md`
+- `doc/arch/commands/module/retire.md`
+- `doc/arch/commands/module/show.md`
+- `doc/arch/commands/next.md`  `doc/arch/commands/nexttest.md`
+- `doc/arch/commands/off.md`
+- `doc/arch/commands/on.md`  `doc/arch/commands/pack.md`
+- `doc/arch/commands/pack/add.md`
+- `doc/arch/commands/pack/export.md`  `doc/arch/commands/pack/import.md`
+- `doc/arch/commands/pack/list.md`
+- `doc/arch/commands/pack/remove.md`
+- `doc/arch/commands/pack/update.md`
+- `doc/arch/commands/plan.md`  `doc/arch/commands/plan/setup.md`
+- `doc/arch/commands/provider.md`  `doc/arch/commands/provider/list.md`
+- `doc/arch/commands/provider/probe.md`
+- `doc/arch/commands/provider/status.md`
+- `doc/arch/commands/reindex.md`  `doc/arch/commands/search.md`
+- `doc/arch/commands/semantic.md`
+- `doc/arch/commands/semantic/deep-status.md`
+- `doc/arch/commands/semantic/enable.md`
+- `doc/arch/commands/semantic/off.md`  `doc/arch/commands/semantic/status.md`  `doc/arch/commands/skill.md`
+- `doc/arch/commands/skill/confirm.md`
+- `doc/arch/commands/skill/index.md`
+- `doc/arch/commands/skill/list.md`
+- `doc/arch/commands/skill/propose.md`  `doc/arch/commands/skill/regenerate.md`
+- `doc/arch/commands/skill/reject.md`
+- `doc/arch/commands/skill/remove.md`
+- `doc/arch/commands/skill/score.md`
+- `doc/arch/commands/skill/show.md`  `doc/arch/commands/skill/source.md`  `doc/arch/commands/skill/stats.md`
+- `doc/arch/commands/spec.md`
+- `doc/arch/commands/spec/score.md`
+- `doc/arch/commands/specify.md`
+- `doc/arch/commands/stats.md`  `doc/arch/commands/stats/attributes.md`
+- `doc/arch/commands/stats/compliance.md`
+- `doc/arch/commands/stats/corpus.md`
+- `doc/arch/commands/stats/findings.md`  `doc/arch/commands/stats/guard.md`
+- `doc/arch/commands/stats/profile.md`  `doc/arch/commands/stats/recommendations.md`
+- `doc/arch/commands/status.md`
+- `doc/arch/commands/tasks.md`
+- `doc/arch/commands/tasks/setup.md`
+- `doc/arch/commands/validate.md`  `doc/arch/commands/verify.md`
+- `doc/arch/commands/version.md`
+- `doc/arch/commands/workflow.md`  `doc/arch/commands/workflow/render.md`
+- `doc/arch/functional/product-overview.md`
+- `doc/arch/memory/constitution.md`  `doc/arch/observability/observability.md`
+- `doc/arch/quality/quality-scenarios.md`
+- `doc/arch/runbooks/deploy.md`
+- `doc/arch/skills/implement.md`
+- `doc/arch/skills/review.md`  `doc/arch/speckit.toml`
+- `doc/arch/threat-model/privacy-threat-model.md`
 <!-- notes:end -->

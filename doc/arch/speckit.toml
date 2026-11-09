@@ -21,4 +21,14 @@ specScopeGlobs = [
 
 [architecture]
 corePaths = ["src"]
-layerOrder = "domain application ports adapters"
+layerOrder = "domain,application,ports,adapters,platform"
+
+[architecture.layers]
+domain = []
+application = ["domain"]
+ports = ["domain", "application"]
+adapters = ["domain", "application", "ports"]
+platform = ["domain", "application", "ports", "adapters"]
+
+[context]
+maxLines = 600
