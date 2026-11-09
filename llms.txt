@@ -18,7 +18,7 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 
 Layers inward: `domain`, `application`, `ports`, `adapters`; `src/platform` is
 the only OS root. Kernel I/O goes through the `IoEngine` port; kqueue is the
-engine and `poll` the fallback. Exit codes are stable 0-8; `--json` emits one
+engine and `poll` the fallback; `make asan` and `make leak` gate the build. Exit codes are stable 0-8; `--json` emits one
 object. Config families: `adr`, `architecture`, `compliance`, `context`,
 `decision`, `dedupe`, `git`, `guard`, `hygiene`, `model`, `privacy`,
 `project`, `providers`, `roles`.
