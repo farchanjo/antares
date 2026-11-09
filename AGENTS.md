@@ -508,5 +508,4 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_stats.cpp`
 - `src/ports/io/io_stats.hpp`
 - `tests/io/conformance.cpp`
-
 <!-- notes:end -->

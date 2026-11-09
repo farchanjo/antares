@@ -19,7 +19,9 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 Layers inward: `domain`, `application`, `ports`, `adapters`; `src/platform` is
 the only OS root. Kernel I/O goes through the `IoEngine` port; kqueue is the
 engine and `poll` the fallback; `make asan` and `make leak` gate the build; `make clean` reclaims disk.
-Binary artifacts stay out of the tree: everything under `build/` is regenerated. Exit codes are stable 0-8; `--json` emits one
+Binary artifacts stay out of the tree: everything under `build/` is regenerated.
+HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection and redirect
+policy on top of the `IoEngine` port; `ClientConfig` publishes pool, timeouts and auth. Exit codes are stable 0-8; `--json` emits one
 object. Config families: `adr`, `architecture`, `compliance`, `context`,
 `decision`, `dedupe`, `git`, `guard`, `hygiene`, `model`, `privacy`,
 `project`, `providers`, `roles`.
