@@ -64,8 +64,10 @@ public:
 
     ~Stack()
     {
-        client_.reset();
+        // Stop the loops first: a connection dies without racing a completion,
+        // and the client's drain wait is skipped because the pool is gone.
         pool_.stop();
+        client_.reset();
     }
 
     Stack(const Stack &) = delete;

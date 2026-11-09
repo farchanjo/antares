@@ -66,6 +66,11 @@ ports::io::IoEngine &EnginePool::next() noexcept
     return *engines_[index];
 }
 
+bool EnginePool::isRunning() const noexcept
+{
+    return running_.load(std::memory_order_acquire);
+}
+
 bool EnginePool::isLoopThread() const noexcept
 {
     for (const auto &engine : engines_) {

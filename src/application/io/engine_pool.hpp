@@ -35,6 +35,10 @@ public:
     /// True when the caller is any loop thread of this pool (FR-008).
     [[nodiscard]] bool isLoopThread() const noexcept;
 
+    /// True while the loops run. A client checks it before waiting on a drain:
+    /// a stopped pool never completes again, so the wait would only time out.
+    [[nodiscard]] bool isRunning() const noexcept;
+
     [[nodiscard]] std::size_t size() const noexcept { return engines_.size(); }
     [[nodiscard]] const std::vector<std::unique_ptr<ports::io::IoEngine>> &engines() const noexcept
     {

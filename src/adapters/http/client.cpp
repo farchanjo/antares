@@ -83,7 +83,7 @@ HttpClient::~HttpClient()
     // A completion runs on the loop and captures `this`, so every pending
     // attempt has to settle before the members go. On a loop thread the wait
     // would deadlock, so it is skipped there and the pool owns the lifetime.
-    if (pool_.isLoopThread()) {
+    if (pool_.isLoopThread() || !pool_.isRunning()) {
         return;
     }
     std::unique_lock<std::mutex> lock{drainMutex_};
