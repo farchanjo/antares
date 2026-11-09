@@ -8,6 +8,8 @@
 #include <mutex>
 #include <vector>
 
+#include "domain/units/instant.hpp"
+
 #include "ports/io/io_engine.hpp"
 
 namespace antares::adapters::platform::io {

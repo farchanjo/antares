@@ -246,7 +246,7 @@ void EngineBase::fireDueTimers()
         return;
     }
 
-    const domain::Instant now = domain::Instant::now();
+    const domain::Instant now = std::chrono::steady_clock::now();
     std::vector<Timer> pending;
     pending.reserve(timers_.size());
 
@@ -270,7 +270,7 @@ int EngineBase::nextWaitMilliseconds() const
         timers_.begin(), timers_.end(),
         [](const Timer &left, const Timer &right) { return left.due < right.due; });
 
-    const domain::Duration until = nearest->due - domain::Instant::now();
+    const domain::Duration until = nearest->due - std::chrono::steady_clock::now();
     if (until.count() <= 0) {
         return 0;
     }
