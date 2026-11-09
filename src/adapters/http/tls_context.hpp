@@ -5,6 +5,7 @@
 
 #include <openssl/ssl.h>
 
+#include "domain/http/auth.hpp"
 #include "domain/http/http_error.hpp"
 
 namespace antares::adapters::http {
