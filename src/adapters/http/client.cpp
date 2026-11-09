@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cstdio>
 #include <utility>
 
 namespace antares::adapters::http {
@@ -171,6 +172,8 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
 {
+    std::fprintf(stderr, "  onReady h2=%d\n",
+                 static_cast<int>(attempt->connection_ && attempt->connection_->isHttp2()));
     if (attempt->connection_ && attempt->connection_->isHttp2()) {
         startHttp2(attempt);
         return;
