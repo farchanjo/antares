@@ -18,6 +18,7 @@
 #include "application/http/blocking_client.hpp"
 #include "application/io/engine_pool.hpp"
 #include "loopback_server.hpp"
+#include "test_cert.hpp"
 #include "tls_server.hpp"
 #include "support/await.hpp"
 
@@ -456,7 +457,7 @@ void caseVerifiesAgainstTrustedCa()
     antares::test::TlsServer server{"verified", /*h2=*/true};
     ClientConfig config;
     config.verifyPeer = true;
-    config.trustBundlePem = antares::test::TEST_CA;
+    config.trustBundlePem = TEST_CA;
     Stack stack{config};
     if (!stack.ok()) {
         return;
