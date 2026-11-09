@@ -271,6 +271,11 @@ void EngineBase::fireDueTimers()
 
 int EngineBase::nextWaitMilliseconds() const
 {
+    // A queued task must run before any wait, or it sits until the next event.
+    if (!tasks_.empty()) {
+        return 0;
+    }
+
     // Nothing pending: block until the wakeup pipe says otherwise. A fixed
     // timeout here would cost an idle wakeup per period for no work.
     if (timers_.empty() && pendingCount() == 0) {
