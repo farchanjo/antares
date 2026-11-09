@@ -285,10 +285,16 @@ void casePoolSpreadsAcrossLoops()
     const auto &engines = stack.pool().engines();
     std::size_t busy = 0;
     for (const auto &engine : engines) {
-        if (engine && !engine->stats().submitted) {
+        if (!engine) {
             continue;
         }
-        ++busy;
+        const auto snapshot = engine->stats();
+        std::fprintf(stderr, "  loop submitted=%llu completed=%llu\n",
+                     static_cast<unsigned long long>(snapshot.submitted),
+                     static_cast<unsigned long long>(snapshot.completed));
+        if (snapshot.submitted != 0) {
+            ++busy;
+        }
     }
     check(busy == 2, "both loops took work");
 }
