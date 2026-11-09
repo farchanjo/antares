@@ -37,18 +37,17 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - `doc/arch/quality/quality-scenarios.md` — quality scenarios
 - `doc/arch/threat-model/privacy-threat-model.md` — privacy threats
 - `doc/arch/observability/observability.md` — signals and cardinality
-- `doc/arch/functional/product-overview.md` — actors and flows
 
 ## Decisions
 
 - `doc/arch/adr/0001-src-only-source-root.md` — everything under `src`
-- `doc/arch/adr/0002-macos-first-cpp-qt-only.md` — platform and toolkit order
 - `doc/arch/adr/0006-io-engine-port.md` — the engine is a port
 - `doc/arch/adr/0007-kernel-io-engine-kqueue.md` — kqueue is the engine
 - `doc/arch/adr/0009-kqueue-forced-poll-fallback.md` — kqueue forced, poll escapes
 - `doc/arch/adr/0011-newest-cpp-ownership-leaks.md` — C++26, ownership, leaks
 - `doc/arch/adr/0012-mimalloc-allocator.md` — mimalloc, pinned
 - `doc/arch/adr/0013-http-client-h2.md` — the HTTP client
+- `doc/arch/adr/0014-offline-default-advisory.md` — D-13 downgraded
 
 ## Roles
 

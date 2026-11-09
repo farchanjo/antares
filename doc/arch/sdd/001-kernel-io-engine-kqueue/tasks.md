@@ -15,8 +15,8 @@
 - [x] T006 Implement the kqueue backend in
       `src/adapters/platform/io/kqueue_engine.cpp` with `EV_ONESHOT` (FR-003).
 - [x] T007 Map `EV_EOF` to `closed` and `EV_ERROR` to `system` (FR-005).
-- [ ] T008 Implement `cancel()` so the callback fires once with `cancelled` and
-      NOTE: the client ticket cancels today (closes the h1 connection, resets the
+- [x] T008 Implement `cancel()` so the callback fires once with `cancelled` and the
+      handle stays open (`cancelPending`).
       h2 stream); the engine still has no op-level cancel, so a pending read on a
       kept-alive socket cannot be withdrawn without closing it.
       never again (FR-006).
