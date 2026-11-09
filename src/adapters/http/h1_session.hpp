@@ -18,7 +18,8 @@ namespace antares::adapters::http {
 /// the ceiling is checked before every append (FR-010).
 class H1Session {
 public:
-    explicit H1Session(domain::Bytes headerCeiling, domain::Bytes bodyCeiling);
+    explicit H1Session(domain::Bytes headerCeiling, domain::Bytes bodyCeiling,
+                       domain::http::Method method = domain::http::Method::get);
 
     /// Build the wire bytes. `target` is the origin-form path, `authority` the
     /// Host header.
@@ -33,6 +34,8 @@ public:
 
     [[nodiscard]] bool isComplete() const noexcept { return complete_; }
     [[nodiscard]] bool isChunked() const noexcept { return chunked_; }
+    /// False once the peer said `Connection: close`; such a socket is not pooled.
+    [[nodiscard]] bool isReusable() const noexcept { return reusable_; }
 
     /// The parsed response. Only meaningful once `isComplete()`.
     [[nodiscard]] domain::http::Response take();
@@ -40,6 +43,7 @@ public:
 private:
     [[nodiscard]] std::expected<void, domain::http::HttpError> parseHead();
     [[nodiscard]] std::expected<void, domain::http::HttpError> parseBody();
+    [[nodiscard]] std::expected<void, domain::http::HttpError> parseChunked();
 
     std::string buffer_;
     std::size_t cursor_ = 0;
@@ -48,8 +52,12 @@ private:
     domain::Bytes bodyCeiling_;
     std::optional<std::size_t> remaining_;
     bool chunked_ = false;
+    domain::http::Method method_ = domain::http::Method::get;
     bool headParsed_ = false;
     bool complete_ = false;
+    bool reusable_ = true;
+    std::size_t chunkRemaining_ = 0;
+    bool chunkDone_ = false;
 };
 
 } // namespace antares::adapters::http

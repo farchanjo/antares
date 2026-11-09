@@ -55,7 +55,11 @@ std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2)
         return nullptr;
     }
 
+    // RFC 9113 §9.2: TLS 1.2 is the floor, and the prohibited static-RSA and
+    // CBC suites from Appendix A are simply not offered.
     SSL_CTX_set_min_proto_version(context, TLS1_2_VERSION);
+    (void)SSL_CTX_set_cipher_list(context, "ECDHE+AESGCM:ECDHE+CHACHA20:ECDHE+AES");
+
     // h2 first, http/1.1 second: the server picks, and a server without h2
     // still answers on 1.1 instead of failing the handshake.
     static constexpr unsigned char OFFER[] = {2, 'h', '2', 8, 'h', 't', 't', 'p', '/', '1', '.', '1'};

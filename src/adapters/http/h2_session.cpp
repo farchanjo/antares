@@ -33,6 +33,7 @@ H2Session::H2Session(std::shared_ptr<Connection> connection, domain::Bytes heade
 
     if (session_ != nullptr) {
         (void)nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
+        maxConcurrent_ = 100;
     }
 }
 
@@ -110,6 +111,15 @@ void H2Session::configureCallbacks(nghttp2_session_callbacks *callbacks)
             return 0;
         });
 
+    nghttp2_session_callbacks_set_on_frame_recv_callback(
+        callbacks, [](nghttp2_session *, const nghttp2_frame *frame, void *userData) -> int {
+            if (frame->hd.type == NGHTTP2_GOAWAY) {
+                static_cast<H2Session *>(userData)->onGoaway(
+                    static_cast<std::int32_t>(frame->goaway.last_stream_id));
+            }
+            return 0;
+        });
+
     nghttp2_session_callbacks_set_on_stream_close_callback(
         callbacks, [](nghttp2_session *, std::int32_t streamId, std::uint32_t errorCode,
                       void *userData) -> int {
@@ -129,7 +139,14 @@ void H2Session::configureCallbacks(nghttp2_session_callbacks *callbacks)
 
 bool H2Session::canAcceptStream() const noexcept
 {
-    return !closed_ && session_ != nullptr && streams_.size() < maxConcurrent_;
+    if (closed_ || session_ == nullptr) {
+        return false;
+    }
+    // RFC 9113 §6.5.2: the peer owns the concurrency ceiling.
+    const std::uint32_t peerLimit =
+        nghttp2_session_get_remote_settings(session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
+    const std::size_t ceiling = peerLimit == 0 ? maxConcurrent_ : peerLimit;
+    return streams_.size() < ceiling;
 }
 
 H2Session::Stream *H2Session::find(std::int32_t streamId)
@@ -162,10 +179,26 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
     const std::string scheme = connection_->url().isTls() ? "https" : "http";
     add(":method", method);
     add(":scheme", scheme);
+    // RFC 9113 §8.3.1: :authority must not be empty.
+    if (authority.empty()) {
+        return std::unexpected(domain::http::HttpError::invalidUrl);
+    }
     add(":authority", authority);
     add(":path", target.empty() ? "/" : target);
+    // RFC 9113 §8.2.2: connection-specific fields are not repeated on the
+    // wire; TE survives only with the value "trailers".
     for (const domain::http::Header &header : request.headers) {
-        add(header.name, header.value);
+        std::string name{header.name};
+        std::transform(name.begin(), name.end(), name.begin(),
+                       [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+        if (name == "connection" || name == "keep-alive" || name == "proxy-connection" ||
+            name == "transfer-encoding" || name == "upgrade") {
+            continue;
+        }
+        if (name == "te" && header.value != "trailers") {
+            continue;
+        }
+        add(name, header.value);
     }
 
     auto stream = std::make_unique<Stream>();
@@ -217,6 +250,23 @@ void H2Session::flush()
         ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
                           reinterpret_cast<const std::byte *>(frame.data()) + frame.size()},
         [](std::expected<std::size_t, domain::http::HttpError>) {});
+}
+
+void H2Session::onGoaway(std::int32_t lastStreamId)
+{
+    // RFC 9113 §6.8: no new stream above the announced id, and the ones above
+    // it were never processed, so they are safe to retry elsewhere.
+    closed_ = true;
+
+    std::vector<std::int32_t> unprocessed;
+    for (const auto &entry : streams_) {
+        if (entry.first > lastStreamId) {
+            unprocessed.push_back(entry.first);
+        }
+    }
+    for (const std::int32_t id : unprocessed) {
+        complete(id, std::unexpected(domain::http::HttpError::refused));
+    }
 }
 
 void H2Session::receive(const std::byte *data, std::size_t length)

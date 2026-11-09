@@ -9,6 +9,7 @@ namespace antares::domain::http {
 /// it must be told when a new case appears.
 enum class HttpError : std::uint8_t {
     connect,
+    refused,
     tls,
     alpn,
     timeout,

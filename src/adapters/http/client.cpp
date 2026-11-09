@@ -67,7 +67,9 @@ HttpClient::submit(domain::http::Request request, ports::http::Completion done)
         // Plaintext is allowed, but only when the caller opted out of TLS.
     }
 
+    const domain::http::Method method = request.method;
     auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
+    attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes, method};
     attempt->url_ = std::move(*parsed);
 
     // Bind the attempt to one loop for its whole life; hop there now, so every
@@ -393,9 +395,9 @@ void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,
         result->hops = attempt->hops_;
     }
     if (attempt->connection_ && !attempt->connection_->isHttp2()) {
-        if (result && attempt->connection_->isReady()) {
+        if (result && attempt->connection_->isReady() && attempt->session_.isReusable()) {
             release(std::move(attempt->connection_));
-        } else if (!result) {
+        } else if (!result || !attempt->session_.isReusable()) {
             attempt->connection_->close();
         }
     }

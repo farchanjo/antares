@@ -48,6 +48,7 @@ public:
 
     /// Complete every outstanding stream with `error`.
     void fail(domain::http::HttpError error);
+    void onGoaway(std::int32_t lastStreamId);
 
     [[nodiscard]] std::size_t activeStreams() const noexcept { return streams_.size(); }
     [[nodiscard]] const std::shared_ptr<Connection> &connection() const noexcept
