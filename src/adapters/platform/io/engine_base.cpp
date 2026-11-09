@@ -1,6 +1,7 @@
 #include "adapters/platform/io/engine_base.hpp"
 
 #include <algorithm>
+#include <cstdio>
 
 #include "domain/units/instant.hpp"
 
@@ -201,6 +202,11 @@ void EngineBase::poke() noexcept
     }
     resolveReady_.notify_all();
     if (resolver_.joinable()) {
+        std::fprintf(stderr, "  stop self=%llu resolver=%llu\n",
+                     static_cast<unsigned long long>(
+                         std::hash<std::thread::id>{}(std::this_thread::get_id())),
+                     static_cast<unsigned long long>(
+                         std::hash<std::thread::id>{}(resolver_.get_id())));
         resolver_.join();
     }
 
@@ -323,6 +329,11 @@ void EngineBase::stop()
     }
     resolveReady_.notify_all();
     if (resolver_.joinable()) {
+        std::fprintf(stderr, "  stop self=%llu resolver=%llu\n",
+                     static_cast<unsigned long long>(
+                         std::hash<std::thread::id>{}(std::this_thread::get_id())),
+                     static_cast<unsigned long long>(
+                         std::hash<std::thread::id>{}(resolver_.get_id())));
         resolver_.join();
     }
 
