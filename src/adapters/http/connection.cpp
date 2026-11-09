@@ -1,9 +1,10 @@
 #include "adapters/http/connection.hpp"
 
+#include <algorithm>
 #include <cstring>
 
-#include <netdb.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -15,11 +16,8 @@
 namespace antares::adapters::http {
 namespace {
 
-/// Resolve a host to an address.
-///
-/// A literal address never leaves the process, so the common case does not
-/// block the loop at all. Only a name falls back to `getaddrinfo`, which is the
-/// single blocking call left on the loop thread.
+constexpr domain::Bytes SOCKET_CHUNK{16 * 1024};
+
 [[nodiscard]] std::expected<sockaddr_storage, domain::http::HttpError>
 lookup(const std::string &host, std::uint16_t port)
 {
@@ -109,126 +107,237 @@ void Connection::open(const domain::http::Url &url, Ready ready, Failure failure
                 self->fail(domain::http::HttpError::connect);
                 return;
             }
-            self->afterConnected();
+            if (!self->url_.isTls()) {
+                self->protocol_ = Protocol::http1;
+                self->ready();
+                return;
+            }
+
+            self->ssl_ = SSL_new(self->tls_.raw());
+            self->incoming_ = BIO_new(BIO_s_mem());
+            self->outgoing_ = BIO_new(BIO_s_mem());
+            if (self->ssl_ == nullptr || self->incoming_ == nullptr ||
+                self->outgoing_ == nullptr) {
+                self->fail(domain::http::HttpError::tls);
+                return;
+            }
+
+            SSL_set_bio(self->ssl_, self->incoming_, self->outgoing_);
+            SSL_set_connect_state(self->ssl_);
+            SSL_set_tlsext_host_name(self->ssl_, self->url_.host.c_str());
+            SSL_set1_host(self->ssl_, self->url_.host.c_str());
+
+            self->state_ = State::handshaking;
+            self->driveHandshake();
         });
 
     if (!submitted) {
-        fail(submitted.error() == ports::io::IoError::tooManyDescriptors
-                 ? domain::http::HttpError::connect
-                 : domain::http::HttpError::connect);
+        fail(domain::http::HttpError::connect);
     }
 }
 
-void Connection::afterConnected()
+void Connection::driveHandshake()
 {
-    if (url_.isTls()) {
-        ssl_ = SSL_new(tls_.raw());
-        if (ssl_ == nullptr) {
-            fail(domain::http::HttpError::tls);
-            return;
-        }
-        SSL_set_fd(ssl_, handle_.native());
-        SSL_set_tlsext_host_name(ssl_, url_.host.c_str());
-        SSL_set1_host(ssl_, url_.host.c_str());
+    const int result = SSL_do_handshake(ssl_);
+    drainOutgoing();
 
-        state_ = State::handshaking;
-        afterHandshake(SSL_connect(ssl_));
-        return;
-    }
-
-    protocol_ = Protocol::http1;
-    state_ = State::ready;
-    if (ready_) {
-        auto callback = std::move(ready_);
-        ready_ = nullptr;
-        // Both callbacks capture `this`; dropping them breaks the cycle that
-        // would otherwise keep the socket open (and the server blocked).
-        failure_ = nullptr;
-        callback();
-    }
-}
-
-void Connection::afterHandshake(int result)
-{
     if (result == 1) {
         const unsigned char *selected = nullptr;
         unsigned int length = 0;
         SSL_get0_alpn_selected(ssl_, &selected, &length);
         protocol_ = (length == 2 && std::memcmp(selected, "h2", 2) == 0) ? Protocol::http2
                                                                         : Protocol::http1;
-        state_ = State::ready;
-        if (ready_) {
-            auto callback = std::move(ready_);
-            ready_ = nullptr;
-            failure_ = nullptr;
-            callback();
-        }
+        ready();
         return;
     }
 
     const int error = SSL_get_error(ssl_, result);
-    if (error != SSL_ERROR_WANT_READ && error != SSL_ERROR_WANT_WRITE) {
-        fail(domain::http::HttpError::tls);
+    if (error == SSL_ERROR_WANT_READ) {
+        readSocket();
+        return;
+    }
+    if (error == SSL_ERROR_WANT_WRITE) {
+        writeSocket();
+        return;
+    }
+    fail(domain::http::HttpError::tls);
+}
+
+void Connection::ready()
+{
+    state_ = State::ready;
+    auto callback = std::move(ready_);
+    ready_ = nullptr;
+    failure_ = nullptr;
+    if (callback) {
+        callback();
+    }
+    // Anything that arrived with the handshake is already decrypted.
+    drainPlaintext();
+}
+
+void Connection::readSocket()
+{
+    auto self = shared_from_this();
+    auto submitted = engine_.submitRead(handle_, std::nullopt, SOCKET_CHUNK,
+                                        [self](auto chunk) { self->onSocketRead(std::move(chunk)); });
+    if (!submitted) {
+        fail(domain::http::HttpError::closed);
+    }
+}
+
+void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoError> chunk)
+{
+    if (state_ == State::closed) {
+        return;
+    }
+    if (!chunk) {
+        fail(chunk.error() == ports::io::IoError::closed ? domain::http::HttpError::closed
+                                                         : domain::http::HttpError::protocol);
         return;
     }
 
-    // The handshake needs the socket; drive it from the engine.
-    auto self = shared_from_this();
-    const bool wantsRead = error == SSL_ERROR_WANT_READ;
-    auto done = [self](std::expected<ports::io::Buffer, ports::io::IoError>) {
-        self->afterHandshake(SSL_connect(self->ssl_));
-    };
+    if (ssl_ != nullptr) {
+        (void)BIO_write(incoming_, chunk->data(), static_cast<int>(chunk->size()));
+        if (state_ == State::handshaking) {
+            driveHandshake();
+            return;
+        }
+        drainPlaintext();
+        drainOutgoing();
+        return;
+    }
 
-    if (wantsRead) {
-        (void)engine_.submitRead(handle_, std::nullopt, domain::Bytes{0}, done);
+    plain_.append(reinterpret_cast<const char *>(chunk->data()), chunk->size());
+    drainPlaintext();
+}
+
+void Connection::drainPlaintext()
+{
+    if (ssl_ == nullptr) {
+        if (plain_.empty() || !handler_) {
+            return;
+        }
+        std::string swap;
+        swap.swap(plain_);
+        handler_(reinterpret_cast<const std::byte *>(swap.data()), swap.size());
+        if (state_ == State::ready) {
+            readSocket();
+        }
+        return;
+    }
+
+    std::uint8_t buffer[16 * 1024];
+    while (true) {
+        const int got = SSL_read(ssl_, buffer, sizeof buffer);
+        if (got > 0) {
+            if (handler_) {
+                handler_(reinterpret_cast<const std::byte *>(buffer), static_cast<std::size_t>(got));
+            }
+            continue;
+        }
+        const int error = SSL_get_error(ssl_, got);
+        if (error == SSL_ERROR_WANT_READ) {
+            readSocket();
+            return;
+        }
+        if (error == SSL_ERROR_WANT_WRITE) {
+            drainOutgoing();
+            continue;
+        }
+        fail(domain::http::HttpError::closed);
+        return;
     }
 }
 
 void Connection::write(ports::io::Buffer bytes, WriteDone done)
 {
-    auto self = shared_from_this();
-    (void)engine_.submitWrite(
-        handle_, std::nullopt, std::move(bytes),
-        [self, done = std::move(done)](std::expected<std::size_t, ports::io::IoError> result) {
-            if (!result) {
-                done(std::unexpected(domain::http::HttpError::closed));
-                return;
-            }
-            done(*result);
-        });
+    if (state_ == State::closed) {
+        done(std::unexpected(domain::http::HttpError::closed));
+        return;
+    }
+
+    if (ssl_ == nullptr) {
+        writeQueue_.push_back(std::move(done));
+        auto self = shared_from_this();
+        auto submitted = engine_.submitWrite(handle_, std::nullopt, std::move(bytes),
+                                             [self](auto wrote) { self->onSocketWritten(wrote); });
+        if (!submitted) {
+            fail(domain::http::HttpError::closed);
+        }
+        return;
+    }
+
+    writeQueue_.push_back(std::move(done));
+    (void)SSL_write(ssl_, bytes.data(), static_cast<int>(bytes.size()));
+    drainOutgoing();
 }
 
-void Connection::read(domain::Bytes maxBytes, ReadDone done)
+void Connection::drainOutgoing()
 {
-    auto self = shared_from_this();
-    (void)engine_.submitRead(
-        handle_, std::nullopt, maxBytes,
-        [done = std::move(done)](std::expected<ports::io::Buffer, ports::io::IoError> result) {
-            if (!result) {
-                done(std::unexpected(result.error() == ports::io::IoError::closed
-                                         ? domain::http::HttpError::closed
-                                         : domain::http::HttpError::protocol));
-                return;
+    if (outgoing_ == nullptr || writing_) {
+        return;
+    }
+
+    const std::size_t pending = static_cast<std::size_t>(BIO_ctrl_pending(outgoing_));
+    if (pending == 0) {
+        if (!writeQueue_.empty() && state_ == State::ready) {
+            auto queue = std::move(writeQueue_);
+            writeQueue_.clear();
+            for (auto &done : queue) {
+                done(pending);
             }
-            done(std::move(*result));
-        });
+        }
+        return;
+    }
+
+    std::string frame(pending, '\0');
+    (void)BIO_read(outgoing_, frame.data(), static_cast<int>(pending));
+
+    writing_ = true;
+    auto self = shared_from_this();
+    auto submitted = engine_.submitWrite(
+        handle_, std::nullopt,
+        ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
+                          reinterpret_cast<const std::byte *>(frame.data()) + frame.size()},
+        [self](auto wrote) { self->onSocketWritten(wrote); });
+    if (!submitted) {
+        fail(domain::http::HttpError::closed);
+    }
+}
+
+void Connection::onSocketWritten(std::expected<std::size_t, ports::io::IoError> wrote)
+{
+    writing_ = false;
+    if (!wrote) {
+        fail(domain::http::HttpError::closed);
+        return;
+    }
+    drainOutgoing();
 }
 
 void Connection::close()
 {
+    state_ = State::closed;
     if (ssl_ != nullptr) {
         SSL_free(ssl_);
         ssl_ = nullptr;
+        incoming_ = nullptr;
+        outgoing_ = nullptr;
     }
-    state_ = State::closed;
+    handler_ = nullptr;
 }
 
 void Connection::fail(domain::http::HttpError error)
 {
+    if (state_ == State::closed) {
+        return;
+    }
     close();
-    if (failure_) {
-        auto callback = std::move(failure_);
-        failure_ = nullptr;
+
+    auto callback = std::move(failure_);
+    failure_ = nullptr;
+    if (callback) {
         callback(error);
     }
 }

@@ -118,14 +118,17 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 }
 
 std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
-                                                  const std::string &authority)
+                                                  const std::string &authority,
+                                                  std::shared_ptr<Connection> connection)
 {
     auto &slot = sessions_[{&engine, authority}];
     if (slot && !slot->isClosed()) {
         return slot;
     }
 
-    auto connection = std::make_shared<Connection>(engine, *tls_);
+    if (!connection) {
+        connection = std::make_shared<Connection>(engine, *tls_);
+    }
     slot = std::make_shared<H2Session>(connection, config_.limits.maxHeaderBytes,
                                        config_.limits.maxBodyBytes);
     return slot;
@@ -133,24 +136,14 @@ std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
 
 void HttpClient::pump(const std::shared_ptr<H2Session> &session)
 {
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    session->connection()->read(
-        READ_CHUNK, [self, session](std::expected<ports::io::Buffer, domain::http::HttpError> chunk) {
-            if (!chunk) {
-                session->fail(chunk.error());
-                return;
-            }
-            session->receive(chunk->data(), chunk->size());
-            if (!session->isClosed()) {
-                self->pump(session);
-            }
-        });
+    session->connection()->onData(
+        [session](const std::byte *data, std::size_t length) { session->receive(data, length); });
 }
 
 void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    auto session = sessionFor(*attempt->engine_, attempt->url_.authority);
+    auto session = sessionFor(*attempt->engine_, attempt->url_.authority, attempt->connection_);
 
     auto submitNow = [self, session, attempt] {
         auto submitted = session->submit(
@@ -163,9 +156,7 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 
     const auto &connection = session->connection();
     if (connection->isReady()) {
-        if (session->activeStreams() == 0) {
-            pump(session);
-        }
+        pump(session);
         submitNow();
         return;
     }
@@ -185,10 +176,24 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
         return;
     }
 
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    attempt->connection_->onData([self, attempt](const std::byte *data, std::size_t length) {
+        if (attempt->cancelled()) {
+            return;
+        }
+        auto consumed = attempt->session_.consume(data, length);
+        if (!consumed) {
+            self->settle(attempt, std::unexpected(consumed.error()));
+            return;
+        }
+        if (attempt->session_.isComplete()) {
+            self->followRedirect(attempt, attempt->session_.take());
+        }
+    });
+
     std::string wire = H1Session::serialize(attempt->request_, attempt->url_.target,
                                             attempt->url_.authority, config_.userAgent);
 
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto bytes = ports::io::Buffer{
         reinterpret_cast<const std::byte *>(wire.data()),
         reinterpret_cast<const std::byte *>(wire.data()) + wire.size()};
@@ -200,40 +205,7 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
             }
             if (!wrote) {
                 self->settle(attempt, std::unexpected(wrote.error()));
-                return;
             }
-            self->readMore(attempt);
-        });
-}
-
-void HttpClient::readMore(const std::shared_ptr<Attempt> &attempt)
-{
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    attempt->connection_->read(
-        READ_CHUNK,
-        [self, attempt](std::expected<ports::io::Buffer, domain::http::HttpError> chunk) {
-            if (attempt->cancelled()) {
-                return;
-            }
-            if (!chunk) {
-                if (attempt->session_.isComplete()) {
-                    self->followRedirect(attempt, attempt->session_.take());
-                    return;
-                }
-                self->settle(attempt, std::unexpected(chunk.error()));
-                return;
-            }
-
-            auto consumed = attempt->session_.consume(chunk->data(), chunk->size());
-            if (!consumed) {
-                self->settle(attempt, std::unexpected(consumed.error()));
-                return;
-            }
-            if (attempt->session_.isComplete()) {
-                self->followRedirect(attempt, attempt->session_.take());
-                return;
-            }
-            self->readMore(attempt);
         });
 }
 

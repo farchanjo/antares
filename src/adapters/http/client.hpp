@@ -42,7 +42,6 @@ private:
     void start(const std::shared_ptr<Attempt> &attempt);
     void connect(const std::shared_ptr<Attempt> &attempt);
     void onReady(const std::shared_ptr<Attempt> &attempt);
-    void readMore(const std::shared_ptr<Attempt> &attempt);
     void finish(const std::shared_ptr<Attempt> &attempt,
                 std::expected<domain::http::Response, domain::http::HttpError> result);
     void followRedirect(const std::shared_ptr<Attempt> &attempt, domain::http::Response response);
@@ -57,7 +56,8 @@ private:
     void startHttp2(const std::shared_ptr<Attempt> &attempt);
     void pump(const std::shared_ptr<H2Session> &session);
     [[nodiscard]] std::shared_ptr<H2Session> sessionFor(ports::io::IoEngine &engine,
-                                                       const std::string &authority);
+                                                       const std::string &authority,
+                                                       std::shared_ptr<Connection> connection);
     void release(std::shared_ptr<Connection> connection);
     [[nodiscard]] std::shared_ptr<Connection> acquire(ports::io::IoEngine &engine,
                                                       const domain::http::Url &url);
