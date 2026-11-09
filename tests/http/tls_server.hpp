@@ -177,12 +177,11 @@ private:
         }
     }
 
-    static void sendCallback(nghttp2_session *session, const std::uint8_t *data, std::size_t length,
-                             int, void *userData)
+    static ssize_t sendCallback(nghttp2_session *, const std::uint8_t *data, std::size_t length,
+                                int, void *userData)
     {
         auto *ssl = static_cast<SSL *>(userData);
-        (void)nghttp2_session;
-        (void)SSL_write(ssl, data, static_cast<int>(length));
+        return static_cast<ssize_t>(SSL_write(ssl, data, static_cast<int>(length)));
     }
 
     void serveHttp2(SSL *ssl)
@@ -216,16 +215,20 @@ private:
                     return 0;
                 }
                 auto *self = static_cast<TlsServer *>(userData);
-                const std::string_view type = "text/plain";
-                nghttp2_nv headers[] = {
-                    {const_cast<std::uint8_t *>(reinterpret_cast<const std::uint8_t *>(":status")), 7,
-                     const_cast<std::uint8_t *>(reinterpret_cast<const std::uint8_t *>("200")), 3,
-                     NGHTTP2_NV_FLAG_NONE},
-                    {const_cast<std::uint8_t *>(reinterpret_cast<const std::uint8_t *>("content-type")),
-                     12,
-                     const_cast<std::uint8_t *>(reinterpret_cast<const std::uint8_t *>(type.data())),
-                     type.size(), NGHTTP2_NV_FLAG_NONE},
-                };
+                static thread_local std::string statusName = ":status";
+                static thread_local std::string statusValue = "200";
+                static thread_local std::string typeName = "content-type";
+                static thread_local std::string typeValue = "text/plain";
+
+                nghttp2_nv headers[2] = {};
+                headers[0].name = reinterpret_cast<std::uint8_t *>(statusName.data());
+                headers[0].namelen = statusName.size();
+                headers[0].value = reinterpret_cast<std::uint8_t *>(statusValue.data());
+                headers[0].valuelen = statusValue.size();
+                headers[1].name = reinterpret_cast<std::uint8_t *>(typeName.data());
+                headers[1].namelen = typeName.size();
+                headers[1].value = reinterpret_cast<std::uint8_t *>(typeValue.data());
+                headers[1].valuelen = typeValue.size();
 
                 nghttp2_data_provider provider{};
                 provider.source.ptr = &self->body_;
