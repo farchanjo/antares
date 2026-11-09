@@ -275,6 +275,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0010-log-levels.md`
 - `doc/arch/adr/0011-cpp23-ownership-leaks.md`
 - `doc/arch/adr/0012-mimalloc-allocator.md`
+- `doc/arch/adr/0013-http-client-h2.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
@@ -453,21 +454,30 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/version.md`
 - `doc/arch/commands/workflow.md`
 - `doc/arch/commands/workflow/render.md`
+- `doc/arch/domain/.gitkeep`
 - `doc/arch/functional/product-overview.md`
 - `doc/arch/memory/constitution.md`
 - `doc/arch/observability/observability.md`
 - `doc/arch/quality/quality-scenarios.md`
 - `doc/arch/runbooks/deploy.md`
 - `doc/arch/runbooks/dev-loop.md`
+- `doc/arch/schemas/http-client-config.cue`
+- `doc/arch/schemas/http-client-h2.cue`
 - `doc/arch/schemas/kernel-io-engine-kqueue.cue`
 - `doc/arch/sdd/001-kernel-io-engine-kqueue/plan.md`
 - `doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md`
 - `doc/arch/sdd/001-kernel-io-engine-kqueue/tasks.md`
+- `doc/arch/sdd/002-http-client-h2/plan.md`
+- `doc/arch/sdd/002-http-client-h2/spec.md`
+- `doc/arch/sdd/002-http-client-h2/tasks.md`
 - `doc/arch/skills/implement.md`
 - `doc/arch/skills/review.md`
 - `doc/arch/speckit.toml`
+- `doc/arch/specs/features/http-client-h2.feature`
 - `doc/arch/specs/features/kernel-io-engine-kqueue.feature`
 - `doc/arch/threat-model/privacy-threat-model.md`
+- `src/adapters/http/tls_context.cpp`
+- `src/adapters/http/tls_context.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
 - `src/adapters/platform/io/engine_base.hpp`
 - `src/adapters/platform/io/kqueue_engine.cpp`
@@ -476,7 +486,20 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/platform/io/poll_engine.hpp`
 - `src/application/io/engine_factory.cpp`
 - `src/application/io/engine_factory.hpp`
+- `src/domain/http/auth.cpp`
+- `src/domain/http/auth.hpp`
+- `src/domain/http/client_config.hpp`
+- `src/domain/http/http_error.hpp`
+- `src/domain/http/limits.hpp`
+- `src/domain/http/pool_config.hpp`
+- `src/domain/http/request.hpp`
+- `src/domain/http/response.cpp`
+- `src/domain/http/response.hpp`
+- `src/domain/http/timeouts.hpp`
+- `src/domain/http/url.cpp`
+- `src/domain/http/url.hpp`
 - `src/platform/common/allocator.cpp`
+- `src/ports/http/client.hpp`
 - `src/ports/io/io_engine.cpp`
 - `src/ports/io/io_engine.hpp`
 - `src/ports/io/io_error.hpp`
@@ -485,4 +508,5 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_stats.cpp`
 - `src/ports/io/io_stats.hpp`
 - `tests/io/conformance.cpp`
+
 <!-- notes:end -->
