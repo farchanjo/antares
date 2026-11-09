@@ -181,6 +181,9 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
 
     const std::string method{domain::http::methodName(request.method)};
     const std::string scheme = connection_->url().isTls() ? "https" : "http";
+    // Bound, not a temporary: the ternary would otherwise build a string that
+    // dies before nghttp2 copies from it.
+    const std::string path = target.empty() ? std::string{"/"} : target;
     add(":method", method);
     add(":scheme", scheme);
     // RFC 9113 §8.3.1: :authority must not be empty.
@@ -188,7 +191,7 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
         return std::unexpected(domain::http::HttpError::protocol);
     }
     add(":authority", authority);
-    add(":path", target.empty() ? "/" : target);
+    add(":path", path);
     // RFC 9113 §8.2.2: connection-specific fields are not repeated on the
     // wire; TE survives only with the value "trailers".
     for (const domain::http::Header &header : request.headers) {
