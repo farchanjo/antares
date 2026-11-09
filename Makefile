@@ -7,6 +7,12 @@
 
 .DEFAULT_GOAL := help
 
+# Every core by default. `JOBS=n` in the environment overrides, which is what a
+# laptop on battery or a loaded CI box needs. CMake presets cannot read the
+# environment for this — `jobs` takes an integer and rejects `$penv{}` — so the
+# number is passed on the command line here instead.
+JOBS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
 .PHONY: help build test asan leak clean clean-all lint check validate verify analyze spec-status
 
 help: ## Show this help
@@ -16,17 +22,17 @@ help: ## Show this help
 # Build / Test — placeholders: replace with antares's real toolchain.
 # ---------------------------------------------------------------------------
 
-build: ## Configure and build the dev preset
+build: ## Configure and build the dev preset, every core
 	cmake --preset dev
-	cmake --build --preset dev
+	cmake --build --preset dev --parallel $(JOBS)
 
-test: ## Run the dev test preset
-	ctest --preset dev --output-on-failure
+test: ## Run the dev test preset, every core
+	ctest --preset dev --output-on-failure --parallel $(JOBS)
 
 asan: ## Build and run the suite under AddressSanitizer
 	cmake --preset dev-asan
-	cmake --build --preset dev-asan
-	ctest --preset dev-asan --output-on-failure
+	cmake --build --preset dev-asan --parallel $(JOBS)
+	ctest --preset dev-asan --output-on-failure --parallel $(JOBS)
 
 leak: ## Run the suite under LeakSanitizer (Linux) or leaks(1) (macOS)
 	@if [ "$$(uname -s)" = "Darwin" ]; then \

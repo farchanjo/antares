@@ -170,8 +170,9 @@ The corpus is governed; use the binary for every loop step.
   and run over SSH on `farchanjo@192.168.202.241`, checkout `~/dev/antares`.
 - A green local build is **not** evidence: `kqueue` compiles on Darwin alone, and
   the acceptance target is macOS (P-05).
-- Run the suite on the host with `ctest --preset dev`, both backends, before
-  claiming a case passes.
+- Run the suite on the host with `make test`, both backends, before claiming a
+  case passes. It uses every core; `JOBS=n` caps the width. A bare
+  `ctest --preset dev` is serial.
 - Nothing is published to `origin` until the host is green.
 - **Clean old builds.** Delete a build tree as soon as it stops being used and
   run `make clean` before a release build; `make clean-all` also drops the
