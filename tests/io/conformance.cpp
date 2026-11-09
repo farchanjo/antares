@@ -254,9 +254,12 @@ void caseCountersMove(IoEngine &engine)
                                     reinterpret_cast<const std::byte *>(&byte) + 1),
                              [](std::expected<std::size_t, IoError>) {});
 
-    for (int spin = 0; spin < 400 && !done.load(); ++spin) {
+    // Wait for both completions, not just the read: a cold ASan run can settle
+    // them apart, and the counter check must not race the second one.
+    for (int spin = 0; spin < 800 && engine.stats().completed < 2; ++spin) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+    (void)done;
 
     const auto after = engine.stats();
     check(after.submitted == 2, "both submissions counted");
