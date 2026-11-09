@@ -110,6 +110,16 @@ mutual TLS. The credential is applied at header-build time and never stored in a
 log record. Basic auth is base64 of `user:password` computed once, at
 configuration load.
 
+### FR-018 A dedicated pool of loops
+
+The engine owns a fixed set of loops and their threads; a caller takes one and
+keeps it for the life of the work. Nothing is shared between loops, so no lock
+guards connection state and the pool never touches an operation.
+
+The pool is per loop as well: a pooled connection may only be reused from the
+loop that owns it, or the attempt would run on one loop and its socket on
+another.
+
 ### FR-016 Resolution stays off the hot path
 
 A literal address is parsed in-process, so it never blocks the loop. Only a host

@@ -120,3 +120,10 @@ Feature: Http Client H2
     When  a case waits for a completion
     Then  it blocks on the waiter
     And   no case calls a sleep
+
+  @planned
+  Scenario: FR-018 a dedicated pool of loops
+    Given a pool of two loops
+    When  two requests are in flight at once
+    Then  each runs on its own loop
+    And   a reused connection stays on the loop that owns it

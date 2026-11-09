@@ -41,6 +41,8 @@ Ordered so each task compiles on its own and proves one requirement.
 - [ ] T017 Move name resolution behind the engine port so no call blocks the
       loop, with the numeric path kept as the fast route (FR-016).
 
+- [x] T018 Give the engine a loop pool and key the connection pool by loop (FR-018).
+
 ## Dependencies
 
 - T002 before T003; T004 and T005 before T006; T006 before T011.
