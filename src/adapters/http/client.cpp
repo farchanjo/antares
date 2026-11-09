@@ -199,7 +199,7 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
         reinterpret_cast<const std::byte *>(wire.data()) + wire.size()};
 
     attempt->connection_->write(
-        std::move(bytes), [self, attempt](Connection::WriteOutcome wrote) {
+        std::move(bytes), [self, attempt](WriteOutcome wrote) {
             if (attempt->cancelled()) {
                 return;
             }
