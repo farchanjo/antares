@@ -65,6 +65,23 @@ if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
     FetchContent_MakeAvailable(mimalloc)
 endif()
 
+# TLS and HTTP/2 are pinned by exact version (D-17); the Homebrew prefix is the
+# only place they exist on macOS.
+if(APPLE)
+    list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/openssl@3 /opt/homebrew/opt/nghttp2)
+endif()
+find_package(OpenSSL 3.6.4 EXACT REQUIRED COMPONENTS SSL Crypto)
+find_package(nghttp2 1.68.0 EXACT REQUIRED)
+
+set(ANTARES_HTTP_SOURCES
+    src/domain/http/response.cpp
+    src/domain/http/url.cpp
+)
+
+add_library(antares_http STATIC ${ANTARES_HTTP_SOURCES})
+target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto nghttp2::nghttp2)
+set_target_properties(antares_http PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
 set(ANTARES_IO_SOURCES
     src/ports/io/io_engine.cpp
     src/ports/io/io_stats.cpp
