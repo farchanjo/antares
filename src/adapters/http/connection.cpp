@@ -186,6 +186,11 @@ void Connection::readSocket()
     }
 }
 
+void Connection::writeSocket()
+{
+    drainOutgoing();
+}
+
 void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoError> chunk)
 {
     if (state_ == State::closed) {
