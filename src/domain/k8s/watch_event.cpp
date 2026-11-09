@@ -28,13 +28,19 @@ namespace {
     return std::nullopt;
 }
 
-/// Windows line endings survive a proxy, so a trailing `\r` is stripped too.
+/// Windows line endings survive a proxy, so `\r`, `\n` and spaces are all
+/// stripped: what remains is either a frame or nothing.
+[[nodiscard]] bool isBlank(char value) noexcept
+{
+    return value == ' ' || value == '\t' || value == '\r' || value == '\n';
+}
+
 [[nodiscard]] std::string_view trimmed(std::string_view line) noexcept
 {
-    while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) {
+    while (!line.empty() && isBlank(line.back())) {
         line.remove_suffix(1);
     }
-    while (!line.empty() && line.front() == ' ') {
+    while (!line.empty() && isBlank(line.front())) {
         line.remove_prefix(1);
     }
     return line;

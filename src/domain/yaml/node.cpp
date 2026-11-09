@@ -213,7 +213,18 @@ private:
                 continue;
             }
 
-            // An empty value means the block follows, or the key is null.
+            // An empty value means the block follows, or the key is null. A
+            // sequence may sit at its parent's own indentation, which is how
+            // every kubeconfig writes `clusters:` followed by `- name: ...`.
+            if (index < lines_.size() && lines_[index].indent == indent &&
+                isSequenceItem(index)) {
+                auto child = readSequence(index, indent, depth + 1);
+                if (!child) {
+                    return child;
+                }
+                node.members_.emplace_back(key, std::move(*child));
+                continue;
+            }
             if (index >= lines_.size() || lines_[index].indent <= indent) {
                 node.members_.emplace_back(key, Node{});
                 continue;
