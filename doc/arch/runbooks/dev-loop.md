@@ -14,6 +14,11 @@ The macOS host is `farchanjo@192.168.202.241`, checkout at `~/dev/antares`.
 AppleScript through `osascript` is the evidence source for anything the exit
 code cannot prove.
 
+The host carries **no** `speckit`. Corpus gates run on the workstation only;
+the host builds and tests. Two remotes carry the work: `mac` pushes into the
+host checkout (`receive.denyCurrentBranch=updateInstead`), `origin` publishes to
+GitHub from the workstation.
+
 ## Trigger
 
 Run this procedure when:
@@ -26,7 +31,7 @@ Run this procedure when:
 
 - `speckit validate` exits `0` on the workstation.
 - `make lint` exits `0` on the workstation.
-- The change is committed and pushed; the host pulls, it never receives a patch.
+- The change is committed; the host receives it by push, never by patch.
 - The host answers and its toolchain resolves: `clang`, `cmake`, `ninja`,
   `sccache`, `ld64.lld`, `osascript`.
 - The active feature is selected, so the guard accepts the write.
@@ -35,9 +40,10 @@ Run this procedure when:
 
 1. Validate the corpus locally: `speckit validate` — must exit `0`.
 2. Run the rule checkers locally: `make lint` — must exit `0`.
-3. Commit and push the change.
-4. On the host, sync: `cd ~/dev/antares && git pull --ff-only`.
-5. Configure the dev preset: `cmake --preset dev`.
+3. Commit the change.
+4. Push it to the host: `git push mac HEAD` — the checkout updates in place.
+5. Over SSH into `~/dev/antares`, configure the dev preset:
+   `cmake --preset dev`.
 6. Build: `cmake --build --preset dev`.
 7. Run the tests: `ctest --preset dev`.
 8. Prove the behaviour with AppleScript, for example
@@ -46,10 +52,12 @@ Run this procedure when:
    notification path.
 9. Read the sccache counters with `sccache --show-stats` when build time moves
    without a source change.
+10. Publish from the workstation when the loop is green: `git push origin main`.
 
 ## Verification
 
 - Steps 5, 6 and 7 exit `0`.
+- `git push mac HEAD` fast-forwards; a rejection means the host tree diverged.
 - The AppleScript assertion prints the expected value; a notification appears.
 - `sccache --show-stats` reports a hit rate that does not collapse to zero
   after a no-op rebuild.
