@@ -110,6 +110,31 @@ mutual TLS. The credential is applied at header-build time and never stored in a
 log record. Basic auth is base64 of `user:password` computed once, at
 configuration load.
 
+### FR-019 ALPN decides, h1 is the floor
+
+TLS offers `h2` first and `http/1.1` second. The peer decides; a server without
+h2 answers on 1.1 without a failed handshake. Plaintext stays on 1.1.
+
+TLS 1.2 is the floor and the RFC 9113 Appendix A suites are never offered.
+
+### FR-020 Multiplexing
+
+Streams on one h2 connection are independent: a slow response never blocks a
+fast one. The peer's `MAX_CONCURRENT_STREAMS` is the ceiling, and a request
+above it waits rather than opening a second connection.
+
+A GOAWAY stops new streams; the streams above its last id were never processed
+and are retried on a fresh connection.
+
+### FR-021 Streaming, SSE and WebSocket
+
+The data handler delivers bytes as they decrypt, so a response can be consumed
+incrementally instead of buffered (streaming and `text/event-stream`).
+
+WebSocket needs the 101 upgrade and then raw framing over the same connection;
+the handler already exposes the byte pipe, so it is a layer on top, not a
+transport change.
+
 ### FR-018 A dedicated pool of loops
 
 The engine owns a fixed set of loops and their threads; a caller takes one and

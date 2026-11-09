@@ -127,3 +127,23 @@ Feature: Http Client H2
     When  two requests are in flight at once
     Then  each runs on its own loop
     And   a reused connection stays on the loop that owns it
+
+  @planned
+  Scenario: FR-019 ALPN decides, h1 is the floor
+    Given a server that offers h2
+    When  TLS completes
+    Then  h2 is selected
+    And   a server without h2 answers on http/1.1
+
+  @planned
+  Scenario: FR-020 multiplexing
+    Given one h2 connection
+    When  two requests are in flight
+    Then  each has its own stream
+    And   a GOAWAY marks the unprocessed streams retryable
+
+  @planned
+  Scenario: FR-021 streaming, SSE and WebSocket
+    Given a streaming response
+    When  bytes arrive
+    Then  the handler receives them before the body ends
