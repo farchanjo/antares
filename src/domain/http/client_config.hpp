@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "domain/http/auth.hpp"
 #include "domain/http/limits.hpp"
 #include "domain/http/pool_config.hpp"
@@ -15,14 +17,14 @@ struct ClientConfig {
     Timeouts timeouts;
     Auth auth;
 
-    /// Follow 3xx by default (FR-006).
-    bool followRedirects = true;
+    /// Hop policy: whether to follow and whether to re-send the credential.
+    struct Redirects {
+        bool follow = true;
+        bool forwardAuth = false;
+    } redirects;
 
     /// Verify the peer certificate and hostname (FR-009).
     bool verifyPeer = true;
-
-    /// Send the credential again after a cross-origin hop (FR-006).
-    bool forwardAuthOnRedirect = false;
 
     /// User agent, so the server side can tell builds apart.
     std::string userAgent = "antares/0.1";

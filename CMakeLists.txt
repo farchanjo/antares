@@ -67,13 +67,21 @@ endif()
 
 # TLS and HTTP/2 are pinned by exact version (D-17); the Homebrew prefix is the
 # only place they exist on macOS.
+# The pin is exact where the toolchain is home-grown (the macOS host), and a
+# floor elsewhere, so a distro's older pair still configures.
 if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/openssl@3)
+    find_package(OpenSSL 3.6.4 EXACT REQUIRED COMPONENTS SSL Crypto)
+else()
+    find_package(OpenSSL 3.0 REQUIRED COMPONENTS SSL Crypto)
 endif()
-find_package(OpenSSL 3.6.4 EXACT REQUIRED COMPONENTS SSL Crypto)
 # nghttp2 ships no CMake config, only a pkg-config file, so the pin goes there.
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2=1.69.0)
+if(APPLE)
+    pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2=1.69.0)
+else()
+    pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2>=1.55)
+endif()
 
 set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
