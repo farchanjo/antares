@@ -217,6 +217,7 @@ private:
             });
         nghttp2_session_callbacks_set_on_frame_recv_callback(
             callbacks, [](nghttp2_session *session, const nghttp2_frame *frame, void *userData) -> int {
+                std::fprintf(stderr, "  server frame type=%d\n", frame->hd.type);
                 if (frame->hd.type != NGHTTP2_HEADERS ||
                     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
                     return 0;
