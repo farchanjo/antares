@@ -31,8 +31,8 @@ public:
 
     void releaseWire()
     {
-        if (session_ != nullptr && streamId_ > 0) {
-            session_->reset(streamId_);
+        if (h2_ && streamId_ > 0) {
+            h2_->reset(streamId_);
             streamId_ = 0;
             return;
         }
@@ -52,7 +52,7 @@ public:
     std::uint8_t hops_ = 0;
     ports::http::StreamHandler stream;
     std::uint64_t timerGeneration = 0;
-    std::shared_ptr<H2Session> session_;
+    std::shared_ptr<H2Session> h2_;
     std::int32_t streamId_ = 0;
     std::uint8_t attempts_ = 1;
     bool cancelled_ = false;
@@ -223,7 +223,7 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto session = sessionFor(*attempt->engine_, attempt->url_.authority, attempt->connection_);
-    attempt->session_ = session;
+    attempt->h2_ = session;
 
     auto submitNow = [self, session, attempt] {
         auto submitted = session->submitStreaming(
