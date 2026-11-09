@@ -1,5 +1,5 @@
 ---
-revision: 7
+revision: 8
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -15,6 +15,8 @@ amendments:
   - adr: "0005"
     date: "2026-11-09"
   - adr: "0006"
+    date: "2026-11-09"
+  - adr: "0010"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -139,6 +141,11 @@ Enforced by: config:project, verify
 Severity: block
 MANDATE: The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and no call site names one. A new platform adds an adapter under `src/adapters/platform/io/` and a conformance case, never a branch at the call site.
 Enforced by: config:architecture, verify
+
+## P-10 — Six log levels, always declared
+Severity: block
+MANDATE: Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an absence that is recoverable never uses it. The level is filtered at runtime by `ANTARES_LOG`, a disabled level costs one guarded branch, and no record carries a token, a certificate or a `kubeconfig`.
+Enforced by: config:project, verify
 
 ## Governance
 

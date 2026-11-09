@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: 3e2a513e235da21a87fe182d1dbc4894448086eda6b76ef5ee1b6f7deea0c3b8
+digest: a63a9de4799a1c9de8c32cc22a4090fbe62f477963a084e01b941355a13d9c4e
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -47,6 +47,7 @@ digest: 3e2a513e235da21a87fe182d1dbc4894448086eda6b76ef5ee1b6f7deea0c3b8
 - P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`.… [config:architecture, verify]
 - P-08 (block): Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized… [config:project, verify]
 - P-09 (block): The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and… [config:architecture, verify]
+- P-10 (block): Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an… [config:project, verify]
 
 ## Architecture and corpus index
 
@@ -257,6 +258,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0007-kernel-io-engine-kqueue.md`
 - `doc/arch/adr/0008-io-handle-abstraction.md`
 - `doc/arch/adr/0009-kqueue-forced-poll-fallback.md`
+- `doc/arch/adr/0010-log-levels.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
