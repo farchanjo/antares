@@ -63,9 +63,10 @@ public:
     [[nodiscard]] virtual std::expected<void, IoError>
     submitAccept(const IoHandle &listener, AcceptCompletion done) = 0;
 
-    /// Connect a handle to `address` with `length` bytes of sockaddr.
+    /// Connect a handle to the sockaddr carried by `address` (P-11: a view, not
+    /// a pointer plus a length).
     [[nodiscard]] virtual std::expected<void, IoError>
-    submitConnect(const IoHandle &handle, const void *address, std::uint32_t length,
+    submitConnect(const IoHandle &handle, std::span<const std::byte> address,
                   ConnectCompletion done) = 0;
 
     /// Enqueue work onto the engine thread.

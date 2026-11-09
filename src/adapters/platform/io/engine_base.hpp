@@ -61,7 +61,7 @@ public:
     [[nodiscard]] std::expected<void, IoError>
     submitAccept(const IoHandle &listener, AcceptCompletion done) override;
     [[nodiscard]] std::expected<void, IoError>
-    submitConnect(const IoHandle &handle, const void *address, std::uint32_t length,
+    submitConnect(const IoHandle &handle, std::span<const std::byte> address,
                   ConnectCompletion done) override;
 
     void post(PostedTask task) override;

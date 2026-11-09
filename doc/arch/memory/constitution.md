@@ -1,5 +1,5 @@
 ---
-revision: 8
+revision: 9
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -17,6 +17,8 @@ amendments:
   - adr: "0006"
     date: "2026-11-09"
   - adr: "0010"
+    date: "2026-11-09"
+  - adr: "0011"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -145,6 +147,21 @@ Enforced by: config:architecture, verify
 ## P-10 — Six log levels, always declared
 Severity: block
 MANDATE: Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an absence that is recoverable never uses it. The level is filtered at runtime by `ANTARES_LOG`, a disabled level costs one guarded branch, and no record carries a token, a certificate or a `kubeconfig`.
+Enforced by: config:project, verify
+
+## P-11 — C++23 in full, no C escape hatch
+Severity: block
+MANDATE: The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`, `std::variant`, concepts, `constexpr`. A `void*`, a pointer-plus-count pair, a C array and a `#define` constant carry a reason, and a facility the toolchain lacks is gated by its feature-test macro instead of assumed.
+Enforced by: config:project, verify
+
+## P-12 — Ownership over pointers
+Severity: block
+MANDATE: A raw pointer is non-owning or `nullptr`; ownership is `std::unique_ptr`, and `std::shared_ptr` only where a lifetime is genuinely shared. Non-owning sequences are `std::span` and `std::string_view`, which never outlive their range, and a copy is avoided by moving — a duplicated buffer is a defect.
+Enforced by: config:architecture, verify
+
+## P-13 — Leak gate always on
+Severity: block
+MANDATE: Every development run is leak-checked with AddressSanitizer and LeakSanitizer (`ASAN_OPTIONS=detect_leaks=1` on macOS), the binary is symbolized with `dsymutil`, and no debug build ships without line information. A leak report is a finding, not background noise.
 Enforced by: config:project, verify
 
 ## Governance

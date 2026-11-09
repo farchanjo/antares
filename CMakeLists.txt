@@ -71,6 +71,14 @@ add_executable(antares_io_conformance tests/io/conformance.cpp)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
 set_target_properties(antares_io_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
+# P-13: symbolize the binary on Apple, so a leak report names frames.
+if(APPLE)
+    add_custom_command(TARGET antares_io_conformance POST_BUILD
+        COMMAND dsymutil $<TARGET_FILE:antares_io_conformance>
+        COMMENT "dsymutil antares_io_conformance"
+        VERBATIM)
+endif()
+
 add_test(NAME io_conformance_poll COMMAND antares_io_conformance)
 set_tests_properties(io_conformance_poll PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")
 

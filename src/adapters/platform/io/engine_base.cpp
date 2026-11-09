@@ -120,13 +120,11 @@ std::expected<void, IoError> EngineBase::submitAccept(const IoHandle &listener,
     return {};
 }
 
-std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle, const void *address,
-                                                        std::uint32_t length,
+std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
+                                                        std::span<const std::byte> address,
                                                         ConnectCompletion done)
 {
-    (void)address;
-    (void)length;
-    if (!handle.valid()) {
+    if (!handle.valid() || address.empty()) {
         return std::unexpected(IoError::system);
     }
 
