@@ -164,6 +164,9 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
         return std::unexpected(domain::http::HttpError::closed);
     }
 
+    // The lowered names must outlive the loop: nghttp2 keeps the pointers.
+    std::vector<std::string> names;
+    names.reserve(request.headers.size());
     std::vector<nghttp2_nv> headers;
     headers.reserve(request.headers.size() + 4);
     auto add = [&headers](std::string_view name, std::string_view value) {
@@ -189,7 +192,8 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
     // RFC 9113 §8.2.2: connection-specific fields are not repeated on the
     // wire; TE survives only with the value "trailers".
     for (const domain::http::Header &header : request.headers) {
-        std::string name{header.name};
+        names.push_back(header.name);
+        std::string &name = names.back();
         std::transform(name.begin(), name.end(), name.begin(),
                        [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
         if (name == "connection" || name == "keep-alive" || name == "proxy-connection" ||
