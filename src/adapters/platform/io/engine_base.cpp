@@ -240,6 +240,8 @@ void EngineBase::run()
 
 void EngineBase::stop()
 {
+    // Completing callbacks run on the loop thread only, so once `run()` is back
+    // no completion can start. Pending operations are dropped, not completed.
     if (stopped_.exchange(true)) {
         return;
     }

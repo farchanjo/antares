@@ -15,6 +15,8 @@ constexpr domain::Bytes READ_CHUNK{16 * 1024};
 /// One in-flight request. Also the ticket handed to the caller.
 class HttpClient::Attempt : public ports::http::Ticket, public std::enable_shared_from_this<Attempt> {
 public:
+    /// Completes once with `cancelled` and releases the wire: an h1 connection
+    /// is closed, an h2 stream is reset and the connection survives.
     void cancel() override
     {
         if (!done_) {
@@ -24,6 +26,19 @@ public:
         auto done = std::move(done_);
         done_ = nullptr;
         done(std::unexpected(domain::http::HttpError::cancelled));
+        releaseWire();
+    }
+
+    void releaseWire()
+    {
+        if (session_ != nullptr && streamId_ > 0) {
+            session_->reset(streamId_);
+            streamId_ = 0;
+            return;
+        }
+        if (connection_) {
+            connection_->close();
+        }
     }
 
     [[nodiscard]] bool cancelled() const noexcept { return cancelled_; }
@@ -37,6 +52,8 @@ public:
     std::uint8_t hops_ = 0;
     ports::http::StreamHandler stream;
     std::uint64_t timerGeneration = 0;
+    std::shared_ptr<H2Session> session_;
+    std::int32_t streamId_ = 0;
     std::uint8_t attempts_ = 1;
     bool cancelled_ = false;
     ports::http::Completion done_;
@@ -206,6 +223,7 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto session = sessionFor(*attempt->engine_, attempt->url_.authority, attempt->connection_);
+    attempt->session_ = session;
 
     auto submitNow = [self, session, attempt] {
         auto submitted = session->submitStreaming(
@@ -213,7 +231,9 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
             [self, attempt](auto result) { self->settle(attempt, std::move(result)); });
         if (!submitted) {
             self->settle(attempt, std::unexpected(submitted.error()));
+            return;
         }
+        attempt->streamId_ = *submitted;
     };
 
     const auto &connection = session->connection();

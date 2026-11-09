@@ -55,6 +55,9 @@ public:
 
     /// Complete every outstanding stream with `error`.
     void fail(domain::http::HttpError error);
+
+    /// RST_STREAM the stream; the connection keeps serving the others.
+    void reset(std::int32_t streamId);
     void onGoaway(std::int32_t lastStreamId);
 
     [[nodiscard]] std::size_t activeStreams() const noexcept { return streams_.size(); }

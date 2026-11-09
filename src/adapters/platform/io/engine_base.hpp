@@ -79,6 +79,7 @@ public:
 
     void post(PostedTask task) override;
     void run() override;
+    /// Idempotent. After it returns, no completion fires until `run()` again.
     void stop() override;
 
 protected:

@@ -487,6 +487,37 @@ void caseRejectsUntrustedCa()
     }
 }
 
+void caseCancelCompletesOnce()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx"};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    std::atomic<int> completions{0};
+    HttpError seen = HttpError::protocol;
+    auto ticket = stack.client().submit(get(server.url() + "/"), [&](auto result) {
+        ++completions;
+        if (!result) {
+            seen = result.error();
+        }
+    });
+    check(ticket.has_value(), "submitted");
+
+    (*ticket)->cancel();
+    (*ticket)->cancel(); // idempotent
+
+    // Give the loop a turn to prove it does not complete twice.
+    antares::test::Await tick;
+    (void)stack.pool().next().submitTimer(std::chrono::milliseconds{20}, [&] { tick.signal(); });
+    check(tick.wait(), "loop ran");
+
+    check(completions.load() == 1, "completed exactly once");
+    check(seen == HttpError::cancelled, "reported as cancelled");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -514,6 +545,7 @@ std::span<const Case> cases()
         {"basic-encodes-credential", caseBasicEncodesCredential},
         {"verifies-against-trusted-ca", caseVerifiesAgainstTrustedCa},
         {"rejects-untrusted-ca", caseRejectsUntrustedCa},
+        {"cancel-completes-once", caseCancelCompletesOnce},
     };
     return table;
 }

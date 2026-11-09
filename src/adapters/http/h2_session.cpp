@@ -335,6 +335,17 @@ void H2Session::complete(std::int32_t streamId,
     }
 }
 
+void H2Session::reset(std::int32_t streamId)
+{
+    if (session_ == nullptr || streamId <= 0) {
+        return;
+    }
+    complete(streamId, std::unexpected(domain::http::HttpError::cancelled));
+    (void)nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, streamId, NGHTTP2_CANCEL);
+    (void)nghttp2_session_send(session_);
+    flush();
+}
+
 void H2Session::fail(domain::http::HttpError error)
 {
     closed_ = true;
