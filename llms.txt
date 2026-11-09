@@ -21,15 +21,16 @@ Language mode is C++26 with CMake 4.4 as the floor. Layers run inward: `domain`,
 `application`, `ports`, `adapters`; `src/platform` is the only OS root. Kernel I/O
 goes through the `IoEngine` port; kqueue is the engine and `poll` the fallback.
 
-The engine owns a dedicated pool of loops, one thread each, and work is bound to a
-loop for its life, so no lock guards connection state. Durations are `std::chrono`,
+The engine owns a dedicated loop pool, one thread each, and work is bound to a loop
+for its life, so no lock guards connection state. Durations are `std::chrono`,
 instants are `steady_clock::time_point`, byte counts are `Bytes`. Timers run on the
 engine, so a delay costs no thread; retries back off on one. Tests wait on
 completions, never on a clock, and a literal address skips the resolver.
 
-HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection, retry,
-redirect and pool policy on the engine; `ClientConfig` publishes pool, timeouts,
-auth, retry and resilience.
+HTTP client: TLS through memory BIOs with ALPN offering `h2` then `http/1.1`, h2
+multiplexing with the peer's stream ceiling, GOAWAY retry, and an h1 floor with
+keep-alive. OpenSSL 3 for TLS, nghttp2 for framing, our pool, retry and redirect
+policy on the engine.
 
 ## Command surface
 

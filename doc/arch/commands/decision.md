@@ -13,6 +13,7 @@ Usage: speckit decision <COMMAND>
 ## Subcommands
 
 - [`speckit decision eval`](decision/eval.md)
+- [`speckit decision extract`](decision/extract.md)
 - [`speckit decision probe`](decision/probe.md)
 - [`speckit decision probe-rule`](decision/probe-rule.md)
 - [`speckit decision status`](decision/status.md)

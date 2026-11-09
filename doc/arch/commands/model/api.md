@@ -13,6 +13,7 @@ Usage: speckit model api <COMMAND>
 ## Subcommands
 
 - [`speckit model api apply`](api/apply.md)
+- [`speckit model api chat`](api/chat.md)
 - [`speckit model api list`](api/list.md)
 - [`speckit model api select`](api/select.md)
 
