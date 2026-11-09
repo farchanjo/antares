@@ -21,16 +21,17 @@ Language mode is C++26 with CMake 4.4 as the floor. Layers run inward: `domain`,
 `application`, `ports`, `adapters`; `src/platform` is the only OS root. Kernel I/O
 goes through the `IoEngine` port; kqueue is the engine and `poll` the fallback.
 
-The engine owns a dedicated loop pool, one thread each, and work is bound to a loop
-for its life, so no lock guards connection state. Durations are `std::chrono`,
-instants are `steady_clock::time_point`, byte counts are `Bytes`. Timers run on the
-engine, so a delay costs no thread; retries back off on one. Tests wait on
-completions, never on a clock, and a literal address skips the resolver.
+The engine owns a dedicated loop pool, one thread each, plus one resolver thread, so
+no call blocks the loop. Work is bound to a loop for its life; no lock guards
+connection state. Durations are `std::chrono`, instants are
+`steady_clock::time_point`, byte counts are `Bytes`. Timers run on the engine, so a
+delay costs no thread; retries back off on one. Tests wait on completions, never on
+a clock.
 
-HTTP client: TLS 1.2+ through memory BIOs (test certificates are self-signed and committed) with ALPN offering `h2` then `http/1.1`, h2
-multiplexing with the peer's stream ceiling, GOAWAY retry, and an h1 floor with
-keep-alive. OpenSSL 3 with memory BIOs for TLS, nghttp2 for framing, our pool, retry, redirect and keep-alive policy on the engine. A streaming
-response feeds a data handler; SSE and WebSocket build on it.
+HTTP client: TLS 1.2+ through memory BIOs with ALPN offering `h2` then `http/1.1`,
+h2 multiplexing with the peer's stream ceiling and a capped header table, GOAWAY
+retry, h1 keep-alive, bearer/basic/mTLS credentials, chunked streaming with an idle
+timeout, SSE parsing and WebSocket framing. OpenSSL 3 for TLS, nghttp2 for framing.
 
 ## Command surface
 
