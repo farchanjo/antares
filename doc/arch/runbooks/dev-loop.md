@@ -14,10 +14,19 @@ The macOS host is `farchanjo@192.168.202.241`, checkout at `~/dev/antares`.
 AppleScript through `osascript` is the evidence source for anything the exit
 code cannot prove.
 
-The host carries **no** `speckit`. Corpus gates run on the workstation only;
-the host builds and tests. Two remotes carry the work: `mac` pushes into the
-host checkout (`receive.denyCurrentBranch=updateInstead`), `origin` publishes to
-GitHub from the workstation.
+The workstation is the single hub. It is the only publisher: the host never
+talks to GitHub, and GitHub is only reached from here.
+
+```mermaid
+flowchart LR
+    W[Workstation] -->|git push mac| H[macOS host]
+    W -->|git push origin| G[GitHub]
+    H -->|build, test, osascript evidence| W
+```
+
+The host carries **no** `speckit` and **no** remote of its own. Corpus gates run
+on the workstation; the host only builds and tests. The `mac` push lands in the
+host checkout through `receive.denyCurrentBranch=updateInstead`.
 
 ## Trigger
 
@@ -32,6 +41,7 @@ Run this procedure when:
 - `speckit validate` exits `0` on the workstation.
 - `make lint` exits `0` on the workstation.
 - The change is committed; the host receives it by push, never by patch.
+- The host holds no remote and no upstream branch; it is a sink.
 - The host answers and its toolchain resolves: `clang`, `cmake`, `ninja`,
   `sccache`, `ld64.lld`, `osascript`.
 - The active feature is selected, so the guard accepts the write.
@@ -52,7 +62,8 @@ Run this procedure when:
    notification path.
 9. Read the sccache counters with `sccache --show-stats` when build time moves
    without a source change.
-10. Publish from the workstation when the loop is green: `git push origin main`.
+10. Publish from the workstation only, and only when the loop is green:
+    `git push origin main`.
 
 ## Verification
 
