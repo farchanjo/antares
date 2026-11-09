@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <chrono>
 #include <cstdio>
 #include <utility>
 
@@ -77,7 +78,18 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
                               config_.trustBundlePem);
 }
 
-HttpClient::~HttpClient() = default;
+HttpClient::~HttpClient()
+{
+    // A completion runs on the loop and captures `this`, so every pending
+    // attempt has to settle before the members go. On a loop thread the wait
+    // would deadlock, so it is skipped there and the pool owns the lifetime.
+    if (pool_.isLoopThread()) {
+        return;
+    }
+    std::unique_lock<std::mutex> lock{drainMutex_};
+    (void)drainCv_.wait_for(lock, std::chrono::seconds{5},
+                            [this] { return pending_.load(std::memory_order_acquire) == 0; });
+}
 
 std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
 HttpClient::submit(domain::http::Request request, ports::http::Completion done)
@@ -111,7 +123,18 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
         }
     }
 
-    auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
+    // The counter is decremented only after the caller's completion returns, so
+    // the destructor never resumes while a callback still uses this client.
+    auto user = std::move(done);
+    auto guarded = [this, user = std::move(user)](std::expected<domain::http::Response,
+                                                               domain::http::HttpError> result) {
+        user(std::move(result));
+        pending_.fetch_sub(1, std::memory_order_acq_rel);
+        drainCv_.notify_all();
+    };
+    pending_.fetch_add(1, std::memory_order_acq_rel);
+
+    auto attempt = std::make_shared<Attempt>(std::move(request), std::move(guarded), config_);
     attempt->stream = std::move(handler);
     attempt->method_ = method;
     resetSession(attempt);

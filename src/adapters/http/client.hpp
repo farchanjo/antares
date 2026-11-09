@@ -1,6 +1,9 @@
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
 #include <map>
+#include <mutex>
 #include <expected>
 #include <memory>
 #include <string>
@@ -90,6 +93,12 @@ private:
 
     /// One multiplexed session per loop and origin (FR-019).
     std::map<std::pair<ports::io::IoEngine *, std::string>, std::shared_ptr<H2Session>> sessions_;
+    /// Attempts in flight, and the latch the destructor waits on. A completion
+    /// captures `this`, so the client may not die while one is still pending.
+    std::atomic<std::size_t> pending_{0};
+    std::mutex drainMutex_;
+    std::condition_variable drainCv_;
+
     ports::http::ClientStats stats_{};
     std::uint64_t rng_ = 0x9e3779b97f4a7c15ULL;
 };
