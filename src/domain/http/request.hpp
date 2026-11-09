@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -38,17 +39,23 @@ struct Header {
     std::string value;
 };
 
+/// Wire bytes are `std::byte`, never `char` (P-11).
+using Body = std::vector<std::byte>;
+
 /// One submission. `version` overrides ALPN and is test-only (FR-005).
 struct Request {
     Method method = Method::get;
     std::string url;
     std::vector<Header> headers;
-    std::string body;
+    Body body;
     Version version = Version::negotiate;
     bool followRedirects = true;
 
     /// True when the request carries a body worth rewriting on a 303.
     [[nodiscard]] bool hasBody() const noexcept { return !body.empty(); }
+
+    /// Append a UTF-8 payload as wire bytes.
+    void setBody(std::string_view text);
 };
 
 } // namespace antares::domain::http

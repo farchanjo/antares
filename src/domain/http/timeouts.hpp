@@ -1,22 +1,24 @@
 #pragma once
 
-#include <cstdint>
+#include <chrono>
 
 namespace antares::domain::http {
 
-/// Deadlines per stage (FR-012). Zero disables that deadline.
+using Duration = std::chrono::milliseconds;
+
+/// Deadlines per stage (FR-012). A zero duration disables that deadline.
 struct Timeouts {
     /// TCP connect plus TLS handshake.
-    std::uint32_t connectMs = 10'000;
+    Duration connect = std::chrono::seconds{10};
 
     /// A single read that makes no progress.
-    std::uint32_t readMs = 30'000;
+    Duration read = std::chrono::seconds{30};
 
     /// A single write that makes no progress.
-    std::uint32_t writeMs = 30'000;
+    Duration write = std::chrono::seconds{30};
 
     /// Whole exchange, redirects included. The backstop.
-    std::uint32_t requestMs = 120'000;
+    Duration request = std::chrono::seconds{120};
 };
 
 } // namespace antares::domain::http

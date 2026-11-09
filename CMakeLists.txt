@@ -87,6 +87,7 @@ set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
     src/domain/http/url.cpp
     src/domain/http/auth.cpp
+    src/domain/http/request.cpp
     src/adapters/http/tls_context.cpp
 )
 

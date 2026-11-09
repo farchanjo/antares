@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "domain/http/timeouts.hpp"
+
 namespace antares::domain::http {
 
 /// Connection reuse bounds (FR-011). Every field is a ceiling, never a target.
@@ -13,7 +15,7 @@ struct PoolConfig {
     std::uint16_t maxIdleTotal = 32;
 
     /// How long an idle connection survives before it is closed.
-    std::uint32_t idleTimeoutMs = 15'000;
+    Duration idleTimeout = std::chrono::seconds{15};
 };
 
 } // namespace antares::domain::http

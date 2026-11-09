@@ -153,7 +153,7 @@ Enforced by: config:project, verify
 
 ## P-11 — C++23 in full, no C escape hatch
 Severity: block
-MANDATE: The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`, `std::variant`, concepts, `constexpr`. A `void*`, a pointer-plus-count pair, a C array and a `#define` constant carry a reason, and a facility the toolchain lacks is gated by its feature-test macro instead of assumed.
+MANDATE: The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`, `std::variant`, concepts, `constexpr`. A `void*`, a pointer-plus-count pair, a C array and a `#define` constant carry a reason, and a facility the toolchain lacks is gated by its feature-test macro instead of assumed. A duration is `std::chrono::duration`, never a bare millisecond integer; wire bytes are `std::byte`, never `char`.
 Enforced by: config:project, verify
 
 ## P-12 — Ownership over pointers

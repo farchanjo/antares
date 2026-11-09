@@ -13,7 +13,7 @@ struct Response {
     std::uint16_t status = 0;
     Version version = Version::negotiate;
     std::vector<Header> headers;
-    std::string body;
+    Body body;
     std::uint8_t hops = 0;
 
     [[nodiscard]] bool isRedirect() const noexcept
