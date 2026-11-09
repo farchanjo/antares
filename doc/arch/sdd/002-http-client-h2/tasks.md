@@ -47,8 +47,7 @@ Ordered so each task compiles on its own and proves one requirement.
 - [x] T020 Streaming completion with an idle timeout (FR-022).
 - [x] T021 SSE framing and the WebSocket codec (FR-023).
 - [x] T022 Complete the 101 upgrade path so a socket is opened from a response.
-- [ ] T023 Answer pings and drive a close handshake (RFC 6455 §5.5) — the codec
-      replies to ping; the close handshake and reconnect policy are open.
+- [x] T023 Answer pings and drive a close handshake (RFC 6455 §5.5).
 
 - [x] T024 Wire the log port into the client and keep stream sinks across
       redirect and retry (FR-025).

@@ -155,3 +155,17 @@ Feature: Http Client H2
     Then  the head arrives once
     And   each chunk reaches the sink separately
     And   a silent stream still times out
+
+  @planned
+  Scenario: FR-024 the upgrade is the transport change
+    Given a WebSocket handshake
+    When  the server answers 101
+    Then  the head is consumed before any frame
+    And   frames after it reach the codec
+
+  @planned
+  Scenario: FR-025 every port method is exercised
+    Given the client port
+    When  the suite runs
+    Then  every virtual has a case that reaches it
+    And   a stream keeps its sink across a redirect and a retry
