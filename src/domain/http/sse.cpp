@@ -64,6 +64,8 @@ std::expected<void, HttpError> SseParser::consumeLine(std::string_view line)
                                        ? std::string_view{}
                                        : afterField(line.substr(colon + 1));
 
+    std::fprintf(stderr, "  field=[%.*s] value=[%.*s]\n", static_cast<int>(field.size()),
+                 field.data(), static_cast<int>(value.size()), value.data());
     if (field == DATA) {
         if (hasData_) {
             pending_.data += '\n';
