@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <optional>
 #include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -20,8 +21,9 @@ namespace {
 
 constexpr domain::Bytes SOCKET_CHUNK{16 * 1024};
 
-[[nodiscard]] std::expected<sockaddr_storage, domain::http::HttpError>
-lookup(const std::string &host, std::uint16_t port)
+/// Literal addresses never leave the process; a name goes through the engine,
+/// so the loop keeps running while the resolver works.
+[[nodiscard]] std::optional<sockaddr_storage> literal(const std::string &host, std::uint16_t port)
 {
     sockaddr_in v4{};
     v4.sin_family = AF_INET;
@@ -40,21 +42,7 @@ lookup(const std::string &host, std::uint16_t port)
         std::memcpy(&storage, &v6, sizeof v6);
         return storage;
     }
-
-    addrinfo hints{};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    addrinfo *found = nullptr;
-    const std::string service = std::to_string(port);
-    if (::getaddrinfo(host.c_str(), service.c_str(), &hints, &found) != 0 || found == nullptr) {
-        return std::unexpected(domain::http::HttpError::connect);
-    }
-
-    sockaddr_storage storage{};
-    std::memcpy(&storage, found->ai_addr, found->ai_addrlen);
-    ::freeaddrinfo(found);
-    return storage;
+    return std::nullopt;
 }
 
 } // namespace
@@ -76,13 +64,33 @@ void Connection::open(const domain::http::Url &url, Ready ready, Failure failure
     ready_ = std::move(ready);
     failure_ = std::move(failure);
 
-    auto address = lookup(url.host, url.port);
-    if (!address) {
-        fail(address.error());
+    auto self = shared_from_this();
+
+    if (auto direct = literal(url.host, url.port)) {
+        begin(*direct);
         return;
     }
 
-    const int family = reinterpret_cast<const sockaddr *>(&*address)->sa_family;
+    auto submittedResolve = engine_.submitResolve(
+        url_.host, url_.port, [self](ports::io::IoEngine::ResolveResult resolved) {
+            if (!resolved) {
+                self->fail(domain::http::HttpError::connect);
+                return;
+            }
+            self->begin(*resolved);
+        });
+    if (!submittedResolve) {
+        fail(domain::http::HttpError::connect);
+    }
+}
+
+void Connection::begin(const sockaddr_storage &address)
+{
+    if (state_ == State::closed) {
+        return;
+    }
+
+    const int family = reinterpret_cast<const sockaddr *>(&address)->sa_family;
     const int descriptor = ::socket(family, SOCK_STREAM, 0);
     if (descriptor < 0) {
         fail(domain::http::HttpError::connect);
@@ -98,7 +106,7 @@ void Connection::open(const domain::http::Url &url, Ready ready, Failure failure
     handle_ = std::move(*adopted);
     state_ = State::connecting;
 
-    const auto *raw = reinterpret_cast<const std::byte *>(&*address);
+    const auto *raw = reinterpret_cast<const std::byte *>(&address);
     const std::size_t length = family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
 
     auto self = shared_from_this();

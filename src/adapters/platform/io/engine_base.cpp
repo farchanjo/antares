@@ -16,6 +16,7 @@ namespace tuning = antares::platform::linux;
 #include <fcntl.h>
 #include <sys/socket.h>
 
+#include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
@@ -194,6 +195,15 @@ bool EngineBase::isEngineThread() const noexcept
 
 void EngineBase::poke() noexcept
 {
+    {
+        const std::lock_guard<std::mutex> guard{resolveMutex_};
+        resolveStop_ = true;
+    }
+    resolveReady_.notify_all();
+    if (resolver_.joinable()) {
+        resolver_.join();
+    }
+
     if (wake_[1] >= 0) {
         const char byte = 1;
         (void)::write(wake_[1], &byte, 1);
@@ -209,6 +219,68 @@ std::expected<void, IoError> EngineBase::submitTimer(domain::Duration delay, Pos
     timers_.push_back(Timer{domain::afterFromNow(delay), std::move(task)});
     poke();
     return {};
+}
+
+std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::uint16_t port,
+                                                       ResolveDone done)
+{
+    if (!done || host.empty()) {
+        return std::unexpected(IoError::system);
+    }
+
+    {
+        const std::lock_guard<std::mutex> guard{resolveMutex_};
+        resolveQueue_.push_back(ResolveJob{std::move(host), port, std::move(done)});
+    }
+    resolveReady_.notify_one();
+    startResolver();
+    return {};
+}
+
+void EngineBase::startResolver()
+{
+    const std::lock_guard<std::mutex> guard{resolveMutex_};
+    if (resolver_.joinable()) {
+        return;
+    }
+    resolver_ = std::thread([this] { resolverLoop(); });
+}
+
+void EngineBase::resolverLoop()
+{
+    // One blocking `getaddrinfo` at a time, never on the loop.
+    while (true) {
+        ResolveJob job;
+        {
+            std::unique_lock<std::mutex> lock{resolveMutex_};
+            resolveReady_.wait(lock, [this] { return resolveStop_ || !resolveQueue_.empty(); });
+            if (resolveStop_ && resolveQueue_.empty()) {
+                return;
+            }
+            job = std::move(resolveQueue_.front());
+            resolveQueue_.pop_front();
+        }
+
+        addrinfo hints{};
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+
+        addrinfo *found = nullptr;
+        const std::string service = std::to_string(job.port);
+        ResolveResult result = std::unexpected(IoError::system);
+
+        if (::getaddrinfo(job.host.c_str(), service.c_str(), &hints, &found) == 0 &&
+            found != nullptr) {
+            sockaddr_storage storage{};
+            std::memcpy(&storage, found->ai_addr, found->ai_addrlen);
+            ::freeaddrinfo(found);
+            result = storage;
+        }
+
+        post([done = std::move(job.done), result = std::move(result)]() mutable {
+            done(std::move(result));
+        });
+    }
 }
 
 void EngineBase::post(PostedTask task)
@@ -245,6 +317,15 @@ void EngineBase::stop()
     if (stopped_.exchange(true)) {
         return;
     }
+    {
+        const std::lock_guard<std::mutex> guard{resolveMutex_};
+        resolveStop_ = true;
+    }
+    resolveReady_.notify_all();
+    if (resolver_.joinable()) {
+        resolver_.join();
+    }
+
     if (wake_[1] >= 0) {
         const char byte = 1;
         (void)::write(wake_[1], &byte, 1);

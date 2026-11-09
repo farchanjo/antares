@@ -518,6 +518,29 @@ void caseCancelCompletesOnce()
     check(seen == HttpError::cancelled, "reported as cancelled");
 }
 
+void caseResolvesNameWithoutBlocking()
+{
+    // "localhost" is a name, so it takes the resolver path, not the literal one.
+    antares::test::LoopbackServer server{"named", /*unused*/ true};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    std::string named = server.url();
+    const std::string from = "127.0.0.1";
+    const std::size_t at = named.find(from);
+    if (at != std::string::npos) {
+        named.replace(at, from.size(), "localhost");
+    }
+
+    auto result = stack.blocking().send(get(named + "/"));
+    check(result.has_value(), "name resolved through the engine");
+    if (result) {
+        check(result->status == 200, "status 200");
+    }
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -546,6 +569,7 @@ std::span<const Case> cases()
         {"verifies-against-trusted-ca", caseVerifiesAgainstTrustedCa},
         {"rejects-untrusted-ca", caseRejectsUntrustedCa},
         {"cancel-completes-once", caseCancelCompletesOnce},
+        {"resolves-name-off-loop", caseResolvesNameWithoutBlocking},
     };
     return table;
 }

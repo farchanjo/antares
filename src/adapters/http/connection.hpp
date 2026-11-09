@@ -6,6 +6,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+
+#include <sys/socket.h>
 #include <deque>
 #include <vector>
 
@@ -71,6 +73,7 @@ private:
     void fail(domain::http::HttpError error);
     void ready();
 
+    void begin(const sockaddr_storage &address);
     void readSocket();
     void writeSocket();
     void onSocketRead(std::expected<ports::io::Buffer, ports::io::IoError> chunk);

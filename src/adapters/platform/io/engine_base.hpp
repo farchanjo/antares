@@ -3,7 +3,10 @@
 #include <atomic>
 #include <thread>
 #include <cstdint>
+#include <condition_variable>
 #include <deque>
+#include <mutex>
+#include <string>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -77,6 +80,9 @@ public:
     [[nodiscard]] std::expected<void, IoError> submitTimer(domain::Duration delay,
                                                           PostedTask task) override;
 
+    [[nodiscard]] std::expected<void, IoError> submitResolve(std::string host, std::uint16_t port,
+                                                            ResolveDone done) override;
+
     void post(PostedTask task) override;
     void run() override;
     /// Idempotent. After it returns, no completion fires until `run()` again.
@@ -146,6 +152,21 @@ private:
     };
 
     std::vector<Timer> timers_;
+    struct ResolveJob {
+        std::string host;
+        std::uint16_t port = 0;
+        ResolveDone done;
+    };
+
+    void startResolver();
+    void resolverLoop();
+
+    std::mutex resolveMutex_;
+    std::condition_variable resolveReady_;
+    std::deque<ResolveJob> resolveQueue_;
+    std::thread resolver_;
+    bool resolveStop_ = false;
+
     std::deque<PostedTask> tasks_;
     std::mutex mutex_;
     std::atomic<bool> stopped_{false};

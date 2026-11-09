@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <string>
 #include <functional>
 #include <span>
 #include <string_view>
@@ -50,6 +51,14 @@ public:
 
     /// Snapshot the counters named in the spec's Observability section.
     [[nodiscard]] virtual EngineStats stats() const noexcept = 0;
+
+    /// Resolve a host without blocking the loop. The completion runs on the
+    /// loop like any other; on macOS the resolver itself is a thread.
+    using ResolveResult = std::expected<sockaddr_storage, IoError>;
+    using ResolveDone = std::function<void(ResolveResult)>;
+
+    [[nodiscard]] virtual std::expected<void, IoError>
+    submitResolve(std::string host, std::uint16_t port, ResolveDone done) = 0;
 
     /// Run `task` on the loop thread no sooner than `delay` from now. The timer
     /// costs no thread: the loop shortens its wait to the nearest deadline.

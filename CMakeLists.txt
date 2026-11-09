@@ -272,7 +272,8 @@ set(ANTARES_HTTP_CASES
     basic-encodes-credential
     verifies-against-trusted-ca
     rejects-untrusted-ca
-    cancel-completes-once)
+    cancel-completes-once
+    resolves-name-off-loop)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
