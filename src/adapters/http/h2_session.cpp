@@ -234,6 +234,8 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
 
     lastStreamId_ = streamId;
     streams_.emplace(streamId, std::move(*stream));
+    // nghttp2 buffers frames; sending is what puts them in the write buffer.
+    (void)nghttp2_session_send(session_);
     flush();
     return streamId;
 }
