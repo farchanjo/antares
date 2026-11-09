@@ -6,7 +6,7 @@ consulted: []
 informed: []
 ---
 
-# 0011 — C++23 in full, ownership over pointers, leak gate on
+# 0011 — Newest C++ in full, ownership over pointers, leak gate on
 
 ## Context and Problem Statement
 
@@ -40,9 +40,9 @@ noisy report hides the real fault.
 
 ## Decision Outcome
 
-Chosen option: **C++23 in full, ownership explicit, leak gate always on.**
+Chosen option: **the newest C++ the toolchain takes, ownership explicit, leak gate always on.**
 
-The project compiles as C++23 and prefers its facilities to C. `void*`, a
+The project compiles as C++26 and prefers its facilities to C. `void*`, a
 pointer-plus-count pair, a C array and a `#define` constant are escape hatches
 and carry a reason. A feature the toolchain has not shipped — `std::expected`
 under libstdc++ 13 with clang 18 is the live case — is gated by its feature-test

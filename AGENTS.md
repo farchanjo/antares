@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: ce8135c880adff1e108d085394eae16da8890aad6ee71cd051961327632d409d
+digest: 51f12f651ecead930e27062c8ee0c54e1c303b7ae6958ed639862e75ab539472
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -48,7 +48,7 @@ digest: ce8135c880adff1e108d085394eae16da8890aad6ee71cd051961327632d409d
 - P-08 (block): Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized… [config:project, verify]
 - P-09 (block): The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and… [config:architecture, verify]
 - P-10 (block): Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an… [config:project, verify]
-- P-11 (block): The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`,… [config:project, verify]
+- P-11 (block): The project compiles as C++26, the newest mode the toolchain accepts, and prefers the language's facilities to C — `std::expected`, `std::span`,… [config:project, verify]
 - P-12 (block): A raw pointer is non-owning or `nullptr`; ownership is `std::unique_ptr`, and `std::shared_ptr` only where a lifetime is genuinely shared. Non-owning… [config:architecture, verify]
 - P-13 (block): Every development run is leak-checked — the `asan` target for AddressSanitizer, the `leak` target for the leak pass — and the binary is symbolized with… [config:project, verify]
 - P-14 (block): Allocation goes through mimalloc, pinned by URL and SHA-256 at the version the ADR names, with `ANTARES_ALLOCATOR=system` as the escape hatch. Call sites… [config:project, verify]
