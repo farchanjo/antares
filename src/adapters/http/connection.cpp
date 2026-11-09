@@ -205,11 +205,13 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
 
     if (ssl_ != nullptr) {
         std::fprintf(stderr, "  sock read %zu\n", chunk->size());
+        std::fprintf(stderr, "  bio before=%ld\n", static_cast<long>(BIO_ctrl_pending(incoming_)));
         (void)BIO_write(incoming_, chunk->data(), static_cast<int>(chunk->size()));
         if (state_ == State::handshaking) {
             driveHandshake();
             return;
         }
+        std::fprintf(stderr, "  bio after=%ld\n", static_cast<long>(BIO_ctrl_pending(incoming_)));
         drainPlaintext();
         drainOutgoing();
         return;
