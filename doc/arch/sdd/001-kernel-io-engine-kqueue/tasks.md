@@ -6,15 +6,15 @@
       `src/ports/io/io_engine.hpp`; no definition, header only (FR-001, FR-005).
 - [x] T002 Declare `PendingOp` and the stable-address operation store in
       `src/ports/io/pending_op.hpp` (FR-002).
-- [ ] T003 Write `src/application/io/engine_factory.cpp` selecting by platform
+- [x] T003 Write `src/application/io/engine_factory.cpp` selecting by platform
       and honouring `ANTARES_IO_BACKEND`; expose `name()` (FR-004).
-- [ ] T004 Implement the `poll` backend in
+- [x] T004 Implement the `poll` backend in
       `src/adapters/platform/io/poll_engine.cpp` (FR-001, FR-008).
-- [ ] T005 Implement the engine thread, the self-pipe wakeup and `post()`
+- [x] T005 Implement the engine thread, the self-pipe wakeup and `post()`
       (FR-007).
-- [ ] T006 Implement the kqueue backend in
+- [x] T006 Implement the kqueue backend in
       `src/adapters/platform/io/kqueue_engine.cpp` with `EV_ONESHOT` (FR-003).
-- [ ] T007 Map `EV_EOF` to `closed` and `EV_ERROR` to `system` (FR-005).
+- [x] T007 Map `EV_EOF` to `closed` and `EV_ERROR` to `system` (FR-005).
 - [ ] T008 Implement `cancel()` so the callback fires once with `cancelled` and
       never again (FR-006).
 - [ ] T009 Guarantee no callback after `stop()` returns; join the engine thread
@@ -24,7 +24,7 @@
 - [ ] T011 Instantiate the suite twice through CTest, one per backend (FR-008).
 - [ ] T012 Add fault injection for `tooManyDescriptors` through a lowered
       `RLIMIT_NOFILE` (FR-005).
-- [ ] T013 Wire `antares_io` into CMake with the kqueue sources behind
+- [x] T013 Wire `antares_io` into CMake with the kqueue sources behind
       `if(APPLE)`; add the suite to the `dev` test preset (FR-003, FR-008).
 - [ ] T014 Add the counters named in the spec's Observability section and read
       them from a suite case (FR-001).
@@ -35,10 +35,14 @@
       `src/ports/io/io_handle.cpp` (FR-009).
 - [x] T017 Retarget every port operation to `const IoHandle &` plus an optional
       offset (FR-009, FR-011).
-- [ ] T018 Give the `poll` backend the immediate strategy for `file` handles and
+- [x] T018 Give the `poll` backend the immediate strategy for `file` handles and
       cover it with a suite case (FR-010).
-- [ ] T019 Give the kqueue backend the same immediate strategy and assert the
+- [x] T019 Give the kqueue backend the same immediate strategy and assert the
       loop stays idle on a file read (FR-010).
+
+- [ ] T020 Force kqueue in the factory and reach `poll` only by kernel refusal
+      or `ANTARES_IO_BACKEND` (FR-004).
+- [ ] T021 Log the selected backend name once at startup (FR-004).
 
 ## Dependencies
 
