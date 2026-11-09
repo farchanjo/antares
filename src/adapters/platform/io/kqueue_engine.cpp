@@ -1,6 +1,7 @@
 #include "adapters/platform/io/kqueue_engine.hpp"
 
 #include <sys/event.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
 
