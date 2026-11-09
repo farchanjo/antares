@@ -6,37 +6,18 @@
 
 namespace antares::domain {
 
-/// A point on the monotonic clock. Only differences are meaningful, which is
-/// what a deadline needs.
-class Instant {
-public:
-    constexpr Instant() = default;
+/// Native monotonic time point. Only differences are meaningful, which is what a
+/// deadline needs; `steady_clock` cannot go backwards.
+using Instant = std::chrono::steady_clock::time_point;
 
-    [[nodiscard]] static Instant now() noexcept
-    {
-        Instant instant;
-        instant.value_ = std::chrono::steady_clock::now();
-        return instant;
-    }
+[[nodiscard]] inline Instant afterFromNow(Duration span) noexcept
+{
+    return std::chrono::steady_clock::now() + span;
+}
 
-    [[nodiscard]] bool isBefore(Instant other) const noexcept { return value_ < other.value_; }
-
-    [[nodiscard]] Instant operator+(Duration span) const noexcept
-    {
-        Instant result;
-        result.value_ = value_ + span.chrono();
-        return result;
-    }
-
-    friend Duration operator-(Instant later, Instant earlier) noexcept
-    {
-        return Duration::of(later.value_ - earlier.value_);
-    }
-
-    friend auto operator<=>(const Instant &left, const Instant &right) noexcept = default;
-
-private:
-    std::chrono::steady_clock::time_point value_{};
-};
+[[nodiscard]] inline bool hasPassed(Instant deadline) noexcept
+{
+    return std::chrono::steady_clock::now() >= deadline;
+}
 
 } // namespace antares::domain

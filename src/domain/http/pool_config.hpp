@@ -17,7 +17,7 @@ struct PoolConfig {
     std::uint16_t maxIdleTotal = 32;
 
     /// How long an idle connection survives before it is closed.
-    Duration idleTimeout = Duration::seconds(15);
+    Duration idleTimeout = std::chrono::seconds{15};
 };
 
 } // namespace antares::domain::http
