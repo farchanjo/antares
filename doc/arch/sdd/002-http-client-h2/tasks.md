@@ -13,17 +13,17 @@ Ordered so each task compiles on its own and proves one requirement.
       (FR-007).
 - [x] T004 Build the TLS context: trust store, SNI, hostname verification and a
       typed verification error (FR-009).
-- [ ] T005 Implement the connection state machine connect → handshake → ALPN →
+- [x] T005 Implement the connection state machine connect → handshake → ALPN →
       ready, each stage one engine operation (FR-001, FR-003).
 - [ ] T006 Implement the h2 session over nghttp2 with per-stream state, flow
       control and a bounded send buffer (FR-004, FR-010).
 - [ ] T007 Implement the HTTP/1.1 keep-alive session and the ALPN selection that
       picks it (FR-005).
-- [ ] T008 Implement redirect policy: status mapping, method rewrite, credential
+- [x] T008 Implement redirect policy: status mapping, method rewrite, credential
       drop on origin change, hop ceiling (FR-006).
 - [ ] T009 Implement the connection pool with idle timeout and a per-authority
       cap (FR-010).
-- [ ] T010 Implement the blocking facade with reentrancy detection (FR-008).
+- [x] T010 Implement the blocking facade with reentrancy detection (FR-008).
 - [ ] T011 Add a loopback TLS test server and prove h2, h1 fallback, redirect
       and cancellation on both engine backends (FR-003…FR-010).
 - [ ] T012 Prove the engine stays unblocked: a hundred open streams, sync call
