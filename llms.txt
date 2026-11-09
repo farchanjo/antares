@@ -83,6 +83,9 @@ HTTP client: TLS 1.2+ through memory BIOs with ALPN offering h2 then HTTP/1.1,
 multiplexing with the peer's stream ceiling, GOAWAY retry, keep-alive, bearer/basic
 and mTLS credentials, chunked streaming with an idle timeout, SSE and WebSocket.
 
+The loop owns its op table; the timer queue is the one shared container and takes
+a mutex, because a caller arms a delay while the loop walks it.
+
 Kubernetes client: a path value type validated as DNS-1123, list options rendered
 as a query, `Status` mapped to a typed reason, watch frames split across chunks,
 a kubeconfig parsed from a YAML subset, and credentials resolved once per context.

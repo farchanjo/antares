@@ -185,6 +185,9 @@ The corpus is governed; use the binary for every loop step.
 - **Never sleep in a test.** Wait on the completion. A spin with
   `sleep_for` hides a missing signal and slows the suite; the waiter times out
   instead.
+- **A shared queue is guarded.** The loop owns its op table, but a timer is
+  armed from the caller thread, so the timer vector takes a mutex. An unguarded
+  push reallocates under an open reference and reads freed memory.
 - **Use the native types.** Durations are `std::chrono`, instants are
   `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
   standard library already provides is a defect, not a defence.
