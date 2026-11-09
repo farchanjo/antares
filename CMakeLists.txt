@@ -111,7 +111,10 @@ set(ANTARES_IO_SOURCES
 )
 
 if(APPLE)
-    list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/kqueue_engine.cpp)
+    list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/kqueue_engine.cpp
+                                   src/platform/mac/thread_tuning.cpp)
+else()
+    list(APPEND ANTARES_IO_SOURCES src/platform/linux/thread_tuning.cpp)
 endif()
 
 if(ANTARES_ALLOCATOR STREQUAL "mimalloc")

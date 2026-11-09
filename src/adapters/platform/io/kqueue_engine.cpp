@@ -74,7 +74,8 @@ bool KqueueEngine::waitReady(int timeoutMilliseconds)
     };
 
     struct kevent events[MAX_EVENTS];
-    const int ready = ::kevent(queue_, nullptr, 0, events, MAX_EVENTS, &timeout);
+    const int ready = ::kevent(queue_, nullptr, 0, events, MAX_EVENTS,
+                               timeoutMilliseconds < 0 ? nullptr : &timeout);
     if (ready <= 0) {
         return false;
     }

@@ -4,6 +4,14 @@
 
 #include "domain/units/instant.hpp"
 
+#if defined(__APPLE__)
+#include "platform/mac/thread_tuning.hpp"
+namespace tuning = antares::platform::mac;
+#else
+#include "platform/linux/thread_tuning.hpp"
+namespace tuning = antares::platform::linux;
+#endif
+
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -216,6 +224,7 @@ void EngineBase::run()
 {
     // Do not reset the flag here: a stop() issued before the thread reaches the
     // loop must survive, or the loop runs forever.
+    tuning::tuneLoopThread("antares.io");
     loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
     armWakeup();
     while (!stopped_.load()) {
@@ -262,6 +271,11 @@ void EngineBase::fireDueTimers()
 
 int EngineBase::nextWaitMilliseconds() const
 {
+    // Nothing pending: block until the wakeup pipe says otherwise. A fixed
+    // timeout here would cost an idle wakeup per period for no work.
+    if (timers_.empty() && pendingCount() == 0) {
+        return -1;
+    }
     if (timers_.empty()) {
         return POLL_TIMEOUT_MS;
     }
@@ -275,7 +289,8 @@ int EngineBase::nextWaitMilliseconds() const
     if (until.count() <= 0) {
         return 0;
     }
-    return static_cast<int>(std::min<std::int64_t>(until.count(), POLL_TIMEOUT_MS));
+    // Exact deadline, not a capped slice: the pipe wakes us for new work.
+    return static_cast<int>(until.count());
 }
 
 void EngineBase::drainWakeup()
