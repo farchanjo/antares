@@ -90,6 +90,32 @@ Concurrent streams per connection, header list size, redirect hops and buffered
 body bytes all have configured ceilings. Crossing one is a typed error, not an
 unbounded allocation.
 
+### FR-011 Pool configuration
+
+Idle connections are pooled per authority with a per-host ceiling, a global
+ceiling and an idle timeout. Crossing a ceiling closes the least recently used
+idle connection; it never refuses a request.
+
+### FR-012 Timeouts
+
+Connect, read, write and whole-request deadlines are configurable, and zero
+disables one. A read or write deadline resets on progress. A deadline that
+expires is a typed `timeout`, never a silent retry. The engine grows a timer
+facility so a deadline costs no thread.
+
+### FR-013 Authentication
+
+The client carries bearer tokens, basic credentials and client certificates for
+mutual TLS. The credential is applied at header-build time and never stored in a
+log record. Basic auth is base64 of `user:password` computed once, at
+configuration load.
+
+### FR-014 One published configuration surface
+
+`ClientConfig` carries pool, timeouts, auth, limits and the two redirect and
+verification switches. The client takes it by value at construction, exposes it
+back through `config()`, and reads no environment variable of its own.
+
 ## Security Requirements
 
 - **Data sensitivity/classification.** Requests carry cluster API payloads and

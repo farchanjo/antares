@@ -70,3 +70,31 @@ Feature: Http Client H2
     When  a response exceeds the header or body ceiling
     Then  the request fails with a typed error
     And   no unbounded allocation happened
+
+  @planned
+  Scenario: FR-011 pool configuration
+    Given a per-host idle ceiling
+    When  one more connection goes idle
+    Then  the least recently used idle connection is closed
+    And   the request is not refused
+
+  @planned @security
+  Scenario: FR-012 timeouts
+    Given a read deadline
+    When  the peer stops sending
+    Then  the request fails with timeout
+    And   no thread waits on it
+
+  @planned @security
+  Scenario: FR-013 authentication
+    Given a bearer credential in the configuration
+    When  a request is built
+    Then  the Authorization header carries it
+    And   the token is absent from the log record
+
+  @planned
+  Scenario: FR-014 one published configuration surface
+    Given a client built from a configuration
+    When  the caller reads config back
+    Then  pool, timeouts and auth match what was set
+    And   no environment variable was consulted

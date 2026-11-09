@@ -5,13 +5,13 @@ Plan: `doc/arch/sdd/002-http-client-h2/plan.md`
 
 Ordered so each task compiles on its own and proves one requirement.
 
-- [ ] T001 Add OpenSSL 3 and nghttp2 as pinned `find_package` dependencies and
+- [x] T001 Add OpenSSL 3 and nghttp2 as pinned `find_package` dependencies and
       link them into a new `antares_http` target (D-17).
-- [ ] T002 Define the domain value types: request, response, limits, error,
+- [x] T002 Define the domain value types: request, response, limits, error,
       URL parse (FR-001, FR-010).
-- [ ] T003 Declare the async client port with `submit`, `cancel` and `stats`
+- [x] T003 Declare the async client port with `submit`, `cancel` and `stats`
       (FR-007).
-- [ ] T004 Build the TLS context: trust store, SNI, hostname verification and a
+- [x] T004 Build the TLS context: trust store, SNI, hostname verification and a
       typed verification error (FR-009).
 - [ ] T005 Implement the connection state machine connect → handshake → ALPN →
       ready, each stage one engine operation (FR-001, FR-003).
@@ -30,6 +30,11 @@ Ordered so each task compiles on its own and proves one requirement.
       from a callback, idle CPU near zero (FR-002).
 - [ ] T013 Wire the counters and log events the spec's Observability section
       names (FR-007).
+
+- [ ] T014 Add a timer to the engine port so a deadline costs no thread
+      (FR-012).
+- [ ] T015 Apply the configured credential when headers are built, covering
+      bearer, basic and client certificate (FR-013).
 
 ## Dependencies
 
