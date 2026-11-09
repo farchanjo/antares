@@ -1,5 +1,5 @@
 ---
-revision: 6
+revision: 7
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -13,6 +13,8 @@ amendments:
   - adr: "0004"
     date: "2026-11-09"
   - adr: "0005"
+    date: "2026-11-09"
+  - adr: "0006"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -132,6 +134,11 @@ Enforced by: config:architecture, verify
 Severity: block
 MANDATE: Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized configuration (`-O3`, thin LTO, dSYM, universal binary, strip, notarization) runs only with explicit operator authorization. A dev artifact never ships as release.
 Enforced by: config:project, verify
+
+## P-09 — Kernel primitive behind a port
+Severity: block
+MANDATE: The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and no call site names one. A new platform adds an adapter under `src/adapters/platform/io/` and a conformance case, never a branch at the call site.
+Enforced by: config:architecture, verify
 
 ## Governance
 

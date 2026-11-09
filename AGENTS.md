@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: 202d9ffc2063fb36c138fef23790a1e0e105f965c71925bf438feb89d7e5acc7
+digest: 3e2a513e235da21a87fe182d1dbc4894448086eda6b76ef5ee1b6f7deea0c3b8
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -46,6 +46,7 @@ digest: 202d9ffc2063fb36c138fef23790a1e0e105f965c71925bf438feb89d7e5acc7
 - P-06 (block): The application is C++ compiled against Qt, with no second toolkit and no second language; Qt Widgets is the UI stack and QML enters only through an ADR.… [config:project, verify]
 - P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`.… [config:architecture, verify]
 - P-08 (block): Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized… [config:project, verify]
+- P-09 (block): The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and… [config:architecture, verify]
 
 ## Architecture and corpus index
 
