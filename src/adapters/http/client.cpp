@@ -102,7 +102,11 @@ HttpClient::~HttpClient()
         if (!session) {
             continue;
         }
-        key.first->post([session] { session->reset(); });
+        auto socket = session->connection();
+        if (!socket) {
+            continue;
+        }
+        key.first->post([socket] { socket->close(); });
     }
 
     std::unique_lock<std::mutex> lock{drainMutex_};
