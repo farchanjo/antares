@@ -1,15 +1,14 @@
 #include "domain/http/sse.hpp"
 
 #include <charconv>
-#include <cstdio>
 
 namespace antares::domain::http {
 namespace {
 
-constexpr std::string_view ID = "id:";
-constexpr std::string_view EVENT = "event:";
-constexpr std::string_view DATA = "data:";
-constexpr std::string_view RETRY = "retry:";
+constexpr std::string_view ID = "id";
+constexpr std::string_view EVENT = "event";
+constexpr std::string_view DATA = "data";
+constexpr std::string_view RETRY = "retry";
 
 std::string_view afterField(std::string_view line)
 {
@@ -28,8 +27,6 @@ SseParser::SseParser(Bytes ceiling)
 
 void SseParser::dispatch()
 {
-    std::fprintf(stderr, "  dispatch hasData=%d ready=%zu\n", static_cast<int>(hasData_),
-                 ready_.size());
     // A block with no data line is not an event (the grammar requires data).
     if (!hasData_) {
         pending_ = SseEvent{};
@@ -64,8 +61,6 @@ std::expected<void, HttpError> SseParser::consumeLine(std::string_view line)
                                        ? std::string_view{}
                                        : afterField(line.substr(colon + 1));
 
-    std::fprintf(stderr, "  field=[%.*s] value=[%.*s]\n", static_cast<int>(field.size()),
-                 field.data(), static_cast<int>(value.size()), value.data());
     if (field == DATA) {
         if (hasData_) {
             pending_.data += '\n';
