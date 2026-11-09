@@ -34,6 +34,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp")
     )
 endif()
 
+# Fast linker (P-08). lld links several times faster than ld64/bfd.
+option(ANTARES_FAST_LINKER "Use lld as the linker when the compiler is Clang" ON)
+
+if(ANTARES_FAST_LINKER AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_link_options("-fuse-ld=lld")
+    message(STATUS "antares: lld linker requested")
+endif()
+
 # -ffile-prefix-map keeps sccache keys stable across checkouts (P-08).
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options("-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=.")
