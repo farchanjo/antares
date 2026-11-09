@@ -62,10 +62,52 @@ connection state. Durations are `std::chrono`, instants are
 delay costs no thread; retries back off on one. Tests wait on completions, never on
 a clock.
 
-HTTP client: TLS 1.2+ through memory BIOs with ALPN offering `h2` then `http/1.1`,
+HTTP client: TLS 1.2+ through memory BIOs with ALPN offering h2 then HTTP/1.1,
 h2 multiplexing with the peer's stream ceiling and a capped header table, GOAWAY
-retry, h1 keep-alive, bearer/basic/mTLS credentials, chunked streaming with an idle
+retry, HTTP/1.1 keep-alive, bearer/basic/mTLS credentials, chunked streaming with an idle
 timeout, SSE parsing, WebSocket framing and upgrade. Every port method has a case.
+
+## Decisions
+
+- `doc/arch/adr/0001-src-only-source-root.md` — everything under `src`
+- `doc/arch/adr/0002-macos-first-cpp-qt-only.md` — platform and toolkit order
+- `doc/arch/adr/0003-port-doctrines-to-cpp.md` — doctrines in C++
+- `doc/arch/adr/0005-fast-dev-loop-release-gated.md` — fast dev, gated release
+- `doc/arch/adr/0006-io-engine-port.md` — the engine is a port
+- `doc/arch/adr/0007-kernel-io-engine-kqueue.md` — kqueue is the engine
+- `doc/arch/adr/0009-kqueue-forced-poll-fallback.md` — kqueue forced, poll escapes
+- `doc/arch/adr/0010-log-levels.md` — six levels
+- `doc/arch/adr/0011-newest-cpp-ownership-leaks.md` — C++26, ownership, leaks
+- `doc/arch/adr/0012-mimalloc-allocator.md` — mimalloc, pinned
+- `doc/arch/adr/0004-drop-rust-enforcement-targets.md` — no Rust
+- `doc/arch/adr/0008-io-handle-abstraction.md` — the handle type
+- `doc/arch/adr/0013-http-client-h2.md` — the HTTP client
+
+## Specs and schemas
+
+- `doc/arch/sdd/002-http-client-h2/spec.md` — client requirements
+- `doc/arch/sdd/002-http-client-h2/plan.md` — how it is built
+- `doc/arch/sdd/002-http-client-h2/tasks.md` — the task list
+- `doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md` — engine requirements
+- `doc/arch/specs/features/http-client-h2.feature` — executable scenarios
+- `doc/arch/specs/features/kernel-io-engine-kqueue.feature` — engine scenarios
+- `doc/arch/schemas/http-client-h2.cue` — request and response types
+- `doc/arch/schemas/kernel-io-engine-kqueue.cue` — engine types
+
+## Roles
+
+- `doc/arch/agents/implement-lead.md` — writes inside the declared scope
+- `doc/arch/agents/review-lead.md` — reviews against the cited rules
+- `doc/arch/skills/implement.md` — the implement skill
+- `doc/arch/skills/review.md` — the review skill
+- `doc/arch/commands/README.md` — the full command reference
+- `doc/arch/runbooks/deploy.md` — the deploy runbook
+
+## Contracts and configuration
+
+Exit codes are stable and small, and `--json` emits one object. Configuration
+families in play: `architecture`, `hygiene`, `project`, `guard`, `context`.
+`speckit decision extract` reads a decision out of a record.
 
 ## Testing
 
