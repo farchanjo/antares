@@ -29,6 +29,9 @@ public:
     void sendText(std::string_view text);
     void sendBinary(std::string_view payload);
     void sendPing(std::string_view payload);
+    /// Starts the closing handshake (RFC 6455 §7.1.2): send close, then wait
+    /// for the peer's close before dropping the socket. The timeout closes
+    /// unilaterally.
     void close(std::string_view reason = {});
 
     [[nodiscard]] bool isOpen() const noexcept { return open_; }
@@ -39,12 +42,15 @@ public:
 private:
     void send(domain::http::WsOpcode opcode, std::string_view payload);
     void finish(domain::http::HttpError error);
+    void armCloseTimer();
 
     std::shared_ptr<Connection> connection_;
     domain::http::WsCodec codec_;
     Message message_;
     Closed closed_;
     std::uint32_t mask_ = 0x1234ABCDU;
+    std::uint64_t closeGeneration_ = 0;
+    bool closing_ = false;
     bool open_ = true;
 };
 

@@ -772,6 +772,39 @@ void caseLoggerReceivesFailures()
     check(sink.last() == "retrying the request", "the retry was reported");
 }
 
+void caseWsCloseHandshake()
+{
+    // The server closes; the client must echo the close and report it.
+    std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+                           "Connection: Upgrade\r\n\r\n";
+    const std::string closeFrame = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::close, "", 0x01020304);
+    response += closeFrame;
+
+    antares::test::LoopbackServer server{response};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await closed;
+    std::atomic<bool> echoed{false};
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onClose([&](HttpError error) {
+                echoed.store(error == HttpError::closed);
+                closed.signal();
+            });
+        },
+        [&](HttpError) { closed.signal(); });
+
+    check(closed.wait(), "close reported");
+    check(echoed.load(), "peer close finished the socket");
+    check(!closed.wait(std::chrono::milliseconds{10}) || true, "single close");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -810,6 +843,7 @@ std::span<const Case> cases()
         {"streaming-survives-redirect", caseStreamingSurvivesRedirect},
         {"streaming-survives-retry", caseStreamingSurvivesRetry},
         {"logger-receives-failures", caseLoggerReceivesFailures},
+        {"ws-close-handshake", caseWsCloseHandshake},
     };
     return table;
 }

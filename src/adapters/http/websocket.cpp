@@ -1,5 +1,7 @@
 #include "adapters/http/websocket.hpp"
 
+#include <chrono>
+
 namespace antares::adapters::http {
 
 WebSocket::WebSocket(std::shared_ptr<Connection> connection, domain::Bytes ceiling)
@@ -36,13 +38,25 @@ void WebSocket::sendPing(std::string_view payload)
     send(domain::http::WsOpcode::ping, payload);
 }
 
+void WebSocket::armCloseTimer()
+{
+    const std::uint64_t generation = ++closeGeneration_;
+    auto self = shared_from_this();
+    (void)connection_->engine().submitTimer(std::chrono::seconds{5}, [self, generation] {
+        if (generation == self->closeGeneration_) {
+            self->finish(domain::http::HttpError::timeout);
+        }
+    });
+}
+
 void WebSocket::close(std::string_view reason)
 {
-    if (!open_) {
+    if (!open_ || closing_) {
         return;
     }
+    closing_ = true;
     send(domain::http::WsOpcode::close, reason);
-    open_ = false;
+    armCloseTimer();
 }
 
 void WebSocket::finish(domain::http::HttpError error)
@@ -73,6 +87,15 @@ void WebSocket::receive(const std::byte *data, std::size_t length)
         }
         if (frame.opcode == domain::http::WsOpcode::pong) {
             continue;
+        }
+        if (frame.opcode == domain::http::WsOpcode::close) {
+            // Peer closed: echo once if this side has not started, then finish.
+            if (!closing_) {
+                closing_ = true;
+                send(domain::http::WsOpcode::close, frame.payload);
+            }
+            finish(domain::http::HttpError::closed);
+            return;
         }
         if (message_) {
             message_(frame);
