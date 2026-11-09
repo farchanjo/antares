@@ -249,7 +249,7 @@ void H2Session::flush()
     connection_->write(
         ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
                           reinterpret_cast<const std::byte *>(frame.data()) + frame.size()},
-        [](std::expected<std::size_t, domain::http::HttpError>) {});
+        [](Connection::WriteOutcome) {});
 }
 
 void H2Session::onGoaway(std::int32_t lastStreamId)

@@ -25,6 +25,14 @@ using Failure = std::function<void(domain::http::HttpError)>;
 using Ready = std::function<void()>;
 using DataHandler = std::function<void(const std::byte *, std::size_t)>;
 
+/// Write completion. Not `std::expected`: libc++ fails to instantiate
+/// `std::function<void(std::expected<size_t, E>)>` inside a container.
+struct WriteOutcome {
+    std::size_t bytes = 0;
+    domain::http::HttpError error = domain::http::HttpError::closed;
+    bool ok = false;
+};
+
 /// One connection: TCP connect, TLS handshake, ALPN, then a byte pipe.
 ///
 /// TLS never touches the socket directly. Records go through memory BIOs, so
@@ -54,7 +62,7 @@ public:
     /// Decrypted bytes the peer sent. Replaces any previous handler.
     void onData(DataHandler handler) { handler_ = std::move(handler); }
 
-    using WriteDone = std::function<void(std::expected<std::size_t, domain::http::HttpError>)>;
+    using WriteDone = std::function<void(WriteOutcome)>;
     void write(ports::io::Buffer bytes, WriteDone done);
 
     void close();

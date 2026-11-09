@@ -253,7 +253,7 @@ void Connection::drainPlaintext()
 void Connection::write(ports::io::Buffer bytes, WriteDone done)
 {
     if (state_ == State::closed) {
-        done(std::unexpected(domain::http::HttpError::closed));
+        done(WriteOutcome{.bytes = 0, .error = domain::http::HttpError::closed, .ok = false});
         return;
     }
 
@@ -285,7 +285,7 @@ void Connection::drainOutgoing()
             std::deque<WriteDone> queue;
             queue.swap(writeQueue_);
             for (auto &done : queue) {
-                done(pending);
+                done(WriteOutcome{.bytes = pending, .ok = true});
             }
         }
         return;
