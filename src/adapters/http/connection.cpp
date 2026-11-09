@@ -118,6 +118,9 @@ void Connection::afterConnected()
     if (ready_) {
         auto callback = std::move(ready_);
         ready_ = nullptr;
+        // Both callbacks capture `this`; dropping them breaks the cycle that
+        // would otherwise keep the socket open (and the server blocked).
+        failure_ = nullptr;
         callback();
     }
 }
@@ -133,6 +136,7 @@ void Connection::afterHandshake(int result)
         if (ready_) {
             auto callback = std::move(ready_);
             ready_ = nullptr;
+            failure_ = nullptr;
             callback();
         }
         return;
