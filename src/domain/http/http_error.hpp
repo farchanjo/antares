@@ -28,6 +28,8 @@ enum class HttpError : std::uint8_t {
     switch (error) {
     case HttpError::connect:
         return "connect failed";
+    case HttpError::refused:
+        return "refused by the peer";
     case HttpError::tls:
         return "tls handshake failed";
     case HttpError::alpn:
