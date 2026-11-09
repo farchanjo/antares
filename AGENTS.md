@@ -176,6 +176,9 @@ The corpus is governed; use the binary for every loop step.
 - **Clean old builds.** Delete a build tree as soon as it stops being used and
   run `make clean` before a release build; `make clean-all` also drops the
   dependency cache. Disk exhaustion fails the loop silently.
+- **Commit no artifacts.** Binaries, objects, caches and generated reports stay
+  out of the tree; `.gitignore` already covers them, so a `git add -A` that
+  stages a `.o` means a rule is missing, not that the file belongs.
 
 ## Command surface
 
