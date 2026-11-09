@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: 47992aa8b8f7c735a634e22995fe8c1145083037491bf901d058a06613d7f31e
+digest: 562a2596bd7f2bf06248f499bfddfb346923d80df8052bb7b15c97aee7ad7138
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -50,7 +50,7 @@ digest: 47992aa8b8f7c735a634e22995fe8c1145083037491bf901d058a06613d7f31e
 - P-10 (block): Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an… [config:project, verify]
 - P-11 (block): The project compiles as C++23 and prefers its facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`,… [config:project, verify]
 - P-12 (block): A raw pointer is non-owning or `nullptr`; ownership is `std::unique_ptr`, and `std::shared_ptr` only where a lifetime is genuinely shared. Non-owning… [config:architecture, verify]
-- P-13 (block): Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a… [config:project, verify]
+- P-13 (block): Every development run is leak-checked — the `asan` target for AddressSanitizer, the `leak` target for the leak pass — and the binary is symbolized with… [config:project, verify]
 - P-14 (block): Allocation goes through mimalloc, pinned by URL and SHA-256 at the version the ADR names, with `ANTARES_ALLOCATOR=system` as the escape hatch. Call sites… [config:project, verify]
 
 ## Architecture and corpus index
@@ -170,13 +170,14 @@ The corpus is governed; use the binary for every loop step.
   and run over SSH on `farchanjo@192.168.202.241`, checkout `~/dev/antares`.
 - A green local build is **not** evidence: `kqueue` compiles on Darwin alone, and
   the acceptance target is macOS (P-05).
-- Run the suite on the host with `make test`, both backends, before claiming a
-  case passes. It uses every core; `JOBS=n` caps the width. A bare
-  `ctest --preset dev` is serial.
+- Run the suite on the host with `cmake --build --preset dev --target check`,
+  both backends, before claiming a case passes. It uses every core; `JOBS=n`
+  caps the width at configure time. A bare `ctest --preset dev` is serial —
+  `--parallel` with no value is serial too.
 - Nothing is published to `origin` until the host is green.
 - **Clean old builds.** Delete a build tree as soon as it stops being used and
-  run `make clean` before a release build; `make clean-all` also drops the
-  dependency cache. Disk exhaustion fails the loop silently.
+  delete the tree before a release build. Disk exhaustion fails
+  the loop silently.
 - **Commit no artifacts.** Binaries, objects, caches and generated reports stay
   out of the tree; `.gitignore` already covers them, so a `git add -A` that
   stages a `.o` means a rule is missing, not that the file belongs.

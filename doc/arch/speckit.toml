@@ -25,7 +25,6 @@ specScopeGlobs = [
   ".gitignore",
   "tools/**",
   "tests/**",
-  "Makefile",
 ]
 
 [architecture]

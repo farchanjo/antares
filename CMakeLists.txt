@@ -100,6 +100,61 @@ endif()
 
 enable_testing()
 
+# Tests fan out across every core. Presets cannot read the environment for this
+# (`jobs` takes an integer and rejects `$penv{}`), and a bare `--parallel` is
+# serial, so the count is resolved here at configure time and `JOBS` overrides.
+include(ProcessorCount)
+ProcessorCount(ANTARES_JOBS)
+if(DEFINED ENV{JOBS} AND NOT "$ENV{JOBS}" STREQUAL "")
+    set(ANTARES_JOBS "$ENV{JOBS}")
+endif()
+if(ANTARES_JOBS EQUAL 0)
+    set(ANTARES_JOBS 4)
+endif()
+message(STATUS "antares: test parallelism ${ANTARES_JOBS}")
+
+add_custom_target(lint
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/check-include-paths.sh
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/check-domain-purity.sh
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/check-pins.sh
+    COMMENT "antares: lint rules"
+    VERBATIM
+    USES_TERMINAL)
+
+add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${ANTARES_JOBS}
+    COMMENT "antares: test suite"
+    VERBATIM
+    USES_TERMINAL)
+add_dependencies(check antares_io_conformance)
+
+add_custom_target(asan
+    COMMAND ${CMAKE_COMMAND} --preset dev-asan -S ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} --build --preset dev-asan --parallel ${ANTARES_JOBS}
+    COMMAND ${CMAKE_CTEST_COMMAND} --preset dev-asan --output-on-failure --parallel ${ANTARES_JOBS}
+    COMMENT "antares: AddressSanitizer pass"
+    VERBATIM
+    USES_TERMINAL)
+
+if(APPLE)
+    add_custom_target(leak
+        COMMAND ${CMAKE_COMMAND} --preset dev -S ${CMAKE_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} --build --preset dev --parallel ${ANTARES_JOBS}
+        COMMAND leaks --atExit -- ${CMAKE_SOURCE_DIR}/build/dev/antares_io_conformance
+        COMMENT "antares: leak pass (leaks)"
+        VERBATIM
+        USES_TERMINAL)
+else()
+    add_custom_target(leak
+        COMMAND ${CMAKE_COMMAND} --preset dev-asan -S ${CMAKE_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} --build --preset dev-asan --parallel ${ANTARES_JOBS}
+        COMMAND ${CMAKE_COMMAND} -E env ASAN_OPTIONS=detect_leaks=1
+                ${CMAKE_SOURCE_DIR}/build/dev-asan/antares_io_conformance
+        COMMENT "antares: leak pass (LeakSanitizer)"
+        VERBATIM
+        USES_TERMINAL)
+endif()
+
 add_executable(antares_io_conformance tests/io/conformance.cpp)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
 
