@@ -261,7 +261,7 @@ void caseIdleTimerFires()
     // A timer is the only pending work: the loop must sleep, wake for the
     // deadline and run the task, not poll.
     antares::test::Await fired;
-    (void)stack.engine().submitTimer(std::chrono::milliseconds{50}, [&] { fired.signal(); });
+    (void)stack.pool().next().submitTimer(std::chrono::milliseconds{50}, [&] { fired.signal(); });
     check(fired.wait(), "timer fired");
 }
 
