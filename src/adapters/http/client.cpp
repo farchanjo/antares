@@ -205,8 +205,34 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
             [self, connection, url, subprotocol = std::move(subprotocol),
              ready = std::move(ready)]() mutable {
                 auto socket = std::make_shared<WebSocket>(connection, self->config_.limits.maxBodyBytes);
-                connection->onData([socket](const std::byte *data, std::size_t length) {
-                    socket->receive(data, length);
+
+                // The 101 head shares the read with the first frame, so it is
+                // consumed here and only the remainder reaches the codec.
+                auto pending = std::make_shared<std::string>();
+                auto upgraded = std::make_shared<bool>(false);
+                connection->onData([socket, pending, upgraded](const std::byte *data,
+                                                               std::size_t length) {
+                    if (*upgraded) {
+                        socket->receive(data, length);
+                        return;
+                    }
+
+                    pending->append(reinterpret_cast<const char *>(data), length);
+                    const std::size_t end = pending->find("\r\n\r\n");
+                    if (end == std::string::npos) {
+                        return;
+                    }
+                    if (pending->rfind("HTTP/1.1 101", 0) != 0) {
+                        socket->close();
+                        return;
+                    }
+
+                    *upgraded = true;
+                    const auto *rest = reinterpret_cast<const std::byte *>(pending->data()) + end + 4;
+                    const std::size_t remaining = pending->size() - end - 4;
+                    if (remaining > 0) {
+                        socket->receive(rest, remaining);
+                    }
                 });
 
                 // RFC 6455 §4.1: an upgrade request is a normal GET with the
