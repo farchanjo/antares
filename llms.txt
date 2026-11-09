@@ -89,10 +89,9 @@ Grouped by command; run `speckit <verb> --help` first.
 ## Layers, contracts and configuration
 
 Layers inward: `domain`, `application`, `ports`, `adapters`; `src/platform` is
-the only OS root. Kernel I/O goes through the `IoEngine` port in `src/ports/io/`
-— kqueue is the engine, `poll` the fallback, and the conformance suite runs both
-through the port. `QNetworkAccessManager` stays out.
-Exit codes are stable 0-8; `--json` emits one object. Config families: `adr`,
+the only OS root. Kernel I/O goes through the `IoEngine` port; kqueue is the
+engine and `poll` the fallback. Exit codes are stable 0-8; `--json` emits one
+object. Config families: `adr`,
 `architecture`, `compliance`, `context`, `decision`, `dedupe`, `git`, `guard`,
 `hygiene`, `model`, `privacy`, `project`, `providers`, `roles`.
 
