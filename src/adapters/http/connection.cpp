@@ -234,6 +234,7 @@ void Connection::drainPlaintext()
         return;
     }
 
+    std::fprintf(stderr, "  plaintext handler=%d\n", static_cast<int>(handler_ != nullptr));
     std::uint8_t buffer[16 * 1024];
     while (true) {
         const int got = SSL_read(ssl_, buffer, sizeof buffer);
