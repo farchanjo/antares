@@ -30,8 +30,7 @@ public:
         start();
     }
 
-private:
-    void start()
+void start()
     {
         listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
         int reuse = 1;
@@ -71,6 +70,7 @@ private:
 
     [[nodiscard]] int accepted() const noexcept { return accepted_.load(); }
 
+private:
 private:
     void serve()
     {
