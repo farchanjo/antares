@@ -54,6 +54,10 @@ Enforced by: ddd-role.header.missing, ddd-role.role.unknown, ddd-tactical.missin
 Severity: block
 MANDATE: Entities stay small, names stay meaningful, nesting stays shallow, and primitives and collections are wrapped. Split the entity, rename the binding, extract the nested block, and wrap the bare primitive or collection.
 Enforced by: calisthenics.small-entities, calisthenics.no-abbreviation, calisthenics-code.small-entities, calisthenics-code.no-abbreviation, calisthenics-code.nesting-depth, calisthenics-code.getter-setter, calisthenics.wrap-primitives, calisthenics.first-class-collection, calisthenics.one-definition-per-file, calisthenics-code.wrap-primitives, calisthenics-code.first-class-collection, calisthenics-code.one-type-per-file, calisthenics-code.no-else, branch.else, chain.one-dot, comment.implementation-in-interface, comment.repeats-code, condition.negative, interface.fat, literal.magic-number, name.hard-to-describe, name.vague, switch.type-code, type.boolean-flag, inheritance.depth, calisthenics-code.two-instance-variables
+## D-06 — Fully qualified names
+Severity: block
+MANDATE: Every production include spells the path from `src/`; `domain/account.hpp` beats `../domain/account.hpp`, and a test may still climb.
+Enforced by: fqcn.glob-import, fqcn.relative-super
 ## D-07 — Enforced lints and exact pinning
 Severity: block
 MANDATE: Every detected ecosystem ships its lint configuration at the strongest level and pins its dependencies exactly. Commit the lint configuration and replace every range or floating version with an exact pin.

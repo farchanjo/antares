@@ -1,13 +1,13 @@
 ---
-id: 01a1c259-296e-7381-b651-ee66558affd6
-number: 003
-slug: 003-k8s-client
-status: draft
-created_at: 2026-11-09T22:06:25.646920846Z
+id: 01a1c25a-655d-7d53-b841-837cd4b2bc96
+number: 005
+slug: kubernetes-api-client-over-the-http-client-port
+status: tasked
+created_at: 2026-11-09T22:07:46.525570625Z
 ---
-# Feature Specification: 003 K8s Client
+# Feature Specification: Kubernetes Api Client Over The Http Client Port
 
-Feature: 003-003-k8s-client
+Feature: 005-kubernetes-api-client-over-the-http-client-port
 Created: 2026-11-09
 
 ## User Stories

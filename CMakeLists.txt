@@ -106,6 +106,25 @@ add_library(antares_http STATIC ${ANTARES_HTTP_SOURCES})
 target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2)
 set_target_properties(antares_http PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
+# The Kubernetes API client: a pure domain, a port and one adapter over
+# antares_http. It adds no transport and no third-party dependency.
+set(ANTARES_K8S_SOURCES
+    src/domain/json/value.cpp
+    src/domain/yaml/node.cpp
+    src/domain/k8s/api_error.cpp
+    src/domain/k8s/api_path.cpp
+    src/domain/k8s/options.cpp
+    src/domain/k8s/status.cpp
+    src/domain/k8s/watch_event.cpp
+    src/domain/k8s/kubeconfig.cpp
+    src/adapters/k8s/kubeconfig_loader.cpp
+    src/adapters/k8s/http_kube_client.cpp
+)
+
+add_library(antares_k8s STATIC ${ANTARES_K8S_SOURCES})
+target_link_libraries(antares_k8s PUBLIC antares_http)
+set_target_properties(antares_k8s PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
 set(ANTARES_IO_SOURCES
     src/ports/io/io_engine.cpp
     src/ports/io/io_stats.cpp
@@ -171,7 +190,8 @@ add_custom_target(check
     COMMENT "antares: test suite"
     VERBATIM
     USES_TERMINAL)
-add_dependencies(check antares_io_conformance lint)
+add_dependencies(check antares_io_conformance antares_http_conformance
+                 antares_k8s_conformance lint)
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
@@ -256,6 +276,51 @@ if(APPLE)
         COMMENT "dsymutil antares_http_conformance"
         VERBATIM)
 endif()
+
+add_executable(antares_k8s_conformance tests/k8s/conformance.cpp)
+target_link_libraries(antares_k8s_conformance PRIVATE antares_k8s)
+set_target_properties(antares_k8s_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_link_libraries(antares_k8s_conformance PRIVATE mimalloc-static)
+    if(APPLE)
+        target_link_options(antares_k8s_conformance PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    endif()
+endif()
+if(APPLE)
+    add_custom_command(TARGET antares_k8s_conformance POST_BUILD
+        COMMAND dsymutil $<TARGET_FILE:antares_k8s_conformance>
+        COMMENT "dsymutil antares_k8s_conformance"
+        VERBATIM)
+endif()
+
+set(ANTARES_K8S_CASES
+    core-group-path
+    named-group-path
+    namespace-segment
+    subresource-segment
+    hostile-name-refused
+    list-options-rendered
+    list-options-empty
+    patch-content-types
+    delete-options-body
+    not-found-mapped
+    unexpected-body-mapped
+    message-bounded
+    bookmark-advances
+    expired-stream
+    frames-split-across-chunks
+    keep-alive-skipped
+    kubeconfig-current-context
+    kubeconfig-failures
+    bearer-credential
+    json-round-trip
+    json-refuses-truncation)
+
+foreach(case IN LISTS ANTARES_K8S_CASES)
+    add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")
+    set_tests_properties("k8s/${case}" PROPERTIES TIMEOUT 30)
+endforeach()
 
 set(ANTARES_HTTP_CASES
     async-get
