@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
