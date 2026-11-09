@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
+#include <vector>
 #include <cstring>
 #include <string>
 #include <thread>
@@ -16,7 +18,17 @@ namespace antares::test {
 class LoopbackServer {
 public:
     explicit LoopbackServer(std::string response)
-        : response_(std::move(response))
+        : responses_{std::move(response)}
+    {
+    }
+
+    /// Answer successive requests from `responses`, repeating the last one.
+    explicit LoopbackServer(std::vector<std::string> responses)
+        : responses_(std::move(responses))
+    {
+    }
+
+    void start()
     {
         listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
         int reuse = 1;
@@ -64,9 +76,13 @@ private:
             if (client < 0) {
                 return;
             }
-            ++accepted_;
+            const int index = accepted_.fetch_add(1);
             readRequest(client);
-            (void)::write(client, response_.data(), response_.size());
+            const std::string &response =
+                responses_[static_cast<std::size_t>(index) < responses_.size()
+                               ? static_cast<std::size_t>(index)
+                               : responses_.size() - 1];
+            (void)::write(client, response.data(), response.size());
             ::close(client);
         }
     }
@@ -82,14 +98,20 @@ private:
             }
             seen.append(scratch, static_cast<std::size_t>(got));
         }
+        const std::lock_guard<std::mutex> guard{mutex_};
         lastRequest_ = seen;
     }
 
 public:
-    [[nodiscard]] const std::string &lastRequest() const noexcept { return lastRequest_; }
+    [[nodiscard]] std::string lastRequest() const
+    {
+        const std::lock_guard<std::mutex> guard{mutex_};
+        return lastRequest_;
+    }
 
 private:
-    std::string response_;
+    std::vector<std::string> responses_;
+    mutable std::mutex mutex_;
     std::string lastRequest_;
     int listener_ = -1;
     std::uint16_t port_ = 0;

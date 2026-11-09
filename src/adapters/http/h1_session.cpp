@@ -37,14 +37,14 @@ H1Session::H1Session(domain::Bytes headerCeiling, domain::Bytes bodyCeiling)
 {
 }
 
-std::string H1Session::serialize(const domain::http::Request &request, const std::string &authority,
-                                 const std::string &userAgent)
+std::string H1Session::serialize(const domain::http::Request &request, const std::string &target,
+                                 const std::string &authority, const std::string &userAgent)
 {
     std::string wire;
     wire.reserve(256 + request.body.size());
     wire += domain::http::methodName(request.method);
     wire += ' ';
-    wire += request.url.empty() ? "/" : request.url;
+    wire += target.empty() ? "/" : target;
     wire += " HTTP/1.1\r\nHost: ";
     wire += authority;
     wire += "\r\nUser-Agent: ";

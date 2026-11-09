@@ -111,8 +111,8 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
 {
-    std::string wire = H1Session::serialize(attempt->request_, attempt->url_.authority,
-                                            config_.userAgent);
+    std::string wire = H1Session::serialize(attempt->request_, attempt->url_.target,
+                                            attempt->url_.authority, config_.userAgent);
 
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto bytes = ports::io::Buffer{

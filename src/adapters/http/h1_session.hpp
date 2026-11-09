@@ -20,8 +20,10 @@ class H1Session {
 public:
     explicit H1Session(domain::Bytes headerCeiling, domain::Bytes bodyCeiling);
 
-    /// Build the wire bytes for `request`. `authority` is the Host header.
+    /// Build the wire bytes. `target` is the origin-form path, `authority` the
+    /// Host header.
     [[nodiscard]] static std::string serialize(const domain::http::Request &request,
+                                               const std::string &target,
                                                const std::string &authority,
                                                const std::string &userAgent);
 

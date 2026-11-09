@@ -11,6 +11,7 @@
 #include <span>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "adapters/http/client.hpp"
 #include "application/http/blocking_client.hpp"
@@ -155,8 +156,9 @@ void caseRedirectFollowed()
         return;
     }
 
-    antares::test::LoopbackServer server{
-        "HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n"};
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"}};
 
     auto result = stack.blocking().send(get(server.url() + "/start"));
     check(result.has_value(), "redirect returned");
