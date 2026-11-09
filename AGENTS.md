@@ -500,6 +500,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/application/http/blocking_client.hpp`
 - `src/application/io/engine_factory.cpp`
 - `src/application/io/engine_factory.hpp`
+- `src/application/io/engine_pool.cpp`
+- `src/application/io/engine_pool.hpp`
 - `src/domain/http/auth.cpp`
 - `src/domain/http/auth.hpp`
 - `src/domain/http/client_config.hpp`
@@ -520,6 +522,10 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/units/duration.hpp`
 - `src/domain/units/instant.hpp`
 - `src/platform/common/allocator.cpp`
+- `src/platform/linux/thread_tuning.cpp`
+- `src/platform/linux/thread_tuning.hpp`
+- `src/platform/mac/thread_tuning.cpp`
+- `src/platform/mac/thread_tuning.hpp`
 - `src/ports/http/client.hpp`
 - `src/ports/io/io_engine.cpp`
 - `src/ports/io/io_engine.hpp`
