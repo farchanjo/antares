@@ -45,7 +45,7 @@ case runs twice through two CTest instantiations. Fault injection for
 
 - **P-04** — every file lands under `src/ports/io/` or
   `src/adapters/platform/io/`; nothing at the root.
-- **P-06** — C++23 only, no Qt type in the port; the engine compiles without
+- **P-06** — newest C++ only, no Qt type in the port; the engine compiles without
   the framework.
 - **P-07** — the adapter depends on the port, never the reverse; the port
   includes no adapter header.

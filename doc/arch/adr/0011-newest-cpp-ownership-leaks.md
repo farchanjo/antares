@@ -10,7 +10,7 @@ informed: []
 
 ## Context and Problem Statement
 
-The port already declares C++23, but the tree carries C habits the standard now
+The port already declares the newest C++, but the tree carries C habits the standard now
 covers: `submitConnect` takes `const void *` plus a `std::uint32_t` length, a
 pair that can disagree. A `void*` erases the element type, and an integer length
 erases the bound.
@@ -21,9 +21,11 @@ noisy report hides the real fault.
 
 ## Decision Drivers
 
-- C++23 ships the vocabulary the code needs: `std::expected`, `std::span`,
+- C++23 shipped the vocabulary the code needs — `std::expected`, `std::span`,
   `std::string_view`, `std::byte`, `std::optional`, `std::variant`
-  ([C++23](https://en.cppreference.com/w/cpp/23)).
+  ([C++23](https://en.cppreference.com/w/cpp/23)) — and C++26 adds more of the
+  same kind on the current clang: deleted overloads with a reason, structured
+  bindings in a condition, pack indexing.
 - A pointer plus a length is two facts that drift; a view is one.
 - RAII is the language's own answer to leaks ([RAII](https://en.cppreference.com/w/cpp/language/raii)).
 - LeakSanitizer runs by default on Linux. On Darwin it is absent, and `leaks`
@@ -33,7 +35,7 @@ noisy report hides the real fault.
 
 ## Considered Options
 
-- **C++23 idioms everywhere, views for non-owning data** — typed and bounded.
+- **Newest C++ idioms everywhere, views for non-owning data** — typed and bounded.
 - **Keep `void*` plus length** — no type, no bound.
 - **`shared_ptr` as the default owner** — shared atomic cost on every copy.
 - **Leak check only on demand** — the run that would leak is the run skipped.
