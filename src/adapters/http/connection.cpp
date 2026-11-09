@@ -296,15 +296,16 @@ void Connection::drainOutgoing()
         return;
     }
 
-    std::string frame(pending, '\0');
-    (void)BIO_read(outgoing_, frame.data(), static_cast<int>(pending));
+    writeBuffer_.assign(pending, '\0');
+    (void)BIO_read(outgoing_, writeBuffer_.data(), static_cast<int>(pending));
 
     writing_ = true;
     auto self = shared_from_this();
     auto submitted = engine_.submitWrite(
         handle_, std::nullopt,
-        ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
-                          reinterpret_cast<const std::byte *>(frame.data()) + frame.size()},
+        ports::io::Buffer{reinterpret_cast<const std::byte *>(writeBuffer_.data()),
+                          reinterpret_cast<const std::byte *>(writeBuffer_.data()) +
+                              writeBuffer_.size()},
         [self](auto wrote) { self->onSocketWritten(wrote); });
     if (!submitted) {
         fail(domain::http::HttpError::closed);

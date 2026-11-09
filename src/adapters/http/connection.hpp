@@ -90,6 +90,8 @@ private:
     State state_ = State::idle;
     Protocol protocol_ = Protocol::none;
     std::string plain_;
+    /// Backs the in-flight socket write; the engine holds only a span.
+    std::string writeBuffer_;
     std::deque<WriteDone> writeQueue_;
     DataHandler handler_;
     Ready ready_;
