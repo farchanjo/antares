@@ -385,6 +385,11 @@ void Connection::cancelPending()
 
 void Connection::close()
 {
+    // Idempotent: the client may close on the loop right before the destructor
+    // runs from a foreign thread, and the SSL objects must be freed once.
+    if (state_ == State::closed) {
+        return;
+    }
     state_ = State::closed;
     if (ssl_ != nullptr) {
         SSL_free(ssl_);

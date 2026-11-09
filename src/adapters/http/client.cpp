@@ -86,6 +86,25 @@ HttpClient::~HttpClient()
     if (pool_.isLoopThread() || !pool_.isRunning()) {
         return;
     }
+    // Hand every socket back to the loop that owns it. The post captures the
+    // connection, so it outlives the member that named it and `this` is never
+    // touched from the loop.
+    for (auto &[key, bucket] : idle_) {
+        for (auto &connection : bucket) {
+            if (!connection) {
+                continue;
+            }
+            auto owned = connection;
+            key.first->post([owned] { owned->close(); });
+        }
+    }
+    for (auto &[key, session] : sessions_) {
+        if (!session) {
+            continue;
+        }
+        key.first->post([session] { session->reset(); });
+    }
+
     std::unique_lock<std::mutex> lock{drainMutex_};
     (void)drainCv_.wait_for(lock, std::chrono::seconds{5},
                             [this] { return pending_.load(std::memory_order_acquire) == 0; });
