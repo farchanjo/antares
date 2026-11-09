@@ -86,8 +86,9 @@ private:
                       const unsigned char *in, unsigned int inLength, void *userData)
     {
         auto *self = static_cast<TlsServer *>(userData);
-        static constexpr unsigned char H2[] = {2, 'h', '2'};
-        static constexpr unsigned char H11[] = {8, 'h', 't', 't', 'p', '/', '1', '.', '1'};
+        // Without the leading length byte: `outLength` is the name size.
+        static constexpr unsigned char H2[] = {'h', '2'};
+        static constexpr unsigned char H11[] = {'h', 't', 't', 'p', '/', '1', '.', '1'};
 
         for (unsigned int index = 0; index + 1 <= inLength;) {
             const unsigned int length = in[index];
