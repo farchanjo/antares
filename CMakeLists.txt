@@ -268,7 +268,9 @@ set(ANTARES_HTTP_CASES
     h1-streams-chunks
     h2-streams-data
     bearer-is-sent
-    basic-encodes-credential)
+    basic-encodes-credential
+    verifies-against-trusted-ca
+    rejects-untrusted-ca)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

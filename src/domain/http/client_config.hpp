@@ -19,6 +19,9 @@ struct ClientConfig {
     RetryPolicy retry;
     Auth auth;
 
+    /// PEM anchors that replace the system trust store when set.
+    std::string trustBundlePem;
+
     /// Hop policy: whether to follow and whether to re-send the credential.
     struct Redirects {
         bool follow = true;

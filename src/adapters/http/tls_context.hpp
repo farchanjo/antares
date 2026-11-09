@@ -18,8 +18,10 @@ public:
     /// `http2` offers h2 first; false offers only http/1.1 so an h1-only
     /// client never negotiates a protocol it cannot frame.
     /// `clientCertificate` is loaded when the auth kind is mutual TLS.
+    /// `trustBundlePem` replaces the system store when non-empty.
     [[nodiscard]] static std::unique_ptr<TlsContext> create(bool verifyPeer, bool http2,
-                                                            const domain::http::Auth &auth);
+                                                            const domain::http::Auth &auth,
+                                                            std::string_view trustBundlePem);
 
     ~TlsContext();
     TlsContext(const TlsContext &) = delete;

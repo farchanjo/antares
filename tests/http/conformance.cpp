@@ -451,6 +451,41 @@ void caseBasicEncodesCredential()
           "basic encodes the pair");
 }
 
+void caseVerifiesAgainstTrustedCa()
+{
+    antares::test::TlsServer server{"verified", /*h2=*/true};
+    ClientConfig config;
+    config.verifyPeer = true;
+    config.trustBundlePem = antares::test::TEST_CA;
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "trusted CA accepted");
+    if (result) {
+        check(result->status == 200, "status 200");
+    }
+}
+
+void caseRejectsUntrustedCa()
+{
+    antares::test::TlsServer server{"nope", /*h2=*/false};
+    ClientConfig config;
+    config.verifyPeer = true; // system store only: our CA is unknown
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(!result, "untrusted CA rejected");
+    if (!result) {
+        check(result.error() == HttpError::tls, "reported as a TLS failure");
+    }
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -476,6 +511,8 @@ std::span<const Case> cases()
         {"h2-streams-data", caseH2StreamsData},
         {"bearer-is-sent", caseBearerIsSent},
         {"basic-encodes-credential", caseBasicEncodesCredential},
+        {"verifies-against-trusted-ca", caseVerifiesAgainstTrustedCa},
+        {"rejects-untrusted-ca", caseRejectsUntrustedCa},
     };
     return table;
 }

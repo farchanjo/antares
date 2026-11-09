@@ -54,7 +54,8 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
     : pool_(pool)
     , config_(std::move(config))
 {
-    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true, config_.auth);
+    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true, config_.auth,
+                              config_.trustBundlePem);
 }
 
 HttpClient::~HttpClient() = default;
