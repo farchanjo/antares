@@ -76,7 +76,16 @@ HttpClient::submit(domain::http::Request request, ports::http::Completion done)
     // Bind the attempt to one loop for its whole life; hop there now, so every
     // step below runs on that loop (FR-002).
     attempt->engine_ = &pool_.next();
-    attempt->engine_->post([this, attempt] { start(attempt); });
+    attempt->engine_->post([this, attempt] {
+        // A live session already owns the connection for this origin; opening
+        // another one would just be closed again.
+        auto found = sessions_.find({attempt->engine_, attempt->url_.authority});
+        if (found != sessions_.end() && found->second && !found->second->isClosed()) {
+            startHttp2(attempt);
+            return;
+        }
+        start(attempt);
+    });
     return std::static_pointer_cast<ports::http::Ticket>(attempt);
 }
 
