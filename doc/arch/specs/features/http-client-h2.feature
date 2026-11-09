@@ -98,3 +98,11 @@ Feature: Http Client H2
     When  the caller reads config back
     Then  pool, timeouts and auth match what was set
     And   no environment variable was consulted
+
+  @planned
+  Scenario: FR-015 retry with backoff
+    Given a server answering 503 twice then 200
+    When  a GET is sent
+    Then  it succeeds on the third attempt
+    And   the retry count is two
+    And   a POST with the same history is not retried

@@ -36,6 +36,19 @@ package schemas
     maxHops:         uint8 & <=32 | *10
 }
 
+// #Retry bounds repeated attempts (FR-015).
+#Retry: {
+    maxAttempts:       uint8 & >=1 & <=10 | *3
+    baseDelayMs:       uint32 & >0        | *100
+    maxDelayMs:        uint32 & >0        | *2000
+    factor:            number & >=1       | *2.0
+    jitter:            number & >=0 & <=1 | *0.2
+    retryOnConnect:    bool | *true
+    retryOnTimeout:    bool | *true
+    honorRetryAfter:   bool | *true
+    retryNonIdempotent: bool | *false
+}
+
 // #ClientConfig is the single published configuration surface (FR-014).
 #ClientConfig: {
     limits:     #Limits | *{}
@@ -43,6 +56,7 @@ package schemas
     timeouts:   #Timeouts | *{}
     auth:       #Auth | *{}
     redirects:  #Redirects | *{}
+    retry:      #Retry | *{}
     verifyPeer: bool | *true
     userAgent:  string | *"antares/0.1"
 }

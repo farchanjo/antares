@@ -21,20 +21,22 @@ Ordered so each task compiles on its own and proves one requirement.
       picks it (FR-005).
 - [x] T008 Implement redirect policy: status mapping, method rewrite, credential
       drop on origin change, hop ceiling (FR-006).
-- [ ] T009 Implement the connection pool with idle timeout and a per-authority
+- [x] T009 Implement the connection pool with idle timeout and a per-authority
       cap (FR-010).
 - [x] T010 Implement the blocking facade with reentrancy detection (FR-008).
 - [ ] T011 Add a loopback TLS test server and prove h2, h1 fallback, redirect
       and cancellation on both engine backends (FR-003…FR-010).
 - [ ] T012 Prove the engine stays unblocked: a hundred open streams, sync call
       from a callback, idle CPU near zero (FR-002).
-- [ ] T013 Wire the counters and log events the spec's Observability section
+- [x] T013 Wire the counters and log events the spec's Observability section
       names (FR-007).
 
 - [ ] T014 Add a timer to the engine port so a deadline costs no thread
       (FR-012).
 - [ ] T015 Apply the configured credential when headers are built, covering
       bearer, basic and client certificate (FR-013).
+
+- [x] T016 Add the engine timer, retry policy and backoff (FR-012, FR-015).
 
 ## Dependencies
 

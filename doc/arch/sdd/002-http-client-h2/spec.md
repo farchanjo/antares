@@ -116,6 +116,16 @@ configuration load.
 verification switches. The client takes it by value at construction, exposes it
 back through `config()`, and reads no environment variable of its own.
 
+### FR-015 Retry with backoff
+
+A failed attempt is retried according to a policy: total attempts, base delay,
+multiplier, ceiling and jitter. Only idempotent methods retry by default, so a
+`POST` is not silently duplicated. `Retry-After` wins over the computed delay
+when the caller keeps that honour. Exhausting the attempts returns the last
+response, not a synthetic error — the server did answer.
+
+Retries wait on an engine timer, so the delay costs no thread (FR-012).
+
 ## Security Requirements
 
 - **Data sensitivity/classification.** Requests carry cluster API payloads and
