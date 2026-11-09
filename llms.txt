@@ -9,8 +9,138 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - [Agent context](AGENTS.md): dense LLM context
 - [Human overview](README.md): approachable overview
 - [Spec corpus](doc/arch/): the validated source of truth
+
 ## Specs
 
 - [001 kernel-io-engine-kqueue](doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md)
 - [002 http-client-h2](doc/arch/sdd/002-http-client-h2/spec.md)
-- [005 kubernetes-api-client-over-the-http-client-port](doc/arch/sdd/005-kubernetes-api-client-over-the-http-client-port/spec.md)
+- [005 kubernetes-api-client](doc/arch/sdd/005-kubernetes-api-client-over-the-http-client-port/spec.md)
+
+## Where things live
+
+- `doc/arch/memory/constitution.md` — doctrines and principles
+- `doc/arch/adr/` — decision records, `0013` the HTTP client, `0017` the API client
+- `doc/arch/schemas/http-client-config.cue` — the published configuration type
+- `src/ports/io/io_engine.hpp` — the kernel I/O port
+- `src/adapters/platform/io/engine_base.cpp` — op table, timers and the resolver
+- `src/adapters/platform/io/kqueue_engine.cpp` — the kqueue backend
+- `src/ports/http/client.hpp` — the client port
+- `src/adapters/http/client.cpp` — pool, redirects, retries
+- `src/adapters/http/connection.cpp` — TLS over memory BIOs
+- `src/adapters/http/h2_session.cpp` — nghttp2 framing and streams
+- `src/domain/http/` — request, response, url, retry, sse, websocket
+- `src/domain/k8s/` — path, options, status, watch frame, kubeconfig
+- `src/domain/json/value.hpp` — the JSON reader the API client rests on
+- `src/domain/yaml/node.hpp` — the YAML subset a kubeconfig needs
+- `src/ports/k8s/kube_client.hpp` — the Kubernetes client port
+- `src/adapters/k8s/http_kube_client.cpp` — the port over the HTTP client
+- `src/ports/log/logger.hpp` — the log port
+- `tests/k8s/conformance.cpp` — the API client suite
+- `tests/http/conformance.cpp` — the HTTP client suite
+- `tests/io/conformance.cpp` — the engine suite
+- `doc/arch/quality/quality-scenarios.md` — quality scenarios
+- `doc/arch/threat-model/privacy-threat-model.md` — privacy threats
+- `doc/arch/observability/observability.md` — signals and cardinality
+- `doc/arch/operations/operations.md` — operations
+- `doc/arch/slo/service-level-objectives.md` — service objectives
+
+## Decisions
+
+- `doc/arch/adr/0001-src-only-source-root.md` — everything under `src`
+- `doc/arch/adr/0006-io-engine-port.md` — the engine is a port
+- `doc/arch/adr/0007-kernel-io-engine-kqueue.md` — kqueue is the engine
+- `doc/arch/adr/0009-kqueue-forced-poll-fallback.md` — kqueue forced, poll escapes
+- `doc/arch/adr/0011-newest-cpp-ownership-leaks.md` — C++26, ownership, leaks
+- `doc/arch/adr/0012-mimalloc-allocator.md` — mimalloc, pinned
+- `doc/arch/adr/0013-http-client-h2.md` — the HTTP client
+- `doc/arch/adr/0014-offline-default-advisory.md` — D-13 downgraded
+- `doc/arch/adr/0017-kubernetes-api-client-over-the-http-client-port.md` — the API client
+
+## Roles
+
+- `doc/arch/agents/implement-lead.md` — writes inside the declared scope
+- `doc/arch/agents/review-lead.md` — reviews against the cited rules
+- `doc/arch/skills/implement.md` — the implement skill
+- `doc/arch/skills/review.md` — the review skill
+- `doc/arch/commands/README.md` — the full command reference
+
+## Contracts and configuration
+
+Exit codes are stable and small, and `--json` emits one object. Configuration
+families in play: `architecture`, `hygiene`, `project`, `guard`, `context`.
+
+## Layers
+
+Language mode is C++26 with CMake 4.4 as the floor. Layers run inward: `domain`,
+`application`, `ports`, `adapters`; `src/platform` is the only OS root.
+
+The engine owns a dedicated loop pool, one thread each, plus one resolver thread, so
+no call blocks the loop. Work is bound to a loop for its life; no lock guards
+connection state. Timers run on the engine, so a delay costs no thread. Tests wait
+on completions, never on a clock.
+
+HTTP client: TLS 1.2+ through memory BIOs with ALPN offering h2 then HTTP/1.1,
+multiplexing with the peer's stream ceiling, GOAWAY retry, keep-alive, bearer/basic
+and mTLS credentials, chunked streaming with an idle timeout, SSE and WebSocket.
+
+Kubernetes client: a path value type validated as DNS-1123, list options rendered
+as a query, `Status` mapped to a typed reason, watch frames split across chunks,
+a kubeconfig parsed from a YAML subset, and credentials resolved once per context.
+
+## Command surface
+
+Grouped by command; run `speckit <verb> --help` first.
+
+- agent: `speckit agent` · `speckit agent confirm` · `speckit agent index` · `speckit agent list` · `speckit agent propose` · `speckit agent regenerate` · `speckit agent reject` · `speckit agent remove` · `speckit agent score` · `speckit agent show` · `speckit agent source` · `speckit agent stats`
+- analyze: `speckit analyze`
+- ask: `speckit ask`
+- brief: `speckit brief`
+- check: `speckit check`
+- clarify: `speckit clarify`
+- commit: `speckit commit` · `speckit commit check` · `speckit commit suggest`
+- completions: `speckit completions`
+- config: `speckit config` · `speckit config drift` · `speckit config get` · `speckit config list` · `speckit config set` · `speckit config unset`
+- constitution: `speckit constitution`
+- context: `speckit context` · `speckit context pack` · `speckit context score`
+- contract: `speckit contract` · `speckit contract approve` · `speckit contract check` · `speckit contract deprecate` · `speckit contract diff` · `speckit contract list` · `speckit contract new` · `speckit contract review` · `speckit contract show` · `speckit contract undeprecate` · `speckit contract withdraw`
+- crew: `speckit crew` · `speckit crew backfill` · `speckit crew review`
+- decision: `speckit decision` · `speckit decision eval` · `speckit decision probe` · `speckit decision probe-rule` · `speckit decision status`
+- dedupe: `speckit dedupe`
+- diagram: `speckit diagram` · `speckit diagram render`
+- dismiss: `speckit dismiss`
+- doctrine: `speckit doctrine` · `speckit doctrine list` · `speckit doctrine show`
+- explain: `speckit explain`
+- feature: `speckit feature` · `speckit feature archive` · `speckit feature compact` · `speckit feature insert` · `speckit feature list` · `speckit feature new` · `speckit feature renumber` · `speckit feature reorder` · `speckit feature restore` · `speckit feature select`
+- generate: `speckit generate`
+- gitlab: `speckit gitlab` · `speckit gitlab status` · `speckit gitlab sync`
+- guard: `speckit guard` · `speckit guard check` · `speckit guard hook`
+- guide: `speckit guide`
+- hook: `speckit hook` · `speckit hook post-edit` · `speckit hook pre-commit` · `speckit hook session-start` · `speckit hook user-prompt`
+- implement: `speckit implement`
+- init: `speckit init`
+- library: `speckit library` · `speckit library add` · `speckit library ask` · `speckit library browse` · `speckit library export` · `speckit library extract` · `speckit library import` · `speckit library list` · `speckit library open` · `speckit library remove` · `speckit library search` · `speckit library serve` · `speckit library show` · `speckit library update` · `speckit library validate`
+- license: `speckit license` · `speckit license check` · `speckit license list` · `speckit license set` · `speckit license show`
+- manual: `speckit manual`
+- mermaid: `speckit mermaid` · `speckit mermaid render`
+- migrate: `speckit migrate`
+- missing: `speckit missing`
+- model: `speckit model` · `speckit model api`
+- module: `speckit module` · `speckit module add` · `speckit module check` · `speckit module list` · `speckit module remove` · `speckit module retire` · `speckit module show`
+- nexttest: `speckit nexttest`
+- off: `speckit off`
+- on: `speckit on`
+- pack: `speckit pack` · `speckit pack add` · `speckit pack export` · `speckit pack import` · `speckit pack list` · `speckit pack remove` · `speckit pack update`
+- plan: `speckit plan` · `speckit plan setup`
+- provider: `speckit provider` · `speckit provider list` · `speckit provider probe` · `speckit provider status`
+- reindex: `speckit reindex`
+- search: `speckit search`
+- semantic: `speckit semantic` · `speckit semantic deep-status` · `speckit semantic enable` · `speckit semantic off` · `speckit semantic status`
+- skill: `speckit skill` · `speckit skill confirm` · `speckit skill index` · `speckit skill list` · `speckit skill propose` · `speckit skill regenerate` · `speckit skill reject` · `speckit skill remove` · `speckit skill score` · `speckit skill show` · `speckit skill source` · `speckit skill stats`
+- spec: `speckit spec` · `speckit spec score`
+- specify: `speckit specify`
+- stats: `speckit stats` · `speckit stats attributes` · `speckit stats compliance` · `speckit stats corpus` · `speckit stats findings` · `speckit stats guard` · `speckit stats profile` · `speckit stats recommendations`
+- tasks: `speckit tasks` · `speckit tasks setup`
+- validate: `speckit validate`
+- verify: `speckit verify`
+- version: `speckit version`
+- workflow: `speckit workflow` · `speckit workflow render`
