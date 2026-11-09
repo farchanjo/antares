@@ -185,11 +185,18 @@ private:
         }
     }
 
+    /// One h2 connection's context: the callbacks need both the socket and the
+    /// counters, so neither alone can be the `userData`.
+    struct H2Context {
+        TlsServer *server = nullptr;
+        SSL *ssl = nullptr;
+    };
+
     static ssize_t sendCallback(nghttp2_session *, const std::uint8_t *data, std::size_t length,
                                 int, void *userData)
     {
-        auto *ssl = static_cast<SSL *>(userData);
-        return static_cast<ssize_t>(SSL_write(ssl, data, static_cast<int>(length)));
+        auto *context = static_cast<H2Context *>(userData);
+        return static_cast<ssize_t>(SSL_write(context->ssl, data, static_cast<int>(length)));
     }
 
     void serveHttp2(SSL *ssl)
@@ -201,19 +208,19 @@ private:
         nghttp2_session_callbacks_set_on_begin_headers_callback(
             callbacks, [](nghttp2_session *, const nghttp2_frame *frame, void *userData) -> int {
                 if (frame->hd.type == NGHTTP2_HEADERS) {
-                    auto *self = static_cast<TlsServer *>(userData);
-                    self->active_.fetch_add(1);
-                    ++self->requests_;
-                    const int now = self->active_.load();
-                    if (now > self->peakStreams_.load()) {
-                        self->peakStreams_.store(now);
+                    auto *server = static_cast<H2Context *>(userData)->server;
+                    server->active_.fetch_add(1);
+                    ++server->requests_;
+                    const int now = server->active_.load();
+                    if (now > server->peakStreams_.load()) {
+                        server->peakStreams_.store(now);
                     }
                 }
                 return 0;
             });
         nghttp2_session_callbacks_set_on_stream_close_callback(
             callbacks, [](nghttp2_session *, std::int32_t, std::uint32_t, void *userData) -> int {
-                static_cast<TlsServer *>(userData)->active_.fetch_sub(1);
+                static_cast<H2Context *>(userData)->server->active_.fetch_sub(1);
                 return 0;
             });
         nghttp2_session_callbacks_set_on_frame_recv_callback(
@@ -223,7 +230,7 @@ private:
                     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
                     return 0;
                 }
-                auto *self = static_cast<TlsServer *>(userData);
+                auto *self = static_cast<H2Context *>(userData)->server;
                 static thread_local std::string statusName = ":status";
                 static thread_local std::string statusValue = "200";
                 static thread_local std::string typeName = "content-type";
@@ -256,20 +263,18 @@ private:
                 return 0;
             });
 
+        H2Context context{this, ssl};
         nghttp2_session *session = nullptr;
-        nghttp2_session_server_new(&session, callbacks, this);
+        nghttp2_session_server_new(&session, callbacks, &context);
         nghttp2_session_callbacks_del(callbacks);
 
         if (session != nullptr) {
-            std::fprintf(stderr, "  [s] settings\n");
             (void)nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, nullptr, 0);
-            std::fprintf(stderr, "  [s] sent=%d\n", static_cast<int>(nghttp2_session_send(session)));
+            (void)nghttp2_session_send(session);
 
             std::uint8_t scratch[16384];
             while (!stopping_.load()) {
-                std::fprintf(stderr, "  [s] reading\n");
                 const int got = SSL_read(ssl, scratch, sizeof scratch);
-                std::fprintf(stderr, "  [s] read %d\n", got);
                 if (got <= 0) {
                     break;
                 }
