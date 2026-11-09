@@ -42,10 +42,19 @@ if(ANTARES_FAST_LINKER AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "antares: lld linker requested")
 endif()
 
-add_library(antares_io STATIC
+set(ANTARES_IO_SOURCES
     src/ports/io/io_engine.cpp
     src/ports/io/io_handle.cpp
+    src/adapters/platform/io/engine_base.cpp
+    src/adapters/platform/io/poll_engine.cpp
+    src/application/io/engine_factory.cpp
 )
+
+if(APPLE)
+    list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/kqueue_engine.cpp)
+endif()
+
+add_library(antares_io STATIC ${ANTARES_IO_SOURCES})
 target_link_libraries(antares_io PUBLIC antares_core)
 
 # The port names no Qt type (P-06): MOC off proves it stays that way.
