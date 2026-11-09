@@ -1,11 +1,11 @@
 #pragma once
 
 #include <atomic>
-#include <mutex>
-#include <vector>
 #include <cstring>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -14,7 +14,10 @@
 
 namespace antares::test {
 
-/// A one-thread HTTP server on loopback. Test-only: it may block freely.
+/// A loopback HTTP server. Test-only: it may block freely.
+///
+/// Each accepted connection gets its own thread, so two concurrent requests are
+/// served at once instead of queueing behind one.
 class LoopbackServer {
 public:
     explicit LoopbackServer(std::string response)
@@ -30,33 +33,24 @@ public:
         start();
     }
 
-void start()
-    {
-        listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
-        int reuse = 1;
-        ::setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof reuse);
-
-        sockaddr_in address{};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = 0;
-        ::bind(listener_, reinterpret_cast<sockaddr *>(&address), sizeof address);
-        ::listen(listener_, 8);
-
-        socklen_t length = sizeof address;
-        ::getsockname(listener_, reinterpret_cast<sockaddr *>(&address), &length);
-        port_ = ntohs(address.sin_port);
-
-        worker_ = std::thread([this] { serve(); });
-    }
-
     ~LoopbackServer()
     {
         stopping_.store(true);
         ::shutdown(listener_, SHUT_RDWR);
         ::close(listener_);
-        if (worker_.joinable()) {
-            worker_.join();
+        if (accepting_.joinable()) {
+            accepting_.join();
+        }
+
+        std::vector<std::thread> workers;
+        {
+            const std::lock_guard<std::mutex> guard{mutex_};
+            workers.swap(workers_);
+        }
+        for (auto &worker : workers) {
+            if (worker.joinable()) {
+                worker.join();
+            }
         }
     }
 
@@ -68,26 +62,55 @@ void start()
         return "http://127.0.0.1:" + std::to_string(port_);
     }
 
-    [[nodiscard]] int accepted() const noexcept { return accepted_.load(); }
+    [[nodiscard]] std::string lastRequest() const
+    {
+        const std::lock_guard<std::mutex> guard{mutex_};
+        return lastRequest_;
+    }
 
 private:
-private:
-    void serve()
+    void start()
+    {
+        listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        int reuse = 1;
+        ::setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof reuse);
+
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0;
+        ::bind(listener_, reinterpret_cast<sockaddr *>(&address), sizeof address);
+        ::listen(listener_, 16);
+
+        socklen_t length = sizeof address;
+        ::getsockname(listener_, reinterpret_cast<sockaddr *>(&address), &length);
+        port_ = ntohs(address.sin_port);
+
+        accepting_ = std::thread([this] { acceptLoop(); });
+    }
+
+    void acceptLoop()
     {
         while (!stopping_.load()) {
             const int client = ::accept(listener_, nullptr, nullptr);
             if (client < 0) {
                 return;
             }
-            // Keep-alive: answer every request on this connection until EOF.
-            while (!stopping_.load() && readRequest(client)) {
-                const std::size_t index = static_cast<std::size_t>(accepted_.fetch_add(1));
-                const std::string &response =
-                    responses_[index < responses_.size() ? index : responses_.size() - 1];
-                (void)::write(client, response.data(), response.size());
-            }
-            ::close(client);
+            const std::lock_guard<std::mutex> guard{mutex_};
+            workers_.emplace_back([this, client] { serve(client); });
         }
+    }
+
+    void serve(int client)
+    {
+        while (!stopping_.load() && readRequest(client)) {
+            const std::size_t index = static_cast<std::size_t>(accepted_.fetch_add(1));
+            const std::string &response =
+                responses_[index < responses_.size() ? index : responses_.size() - 1];
+            (void)::write(client, response.data(), response.size());
+        }
+        ::shutdown(client, SHUT_RDWR);
+        ::close(client);
     }
 
     [[nodiscard]] bool readRequest(int client)
@@ -106,14 +129,6 @@ private:
         return true;
     }
 
-public:
-    [[nodiscard]] std::string lastRequest() const
-    {
-        const std::lock_guard<std::mutex> guard{mutex_};
-        return lastRequest_;
-    }
-
-private:
     std::vector<std::string> responses_;
     mutable std::mutex mutex_;
     std::string lastRequest_;
@@ -121,7 +136,8 @@ private:
     std::uint16_t port_ = 0;
     std::atomic<bool> stopping_{false};
     std::atomic<int> accepted_{0};
-    std::thread worker_;
+    std::thread accepting_;
+    std::vector<std::thread> workers_;
 };
 
 } // namespace antares::test
