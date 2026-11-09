@@ -1,5 +1,5 @@
 ---
-revision: 3
+revision: 4
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -7,6 +7,8 @@ amendments:
   - adr: "0001"
     date: "2026-11-09"
   - adr: "0002"
+    date: "2026-11-09"
+  - adr: "0003"
     date: "2026-11-09"
 ---
 # antares Constitution
@@ -40,15 +42,15 @@ MANDATE: Entities stay small, names stay meaningful, nesting stays shallow, and 
 Enforced by: calisthenics.small-entities, calisthenics.no-abbreviation, calisthenics-code.small-entities, calisthenics-code.no-abbreviation, calisthenics-code.nesting-depth, calisthenics-code.getter-setter, calisthenics.wrap-primitives, calisthenics.first-class-collection, calisthenics.one-definition-per-file, calisthenics-code.wrap-primitives, calisthenics-code.first-class-collection, calisthenics-code.one-type-per-file, calisthenics-code.no-else, branch.else, chain.one-dot, comment.implementation-in-interface, comment.repeats-code, condition.negative, interface.fat, literal.magic-number, name.hard-to-describe, name.vague, switch.type-code, type.boolean-flag, inheritance.depth, calisthenics-code.two-instance-variables
 ## D-06 — Fully qualified names
 Severity: block
-MANDATE: Every first-party production import is first full `crate::…` path; glob imports and `crate::domain::` are test-only conveniences. Replace `use x::*;` with the named items and `use crate::domain::y` with its `crate::…` path.
+MANDATE: Every first-party production include names the full path from `src/`; a `../` climb and a bare file name are test-only conveniences. `#include "domain/account.hpp"` wins over `#include "../domain/account.hpp"`, and an umbrella header never hides the real dependency.
 Enforced by: fqcn.glob-import, fqcn.relative-super
 ## D-07 — Enforced lints and exact pinning
 Severity: block
-MANDATE: Every detected ecosystem ships its lint configuration at the strongest level and pins its dependencies exactly. Commit the lint configuration and replace every range or floating version with an exact pin.
+MANDATE: The project commits `clang-tidy` and `clang-format` at their strongest level and pins every dependency to an exact version. A CMake dependency names an exact tag or a commit hash — never a branch, a range, or a floating `latest`.
 Enforced by: lint.rust.lints-missing, lint.js.eslint-missing, lint.ts.strict-missing, lint.java.config-missing, lint.go.golangci-missing, lint.c.clang-tidy-missing, lint.python.ruff-missing, lint.php.phpcs-missing, lint.react.plugin-missing, lint.html.htmlhint-missing, pin.cargo.lockfile-missing, pin.npm.save-exact-missing, pin.npm.range-version, pin.maven.dynamic-version, pin.gradle.dynamic-version, pin.python.range-version, pin.docker.unpinned-image, pin.ci.unpinned-action
 ## D-08 — Fail loud
 Severity: block
-MANDATE: Production code never panics on recoverable absence: `unwrap` and `expect` are denied, and an error is propagated or typed. Return first `Result`/`Option` up the stack, add first typed domain error, or handle the absence explicitly.
+MANDATE: Production code never aborts on recoverable absence. An unchecked `std::optional::value()`, a raw `.at()` on an unproven index, a raw `new` and a raw `delete` are denied; the failure returns `std::expected` and is handled or propagated as a typed domain error.
 Enforced by: calisthenics-code.bare-unwrap, no-unwrap, clippy
 ## D-09 — Declared licence
 Severity: block
