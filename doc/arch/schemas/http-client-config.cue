@@ -8,7 +8,6 @@ package schemas
     maxStreamsPerConn:   uint16 & >0          | *100
     maxHeaderBytes:      uint32 & >0          | *32768
     maxBodyBytes:        uint64 & >0          | *67108864
-    idleTimeoutMs:       uint32 & >0          | *15000
 }
 
 // #AuthKind is how a request proves identity (FR-013).

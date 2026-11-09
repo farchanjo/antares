@@ -62,3 +62,9 @@ case runs twice through two CTest instantiations. Fault injection for
 
 - `doc/arch/schemas/kernel-io-engine-kqueue.cue` — the closed error and
   operation sets this plan implements.
+
+## Revision
+
+The spec later gained FR-012 (idle costs nothing), FR-013 (the loop thread is
+identified) and the resolver contract: `submitResolve` runs the lookup on a
+thread and delivers the result on the loop, so no call blocks it.

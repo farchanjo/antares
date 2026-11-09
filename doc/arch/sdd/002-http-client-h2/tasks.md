@@ -58,3 +58,4 @@ Ordered so each task compiles on its own and proves one requirement.
 - T002 before T003; T004 and T005 before T006; T006 before T011.
 - T007 is independent of T006 and can land in parallel.
 - T012 runs only after T011 exists to drive it.
+

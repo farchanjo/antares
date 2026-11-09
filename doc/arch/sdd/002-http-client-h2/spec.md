@@ -190,6 +190,9 @@ timeout on the waiter, never a spin.
 
 ### FR-014 One published configuration surface
 
+The surface is declared in `doc/arch/schemas/http-client-config.cue`; the
+retry, pool and timeout types live beside it and are referenced by name.
+
 `ClientConfig` carries pool, timeouts, auth, limits and the two redirect and
 verification switches. The client takes it by value at construction, exposes it
 back through `config()`, and reads no environment variable of its own.

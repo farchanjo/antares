@@ -81,3 +81,10 @@ The plan answers the doctrines that bind it:
 - **P-12** — ownership is `unique_ptr`; `shared_ptr` only where a stream or a
   completion genuinely shares a lifetime.
 - **P-13** — `asan` and `leak` gate every run.
+
+## Revision
+
+Later spec revisions added FR-015 to FR-025: retry with backoff, a loop pool,
+chunked streaming with an idle timeout, SSE, WebSocket framing and upgrade,
+ALPN with h1 fallback, header-table and priority handling, and port coverage.
+Each landed with its own case; this plan stays the map, not the history.
