@@ -21,7 +21,7 @@ build: ## Configure and build the dev preset
 	cmake --build --preset dev
 
 test: ## Run the dev test preset
-	ctest --preset dev
+	ctest --preset dev --output-on-failure
 
 asan: ## Build and run the suite under AddressSanitizer
 	cmake --preset dev-asan
@@ -38,7 +38,7 @@ leak: ## Run the suite under LeakSanitizer (Linux) or leaks(1) (macOS)
 	fi
 
 clean: ## Remove the build trees
-	rm -rf build/dev build/dev-unity build/dev-asan build/release build/release-darwin
+	rm -rf build/dev build/dev-unity build/dev-asan build/release build/release-darwin build/sys build/probe
 
 clean-all: clean ## Also drop the fetched dependency cache
 	rm -rf "$$HOME/.cache/antares"

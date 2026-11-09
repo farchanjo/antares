@@ -137,7 +137,7 @@
         "outputOnFailure": true
       },
       "execution": {
-        "jobs": 0,
+        "jobs": 8,
         "noTestsAction": "error",
         "stopOnFailure": false
       }
@@ -150,7 +150,7 @@
         "outputOnFailure": true
       },
       "execution": {
-        "jobs": 0,
+        "jobs": 8,
         "noTestsAction": "error"
       }
     }

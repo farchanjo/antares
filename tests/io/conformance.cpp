@@ -227,8 +227,14 @@ void caseStopEndsCallbacks()
     check(after.load() <= 1, "post after stop is not double counted");
 }
 
-void caseCountersMove(IoEngine &engine)
+void caseCountersMove()
 {
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
     auto runner = makeRunner(engine);
 
     const auto before = engine.stats();
@@ -267,32 +273,51 @@ void caseCountersMove(IoEngine &engine)
     check(after.failures() <= after.completed, "failures never exceed completions");
 }
 
+struct Case {
+    const char *name;
+    void (*run)();
+};
+
+std::span<const Case> cases()
+{
+    static constexpr Case table[] = {
+        {"post-runs-on-engine-thread", casePostRunsOnEngineThread},
+        {"socket-read-write", caseSocketReadWrite},
+        {"file-read-immediate", caseFileReadIsImmediate},
+        {"stop-ends-callbacks", caseStopEndsCallbacks},
+        {"counters-move", caseCountersMove},
+    };
+    return table;
+}
+
 } // namespace
 
-int main()
+int main(int argc, char **argv)
 {
-    {
-        auto probe = makeEngine();
-        if (!probe) {
-            std::fprintf(stderr, "factory failed\n");
-            return 1;
+    const std::span<const Case> all = cases();
+    if (argc > 1 && std::strcmp(argv[1], "--list") == 0) {
+        for (const Case &item : all) {
+            std::printf("%s\n", item.name);
         }
-        std::printf("backend: %s\n", std::string((*probe)->name()).c_str());
-        std::fflush(stdout);
+        return 0;
     }
 
-    casePostRunsOnEngineThread();
-    caseSocketReadWrite();
-    caseFileReadIsImmediate();
-    caseStopEndsCallbacks();
-
-    {
-        auto built = makeEngine();
-        if (built) {
-            caseCountersMove(**built);
+    // One case per process, so CTest fans the suite across cores.
+    if (argc > 1) {
+        for (const Case &item : all) {
+            if (std::strcmp(argv[1], item.name) == 0) {
+                item.run();
+                std::printf("%s: %d check(s), %d failure(s)\n", item.name, checks, failures);
+                return failures == 0 ? 0 : 1;
+            }
         }
+        std::fprintf(stderr, "unknown case: %s\n", argv[1]);
+        return 2;
     }
 
+    for (const Case &item : all) {
+        item.run();
+    }
     std::printf("%d check(s), %d failure(s)\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

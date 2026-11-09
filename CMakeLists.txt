@@ -67,6 +67,7 @@ endif()
 
 set(ANTARES_IO_SOURCES
     src/ports/io/io_engine.cpp
+    src/ports/io/io_stats.cpp
     src/ports/io/io_handle.cpp
     src/adapters/platform/io/engine_base.cpp
     src/adapters/platform/io/poll_engine.cpp
@@ -122,10 +123,19 @@ if(APPLE)
         VERBATIM)
 endif()
 
-add_test(NAME io_conformance_poll COMMAND antares_io_conformance)
-set_tests_properties(io_conformance_poll PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")
+# One CTest entry per case, so `ctest -j` fans the suite across cores.
+set(ANTARES_IO_CASES
+    post-runs-on-engine-thread
+    socket-read-write
+    file-read-immediate
+    stop-ends-callbacks
+    counters-move)
 
-if(APPLE)
-    add_test(NAME io_conformance_kqueue COMMAND antares_io_conformance)
-    set_tests_properties(io_conformance_kqueue PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue")
-endif()
+foreach(case IN LISTS ANTARES_IO_CASES)
+    add_test(NAME "poll/${case}" COMMAND antares_io_conformance "${case}")
+    set_tests_properties("poll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")
+    if(APPLE)
+        add_test(NAME "kqueue/${case}" COMMAND antares_io_conformance "${case}")
+        set_tests_properties("kqueue/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue")
+    endif()
+endforeach()

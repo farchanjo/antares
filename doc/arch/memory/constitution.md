@@ -138,7 +138,7 @@ Enforced by: config:architecture, verify
 
 ## P-08 — Fast dev loop, release on authorization
 Severity: block
-MANDATE: Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized configuration (`-O3`, thin LTO, dSYM, universal binary, strip, notarization) runs only with explicit operator authorization. A dev artifact never ships as release.
+MANDATE: Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized configuration (`-O3`, thin LTO, dSYM, universal binary, strip, notarization) runs only with explicit operator authorization. A dev artifact never ships as release. Builds and tests use every core: one CTest entry per case, `ctest -j` on by default, and no test that quietly serializes the suite.
 Enforced by: config:project, verify
 
 ## P-09 — Kernel primitive behind a port
