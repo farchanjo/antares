@@ -494,6 +494,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/http/h2_session.hpp`
 - `src/adapters/http/tls_context.cpp`
 - `src/adapters/http/tls_context.hpp`
+- `src/adapters/http/websocket.cpp`
+- `src/adapters/http/websocket.hpp`
 - `src/adapters/log/console_logger.cpp`
 - `src/adapters/log/console_logger.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
@@ -551,4 +553,5 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `tests/http/tls_server.hpp`
 - `tests/io/conformance.cpp`
 - `tests/support/await.hpp`
+
 <!-- notes:end -->
