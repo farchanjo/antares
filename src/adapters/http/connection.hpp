@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
+#include <functional>
 #include <functional>
 #include <memory>
 #include <string>
