@@ -16,6 +16,8 @@ license = "GPL-3.0-only"
 mode = "enforce"               # "enforce" (default) | "advisory"
 overrideFlag = "--allow-out-of-spec"
 specScopeGlobs = [
-  # Add implementation directories the implement phase may write, e.g.:
-  # "src/**",
+  "src/**",
 ]
+
+[architecture]
+corePaths = ["src"]

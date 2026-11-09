@@ -1,9 +1,11 @@
 ---
-revision: 1
+revision: 2
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
 amendments:
+  - adr: "0001"
+    date: "2026-11-09"
 ---
 # antares Constitution
 
@@ -97,6 +99,11 @@ Enforced by: config:guard, config:project, llm-context, verify
 Severity: block
 MANDATE: Any automated action must yield the same result when run twice on the same input.
 Enforced by: verify
+
+## P-04 — Single source root
+Severity: block
+MANDATE: Every production source file lives under `src/` at the project root, and `architecture.corePaths` names `src` so the layer and lint scanners read it. No source file sits at the root, under `doc/`, or in an ad-hoc directory; move the module under `src/` and register the path in configuration.
+Enforced by: config:architecture, verify
 
 ## Governance
 
