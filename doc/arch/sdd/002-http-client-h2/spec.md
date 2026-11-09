@@ -155,6 +155,12 @@ stay at 125 bytes or less, and a close frame closes the codec.
 Both are pure domain types over the chunked transport, so neither blocks and
 neither owns I/O.
 
+### FR-024 The upgrade is the transport change
+
+A socket is opened by sending the handshake GET and requiring a 101; the head is
+consumed before any frame reaches the codec, because it shares a read with the
+first frame. h1 only — over h2 this needs RFC 8441 extended CONNECT.
+
 ### FR-018 A dedicated pool of loops
 
 The engine owns a fixed set of loops and their threads; a caller takes one and
