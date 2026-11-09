@@ -266,6 +266,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0008-io-handle-abstraction.md`
 - `doc/arch/adr/0009-kqueue-forced-poll-fallback.md`
 - `doc/arch/adr/0010-log-levels.md`
+- `doc/arch/adr/0011-cpp23-ownership-leaks.md`
+- `doc/arch/adr/0012-mimalloc-allocator.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
@@ -467,10 +469,14 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/platform/io/poll_engine.hpp`
 - `src/application/io/engine_factory.cpp`
 - `src/application/io/engine_factory.hpp`
+- `src/platform/common/allocator.cpp`
 - `src/ports/io/io_engine.cpp`
 - `src/ports/io/io_engine.hpp`
 - `src/ports/io/io_error.hpp`
 - `src/ports/io/io_handle.cpp`
 - `src/ports/io/io_handle.hpp`
+- `src/ports/io/io_stats.cpp`
+- `src/ports/io/io_stats.hpp`
 - `tests/io/conformance.cpp`
+
 <!-- notes:end -->
