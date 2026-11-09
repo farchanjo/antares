@@ -17,14 +17,15 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 
 ## Layers, contracts and configuration
 
-Layers inward: `domain`, `application`, `ports`, `adapters`; `src/platform` is
-the only OS root. Kernel I/O goes through the `IoEngine` port; kqueue is the
-engine and `poll` the fallback. Language mode is C++26 with CMake 4.4 as the
-floor. Durations are `std::chrono`, instants are `steady_clock::time_point`, byte
-counts are the `Bytes` value type; nothing re-wraps what the standard library
-already gives. Exit codes are stable 0-8; `--json` emits one object.
+Language mode is C++26 with CMake 4.4 as the floor. Layers run inward: `domain`,
+`application`, `ports`, `adapters`; `src/platform` is the only OS root. Kernel I/O
+goes through the `IoEngine` port; kqueue is the engine and `poll` the fallback.
 
-Binary artifacts stay out of the tree: everything under `build/` is regenerated.
+Durations are `std::chrono`, instants are `steady_clock::time_point`, byte counts
+are the `Bytes` value type; nothing re-wraps what the standard library gives.
+Exit codes are stable 0-8 and `--json` emits one object. Binary artifacts stay out
+of the tree: everything under `build/` is regenerated.
+
 HTTP/2 client: OpenSSL 3 for TLS, nghttp2 for framing, our connection and redirect
 policy on the engine; `ClientConfig` publishes pool, timeouts and auth.
 
