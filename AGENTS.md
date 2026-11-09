@@ -180,6 +180,9 @@ The corpus is governed; use the binary for every loop step.
 - **Clean old builds.** Delete a build tree as soon as it stops being used and
   delete the tree before a release build. Disk exhaustion fails
   the loop silently.
+- **Never sleep in a test.** Wait on the completion. A spin with
+  `sleep_for` hides a missing signal and slows the suite; the waiter times out
+  instead.
 - **Use the native types.** Durations are `std::chrono`, instants are
   `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
   standard library already provides is a defect, not a defence.
