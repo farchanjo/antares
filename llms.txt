@@ -31,7 +31,7 @@ a clock.
 HTTP client: TLS 1.2+ through memory BIOs with ALPN offering `h2` then `http/1.1`,
 h2 multiplexing with the peer's stream ceiling and a capped header table, GOAWAY
 retry, h1 keep-alive, bearer/basic/mTLS credentials, chunked streaming with an idle
-timeout, SSE parsing and WebSocket framing. OpenSSL 3 for TLS, nghttp2 for framing.
+timeout, SSE parsing and WebSocket framing. A log port carries level and category.
 
 ## Command surface
 

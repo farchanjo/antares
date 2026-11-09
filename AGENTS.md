@@ -494,6 +494,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/http/h2_session.hpp`
 - `src/adapters/http/tls_context.cpp`
 - `src/adapters/http/tls_context.hpp`
+- `src/adapters/log/console_logger.cpp`
+- `src/adapters/log/console_logger.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
 - `src/adapters/platform/io/engine_base.hpp`
 - `src/adapters/platform/io/kqueue_engine.cpp`
@@ -518,9 +520,13 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/http/response.hpp`
 - `src/domain/http/retry_policy.cpp`
 - `src/domain/http/retry_policy.hpp`
+- `src/domain/http/sse.cpp`
+- `src/domain/http/sse.hpp`
 - `src/domain/http/timeouts.hpp`
 - `src/domain/http/url.cpp`
 - `src/domain/http/url.hpp`
+- `src/domain/http/websocket.cpp`
+- `src/domain/http/websocket.hpp`
 - `src/domain/units/bytes.cpp`
 - `src/domain/units/bytes.hpp`
 - `src/domain/units/duration.hpp`
@@ -538,6 +544,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_handle.hpp`
 - `src/ports/io/io_stats.cpp`
 - `src/ports/io/io_stats.hpp`
+- `src/ports/log/logger.hpp`
 - `tests/http/conformance.cpp`
 - `tests/http/loopback_server.hpp`
 - `tests/http/test_cert.hpp`
