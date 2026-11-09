@@ -51,6 +51,7 @@ Connection::~Connection()
 void Connection::open(const domain::http::Url &url, Ready ready, Failure failure)
 {
     url_ = url;
+    ready_ = std::move(ready);
     failure_ = std::move(failure);
 
     auto address = lookup(url.host, url.port);
@@ -114,6 +115,11 @@ void Connection::afterConnected()
     }
 
     state_ = State::ready;
+    if (ready_) {
+        auto callback = std::move(ready_);
+        ready_ = nullptr;
+        callback();
+    }
 }
 
 void Connection::afterHandshake(int result)
@@ -124,6 +130,11 @@ void Connection::afterHandshake(int result)
         SSL_get0_alpn_selected(ssl_, &selected, &length);
         http2_ = length == 2 && std::memcmp(selected, "h2", 2) == 0;
         state_ = State::ready;
+        if (ready_) {
+            auto callback = std::move(ready_);
+            ready_ = nullptr;
+            callback();
+        }
         return;
     }
 

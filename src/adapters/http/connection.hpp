@@ -64,6 +64,7 @@ private:
     domain::http::Url url_;
     State state_ = State::idle;
     bool http2_ = false;
+    Ready ready_;
     Failure failure_;
 };
 
