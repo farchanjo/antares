@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <nghttp2/nghttp2.h>
+#include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -140,7 +141,12 @@ private:
     {
         SSL *ssl = SSL_new(context_);
         SSL_set_fd(ssl, client);
-        if (SSL_accept(ssl) == 1) {
+        const int accepted = SSL_accept(ssl);
+        if (accepted != 1) {
+            std::fprintf(stderr, "  server handshake %d\n", SSL_get_error(ssl, accepted));
+            ERR_print_errors_fp(stderr);
+        }
+        if (accepted == 1) {
             const unsigned char *selected = nullptr;
             unsigned int length = 0;
             SSL_get0_alpn_selected(ssl, &selected, &length);
