@@ -6,6 +6,7 @@
 #include <atomic>
 #include <expected>
 #include <chrono>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <span>
@@ -385,6 +386,9 @@ std::span<const Case> cases()
 
 int main(int argc, char **argv)
 {
+    // A peer that closes early must not kill the run.
+    std::signal(SIGPIPE, SIG_IGN);
+
     if (argc > 1 && std::strcmp(argv[1], "--list") == 0) {
         for (const Case &item : cases()) {
             std::printf("%s\n", item.name);

@@ -269,11 +269,20 @@ void Connection::write(ports::io::Buffer bytes, WriteDone done)
     }
 
     if (ssl_ == nullptr) {
-        writeQueue_.push_back(std::move(done));
+        // No TLS: the caller's completion is the socket completion.
         auto self = shared_from_this();
-        auto submitted = engine_.submitWrite(handle_, std::nullopt, std::move(bytes),
-                                             [self](auto wrote) { self->onSocketWritten(wrote); });
+        auto submitted = engine_.submitWrite(
+            handle_, std::nullopt, std::move(bytes),
+            [self, done = std::move(done)](auto wrote) {
+                if (wrote) {
+                    done(WriteOutcome{.bytes = *wrote, .ok = true});
+                    return;
+                }
+                done(WriteOutcome{});
+                self->fail(domain::http::HttpError::closed);
+            });
         if (!submitted) {
+            done(WriteOutcome{});
             fail(domain::http::HttpError::closed);
         }
         return;
