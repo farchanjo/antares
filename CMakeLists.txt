@@ -108,6 +108,7 @@ set(ANTARES_IO_SOURCES
     src/adapters/platform/io/engine_base.cpp
     src/adapters/platform/io/poll_engine.cpp
     src/application/io/engine_factory.cpp
+    src/application/io/engine_pool.cpp
 )
 
 if(APPLE)

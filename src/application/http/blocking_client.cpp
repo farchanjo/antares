@@ -9,7 +9,7 @@ BlockingClient::send(domain::http::Request request)
 {
     using Result = std::expected<domain::http::Response, domain::http::HttpError>;
 
-    if (engine_.isEngineThread()) {
+    if (pool_.isLoopThread()) {
         return std::unexpected(domain::http::HttpError::reentrant);
     }
 

@@ -30,6 +30,7 @@ public:
 
     domain::http::Request request_;
     domain::http::Url url_;
+    ports::io::IoEngine *engine_ = nullptr;
     std::shared_ptr<Connection> connection_;
     H1Session session_;
     std::uint8_t hops_ = 0;
@@ -46,8 +47,8 @@ public:
     }
 };
 
-HttpClient::HttpClient(ports::io::IoEngine &engine, domain::http::ClientConfig config)
-    : engine_(engine)
+HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientConfig config)
+    : pool_(pool)
     , config_(std::move(config))
 {
     tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/false);
@@ -69,8 +70,10 @@ HttpClient::submit(domain::http::Request request, ports::http::Completion done)
     auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
     attempt->url_ = std::move(*parsed);
 
-    // Hop to the engine thread; everything below assumes it (FR-002).
-    engine_.post([this, attempt] { start(attempt); });
+    // Bind the attempt to one loop for its whole life; hop there now, so every
+    // step below runs on that loop (FR-002).
+    attempt->engine_ = &pool_.next();
+    attempt->engine_->post([this, attempt] { start(attempt); });
     return std::static_pointer_cast<ports::http::Ticket>(attempt);
 }
 
@@ -91,7 +94,7 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
         return;
     }
 
-    auto connection = std::make_shared<Connection>(engine_, *tls_);
+    auto connection = std::make_shared<Connection>(*attempt->engine_, *tls_);
     attempt->connection_ = connection;
     ++stats_.opened;
 
@@ -276,7 +279,7 @@ void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::
     ++attempt->attempts_;
     ++stats_.retries;
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    (void)engine_.submitTimer(delay, [self, attempt] { self->start(attempt); });
+    (void)attempt->engine_->submitTimer(delay, [self, attempt] { self->start(attempt); });
 }
 
 void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,

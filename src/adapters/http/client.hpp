@@ -9,6 +9,7 @@
 #include "adapters/http/connection.hpp"
 #include "adapters/http/h1_session.hpp"
 #include "adapters/http/tls_context.hpp"
+#include "application/io/engine_pool.hpp"
 #include "ports/http/client.hpp"
 
 namespace antares::adapters::http {
@@ -18,7 +19,7 @@ namespace antares::adapters::http {
 class HttpClient final : public ports::http::Client,
                          public std::enable_shared_from_this<HttpClient> {
 public:
-    HttpClient(ports::io::IoEngine &engine, domain::http::ClientConfig config);
+    HttpClient(application::io::EnginePool &pool, domain::http::ClientConfig config);
     ~HttpClient() override;
 
     HttpClient(const HttpClient &) = delete;
@@ -55,7 +56,7 @@ private:
     void release(std::shared_ptr<Connection> connection);
     [[nodiscard]] std::shared_ptr<Connection> acquire(const domain::http::Url &url);
 
-    ports::io::IoEngine &engine_;
+    application::io::EnginePool &pool_;
     domain::http::ClientConfig config_;
     std::unique_ptr<TlsContext> tls_;
     std::map<std::string, std::vector<std::shared_ptr<Connection>>> idle_;

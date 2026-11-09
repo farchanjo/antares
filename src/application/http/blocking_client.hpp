@@ -9,7 +9,7 @@
 #include "domain/http/request.hpp"
 #include "domain/http/response.hpp"
 #include "ports/http/client.hpp"
-#include "ports/io/io_engine.hpp"
+#include "application/io/engine_pool.hpp"
 
 namespace antares::application::http {
 
@@ -20,9 +20,9 @@ namespace antares::application::http {
 /// `reentrant` instead of deadlocking.
 class BlockingClient {
 public:
-    BlockingClient(ports::http::Client &client, ports::io::IoEngine &engine)
+    BlockingClient(ports::http::Client &client, application::io::EnginePool &pool)
         : client_(client)
-        , engine_(engine)
+        , pool_(pool)
     {
     }
 
@@ -31,7 +31,7 @@ public:
 
 private:
     ports::http::Client &client_;
-    ports::io::IoEngine &engine_;
+    application::io::EnginePool &pool_;
 };
 
 } // namespace antares::application::http

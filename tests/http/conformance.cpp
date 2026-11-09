@@ -15,7 +15,7 @@
 
 #include "adapters/http/client.hpp"
 #include "application/http/blocking_client.hpp"
-#include "application/io/engine_factory.hpp"
+#include "application/io/engine_pool.hpp"
 #include "loopback_server.hpp"
 #include "support/await.hpp"
 
@@ -23,13 +23,12 @@ namespace {
 
 using antares::adapters::http::HttpClient;
 using antares::application::http::BlockingClient;
-using antares::application::io::makeEngine;
+using antares::application::io::EnginePool;
 using antares::domain::http::ClientConfig;
 using antares::domain::http::HttpError;
 using antares::domain::http::Method;
 using antares::domain::http::Request;
 using antares::domain::http::Response;
-using antares::ports::io::IoEngine;
 
 int failures = 0;
 int checks = 0;
@@ -45,46 +44,33 @@ void check(bool condition, const char *what)
 
 class Stack {
 public:
-    explicit Stack(ClientConfig config = {})
+    explicit Stack(ClientConfig config = {}, std::size_t loops = 1)
         : config_(std::move(config))
+        , pool_(loops)
     {
-        auto built = makeEngine();
-        if (!built) {
-            return;
-        }
-        engine_ = std::move(*built);
-        // The loop owns its own thread here: cases run on the caller thread and
-        // may block, which is exactly what the blocking facade is for.
-        worker_ = std::thread([this] { engine_->run(); });
-        config_.verifyPeer = false;
-        client_ = std::make_shared<HttpClient>(*engine_, config_);
-        blocking_ = std::make_unique<BlockingClient>(*client_, *engine_);
+        pool_.start();
+        client_ = std::make_shared<HttpClient>(pool_, config_);
+        blocking_ = std::make_unique<BlockingClient>(*client_, pool_);
     }
 
     ~Stack()
     {
         client_.reset();
-        if (engine_) {
-            engine_->stop();
-        }
-        if (worker_.joinable()) {
-            worker_.join();
-        }
+        pool_.stop();
     }
 
     Stack(const Stack &) = delete;
     Stack &operator=(const Stack &) = delete;
 
-    [[nodiscard]] bool ok() const noexcept { return engine_ != nullptr; }
+    [[nodiscard]] bool ok() const noexcept { return true; }
     [[nodiscard]] HttpClient &client() noexcept { return *client_; }
     [[nodiscard]] BlockingClient &blocking() noexcept { return *blocking_; }
-    [[nodiscard]] IoEngine &engine() noexcept { return *engine_; }
+    [[nodiscard]] EnginePool &pool() noexcept { return pool_; }
     [[nodiscard]] const ClientConfig &config() const noexcept { return config_; }
 
 private:
-    std::unique_ptr<IoEngine> engine_;
     ClientConfig config_{};
-    std::thread worker_;
+    EnginePool pool_;
     std::shared_ptr<HttpClient> client_;
     std::unique_ptr<BlockingClient> blocking_;
 };
