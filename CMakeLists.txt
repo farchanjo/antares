@@ -253,13 +253,15 @@ set(ANTARES_HTTP_CASES
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
+    # A hang must fail the suite, not block it.
+    set_tests_properties("http/${case}" PROPERTIES TIMEOUT 30)
 endforeach()
 
 foreach(case IN LISTS ANTARES_IO_CASES)
     add_test(NAME "poll/${case}" COMMAND antares_io_conformance "${case}")
-    set_tests_properties("poll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")
+    set_tests_properties("poll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll" TIMEOUT 30)
     if(APPLE)
         add_test(NAME "kqueue/${case}" COMMAND antares_io_conformance "${case}")
-        set_tests_properties("kqueue/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue")
+        set_tests_properties("kqueue/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue" TIMEOUT 30)
     endif()
 endforeach()

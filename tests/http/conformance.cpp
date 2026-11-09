@@ -97,14 +97,13 @@ Request get(const std::string &url)
 
 void caseAsyncGet()
 {
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello"};
     Stack stack;
     check(stack.ok(), "engine built");
     if (!stack.ok()) {
         return;
     }
-
-    antares::test::LoopbackServer server{
-        "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello"};
 
     std::atomic<bool> done{false};
     Response received;
@@ -133,13 +132,12 @@ void caseAsyncGet()
 
 void caseSyncGet()
 {
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"};
     Stack stack;
     if (!stack.ok()) {
         return;
     }
-
-    antares::test::LoopbackServer server{
-        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"};
 
     auto result = stack.blocking().send(get(server.url() + "/sync"));
     check(result.has_value(), "sync call returned a response");
@@ -151,14 +149,13 @@ void caseSyncGet()
 
 void caseRedirectFollowed()
 {
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"}};
     Stack stack;
     if (!stack.ok()) {
         return;
     }
-
-    antares::test::LoopbackServer server{std::vector<std::string>{
-        "HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
-        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"}};
 
     auto result = stack.blocking().send(get(server.url() + "/start"));
     check(result.has_value(), "redirect returned");
@@ -170,13 +167,12 @@ void caseRedirectFollowed()
 
 void caseReentrantFromCallback()
 {
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"};
     Stack stack;
     if (!stack.ok()) {
         return;
     }
-
-    antares::test::LoopbackServer server{
-        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"};
 
     std::atomic<bool> done{false};
     std::atomic<bool> reentrant{false};
@@ -196,13 +192,12 @@ void caseReentrantFromCallback()
 
 void casePoolReusesConnection()
 {
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx"};
     Stack stack;
     if (!stack.ok()) {
         return;
     }
-
-    antares::test::LoopbackServer server{
-        "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx"};
 
     (void)stack.blocking().send(get(server.url() + "/one"));
     (void)stack.blocking().send(get(server.url() + "/two"));
