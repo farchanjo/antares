@@ -35,6 +35,8 @@ public:
     std::shared_ptr<Connection> connection_;
     H1Session session_;
     std::uint8_t hops_ = 0;
+    ports::http::StreamHandler stream;
+    std::uint64_t timerGeneration = 0;
     std::uint8_t attempts_ = 1;
     bool cancelled_ = false;
     ports::http::Completion done_;
@@ -60,6 +62,13 @@ HttpClient::~HttpClient() = default;
 std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
 HttpClient::submit(domain::http::Request request, ports::http::Completion done)
 {
+    return submitStreaming(std::move(request), ports::http::StreamHandler{}, std::move(done));
+}
+
+std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
+HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHandler handler,
+                            ports::http::Completion done)
+{
     auto parsed = domain::http::Url::parse(request.url);
     if (!parsed) {
         return std::unexpected(parsed.error());
@@ -70,12 +79,20 @@ HttpClient::submit(domain::http::Request request, ports::http::Completion done)
 
     const domain::http::Method method = request.method;
     auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
+    attempt->stream = std::move(handler);
     attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes, method};
+    if (attempt->stream.onChunk) {
+        attempt->session_.onChunk(attempt->stream.onChunk);
+    }
+    if (attempt->stream.onHead) {
+        attempt->session_.onHead(attempt->stream.onHead);
+    }
     attempt->url_ = std::move(*parsed);
 
     // Bind the attempt to one loop for its whole life; hop there now, so every
     // step below runs on that loop (FR-002).
     attempt->engine_ = &pool_.next();
+    armIdleTimer(attempt);
     attempt->engine_->post([this, attempt] {
         // A live session already owns the connection for this origin; opening
         // another one would just be closed again.
@@ -87,6 +104,22 @@ HttpClient::submit(domain::http::Request request, ports::http::Completion done)
         start(attempt);
     });
     return std::static_pointer_cast<ports::http::Ticket>(attempt);
+}
+
+void HttpClient::armIdleTimer(const std::shared_ptr<Attempt> &attempt)
+{
+    if (config_.timeouts.read.count() <= 0) {
+        return;
+    }
+
+    const std::uint64_t generation = ++attempt->timerGeneration;
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    (void)attempt->engine_->submitTimer(config_.timeouts.read, [self, attempt, generation] {
+        if (attempt->finished() || generation != attempt->timerGeneration) {
+            return;
+        }
+        self->settle(attempt, std::unexpected(domain::http::HttpError::timeout));
+    });
 }
 
 void HttpClient::start(const std::shared_ptr<Attempt> &attempt)
@@ -144,10 +177,15 @@ std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
     return slot;
 }
 
-void HttpClient::pump(const std::shared_ptr<H2Session> &session)
+void HttpClient::pump(const std::shared_ptr<H2Session> &session,
+                      const std::shared_ptr<Attempt> &attempt)
 {
-    session->connection()->onData(
-        [session](const std::byte *data, std::size_t length) { session->receive(data, length); });
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    session->connection()->onData([self, session, attempt](const std::byte *data,
+                                                           std::size_t length) {
+        self->armIdleTimer(attempt);
+        session->receive(data, length);
+    });
 }
 
 void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
@@ -156,8 +194,8 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
     auto session = sessionFor(*attempt->engine_, attempt->url_.authority, attempt->connection_);
 
     auto submitNow = [self, session, attempt] {
-        auto submitted = session->submit(
-            attempt->request_, attempt->url_.target, attempt->url_.authority,
+        auto submitted = session->submitStreaming(
+            attempt->request_, attempt->url_.target, attempt->url_.authority, attempt->stream,
             [self, attempt](auto result) { self->settle(attempt, std::move(result)); });
         if (!submitted) {
             self->settle(attempt, std::unexpected(submitted.error()));
@@ -166,14 +204,14 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 
     const auto &connection = session->connection();
     if (connection->isReady()) {
-        pump(session);
+        pump(session, attempt);
         submitNow();
         return;
     }
 
     connection->open(
-        attempt->url_, [self, session, submitNow] {
-            self->pump(session);
+        attempt->url_, [self, session, submitNow, attempt] {
+            self->pump(session, attempt);
             submitNow();
         },
         [self, session](domain::http::HttpError error) { session->fail(error); });
@@ -193,6 +231,7 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
         if (attempt->cancelled()) {
             return;
         }
+        self->armIdleTimer(attempt);
         auto consumed = attempt->session_.consume(data, length);
         if (!consumed) {
             self->settle(attempt, std::unexpected(consumed.error()));

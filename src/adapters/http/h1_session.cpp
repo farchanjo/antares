@@ -67,6 +67,31 @@ std::string H1Session::serialize(const domain::http::Request &request, const std
     return wire;
 }
 
+void H1Session::onHead(std::function<void(const domain::http::Response &)> callback)
+{
+    head_ = std::move(callback);
+    streaming_ = true;
+}
+
+void H1Session::onChunk(std::function<void(std::span<const std::byte>)> callback)
+{
+    chunk_ = std::move(callback);
+    streaming_ = true;
+}
+
+namespace {
+
+void deliver(const std::function<void(std::span<const std::byte>)> &sink, const std::string &from,
+             std::size_t offset, std::size_t length)
+{
+    if (sink && length > 0) {
+        const auto *start = reinterpret_cast<const std::byte *>(from.data() + offset);
+        sink(std::span<const std::byte>{start, length});
+    }
+}
+
+} // namespace
+
 std::expected<void, domain::http::HttpError> H1Session::consume(const std::byte *data,
                                                                std::size_t length)
 {
@@ -153,6 +178,11 @@ std::expected<void, domain::http::HttpError> H1Session::parseHead()
     headParsed_ = true;
     cursor_ = end + 4;
 
+    if (head_) {
+        const domain::http::Response snapshot = response_;
+        head_(snapshot);
+    }
+
     // 204 and 304 carry no body; a 1xx is interim and the next head follows.
     if (response_.status == 204 || response_.status == 304) {
         complete_ = true;
@@ -184,9 +214,12 @@ std::expected<void, domain::http::HttpError> H1Session::parseBody()
     const std::size_t wanted = remaining_.value_or(0);
     const std::size_t take = std::min(available, wanted);
 
-    response_.body.insert(response_.body.end(),
-                          reinterpret_cast<const std::byte *>(buffer_.data() + cursor_),
-                          reinterpret_cast<const std::byte *>(buffer_.data() + cursor_ + take));
+    deliver(chunk_, buffer_, cursor_, take);
+    if (!streaming_) {
+        response_.body.insert(response_.body.end(),
+                              reinterpret_cast<const std::byte *>(buffer_.data() + cursor_),
+                              reinterpret_cast<const std::byte *>(buffer_.data() + cursor_ + take));
+    }
     cursor_ += take;
     remaining_ = wanted - take;
 
@@ -228,9 +261,12 @@ std::expected<void, domain::http::HttpError> H1Session::parseChunked()
         }
 
         const std::size_t take = std::min(available, chunkRemaining_);
-        response_.body.insert(response_.body.end(),
-                              reinterpret_cast<const std::byte *>(buffer_.data() + cursor_),
-                              reinterpret_cast<const std::byte *>(buffer_.data() + cursor_ + take));
+        deliver(chunk_, buffer_, cursor_, take);
+        if (!streaming_) {
+            response_.body.insert(response_.body.end(),
+                                  reinterpret_cast<const std::byte *>(buffer_.data() + cursor_),
+                                  reinterpret_cast<const std::byte *>(buffer_.data() + cursor_ + take));
+        }
         cursor_ += take;
         chunkRemaining_ -= take;
 

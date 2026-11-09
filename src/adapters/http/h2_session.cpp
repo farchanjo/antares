@@ -92,6 +92,24 @@ void H2Session::configureCallbacks(nghttp2_session_callbacks *callbacks)
             return 0;
         });
 
+    nghttp2_session_callbacks_set_on_frame_recv_callback(
+        callbacks, [](nghttp2_session *, const nghttp2_frame *frame, void *userData) -> int {
+            auto *self = static_cast<H2Session *>(userData);
+            if (frame->hd.type == NGHTTP2_GOAWAY) {
+                self->onGoaway(static_cast<std::int32_t>(frame->goaway.last_stream_id));
+                return 0;
+            }
+            if (frame->hd.type == NGHTTP2_HEADERS &&
+                frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+                auto *stream = self->find(frame->hd.stream_id);
+                if (stream != nullptr && stream->handler.onHead) {
+                    const domain::http::Response snapshot = stream->response;
+                    stream->handler.onHead(snapshot);
+                }
+            }
+            return 0;
+        });
+
     nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
         callbacks, [](nghttp2_session *, std::uint8_t, std::int32_t streamId,
                       const std::uint8_t *data, std::size_t length, void *userData) -> int {
@@ -100,24 +118,18 @@ void H2Session::configureCallbacks(nghttp2_session_callbacks *callbacks)
             if (stream == nullptr) {
                 return 0;
             }
-            if (stream->response.body.size() + length > self->bodyCeiling_.count()) {
-                stream->response.body.insert(stream->response.body.end(),
-                                             reinterpret_cast<const std::byte *>(data),
-                                             reinterpret_cast<const std::byte *>(data) + length);
+            const auto *bytes = reinterpret_cast<const std::byte *>(data);
+            if (stream->streaming) {
+                if (stream->handler.onChunk) {
+                    stream->handler.onChunk(std::span<const std::byte>{bytes, length});
+                }
                 return 0;
             }
-            stream->response.body.insert(stream->response.body.end(),
-                                         reinterpret_cast<const std::byte *>(data),
-                                         reinterpret_cast<const std::byte *>(data) + length);
-            return 0;
-        });
-
-    nghttp2_session_callbacks_set_on_frame_recv_callback(
-        callbacks, [](nghttp2_session *, const nghttp2_frame *frame, void *userData) -> int {
-            if (frame->hd.type == NGHTTP2_GOAWAY) {
-                static_cast<H2Session *>(userData)->onGoaway(
-                    static_cast<std::int32_t>(frame->goaway.last_stream_id));
+            if (stream->response.body.size() + length > self->bodyCeiling_.count()) {
+                stream->response.body.insert(stream->response.body.end(), bytes, bytes + length);
+                return 0;
             }
+            stream->response.body.insert(stream->response.body.end(), bytes, bytes + length);
             return 0;
         });
 
@@ -159,6 +171,14 @@ H2Session::Stream *H2Session::find(std::int32_t streamId)
 std::expected<std::int32_t, domain::http::HttpError>
 H2Session::submit(const domain::http::Request &request, const std::string &target,
                   const std::string &authority, Done done)
+{
+    return submitStreaming(request, target, authority, ports::http::StreamHandler{}, std::move(done));
+}
+
+std::expected<std::int32_t, domain::http::HttpError>
+H2Session::submitStreaming(const domain::http::Request &request, const std::string &target,
+                           const std::string &authority, ports::http::StreamHandler handler,
+                           Done done)
 {
     if (session_ == nullptr || closed_) {
         return std::unexpected(domain::http::HttpError::closed);
@@ -211,6 +231,8 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
 
     auto stream = std::make_unique<Stream>();
     stream->done = std::move(done);
+    stream->streaming = handler.onChunk != nullptr;
+    stream->handler = std::move(handler);
     stream->body.assign(reinterpret_cast<const char *>(request.body.data()), request.body.size());
 
     nghttp2_data_provider provider{};

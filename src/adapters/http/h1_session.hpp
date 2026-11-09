@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <expected>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -27,6 +28,11 @@ public:
                                                const std::string &target,
                                                const std::string &authority,
                                                const std::string &userAgent);
+
+    /// Delivered once, when the head is parsed.
+    void onHead(std::function<void(const domain::http::Response &)> callback);
+    /// Delivered per body chunk, as it is decoded.
+    void onChunk(std::function<void(std::span<const std::byte>)> callback);
 
     /// Feed received bytes. Returns an error once the ceiling or framing breaks.
     [[nodiscard]] std::expected<void, domain::http::HttpError> consume(const std::byte *data,
@@ -58,6 +64,9 @@ private:
     bool reusable_ = true;
     std::size_t chunkRemaining_ = 0;
     bool chunkDone_ = false;
+    bool streaming_ = false;
+    std::function<void(const domain::http::Response &)> head_;
+    std::function<void(std::span<const std::byte>)> chunk_;
 };
 
 } // namespace antares::adapters::http

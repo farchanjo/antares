@@ -34,12 +34,17 @@ public:
     [[nodiscard]] std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
     submit(domain::http::Request request, ports::http::Completion done) override;
 
+    [[nodiscard]] std::expected<std::shared_ptr<ports::http::Ticket>, domain::http::HttpError>
+    submitStreaming(domain::http::Request request, ports::http::StreamHandler handler,
+                    ports::http::Completion done) override;
+
     [[nodiscard]] ports::http::ClientStats stats() const noexcept override { return stats_; }
 
 private:
     class Attempt;
 
     void start(const std::shared_ptr<Attempt> &attempt);
+    void armIdleTimer(const std::shared_ptr<Attempt> &attempt);
     void connect(const std::shared_ptr<Attempt> &attempt);
     void onReady(const std::shared_ptr<Attempt> &attempt);
     void finish(const std::shared_ptr<Attempt> &attempt,
@@ -54,7 +59,8 @@ private:
     [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt);
 
     void startHttp2(const std::shared_ptr<Attempt> &attempt);
-    void pump(const std::shared_ptr<H2Session> &session);
+    void pump(const std::shared_ptr<H2Session> &session,
+              const std::shared_ptr<Attempt> &attempt);
     [[nodiscard]] std::shared_ptr<H2Session> sessionFor(ports::io::IoEngine &engine,
                                                        const std::string &authority,
                                                        std::shared_ptr<Connection> connection);

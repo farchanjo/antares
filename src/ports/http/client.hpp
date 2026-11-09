@@ -38,6 +38,13 @@ struct ClientStats {
 };
 
 /// Completion runs on the engine thread, exactly once (FR-007).
+/// Incremental delivery. The head arrives once, then every body chunk as it
+/// decrypts; a streaming response never buffers the whole body (FR-021).
+struct StreamHandler {
+    std::function<void(const domain::http::Response &)> onHead;
+    std::function<void(std::span<const std::byte>)> onChunk;
+};
+
 using Completion =
     std::function<void(std::expected<domain::http::Response, domain::http::HttpError>)>;
 
@@ -57,6 +64,11 @@ public:
 
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::http::HttpError>
     submit(domain::http::Request request, Completion done) = 0;
+
+    /// Same as `submit`, but the body is handed over as it arrives instead of
+    /// being accumulated into the completion.
+    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::http::HttpError>
+    submitStreaming(domain::http::Request request, StreamHandler handler, Completion done) = 0;
 
     [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
 };

@@ -14,6 +14,7 @@
 #include "domain/http/request.hpp"
 #include "domain/http/response.hpp"
 #include "domain/units/bytes.hpp"
+#include "ports/http/client.hpp"
 
 namespace antares::adapters::http {
 
@@ -39,6 +40,11 @@ public:
     [[nodiscard]] std::expected<std::int32_t, domain::http::HttpError>
     submit(const domain::http::Request &request, const std::string &target,
            const std::string &authority, Done done);
+
+    /// Same, with the body delivered per DATA frame instead of accumulated.
+    [[nodiscard]] std::expected<std::int32_t, domain::http::HttpError>
+    submitStreaming(const domain::http::Request &request, const std::string &target,
+                    const std::string &authority, ports::http::StreamHandler handler, Done done);
 
     /// Push queued frames to the connection.
     void flush();
@@ -67,6 +73,8 @@ private:
         std::string body;
         std::size_t bodyOffset = 0;
         bool finished = false;
+        bool streaming = false;
+        ports::http::StreamHandler handler;
     };
 
     void complete(std::int32_t streamId, std::expected<domain::http::Response,
