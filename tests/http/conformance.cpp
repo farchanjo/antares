@@ -521,7 +521,7 @@ void caseCancelCompletesOnce()
 void caseResolvesNameWithoutBlocking()
 {
     // "localhost" is a name, so it takes the resolver path, not the literal one.
-    antares::test::LoopbackServer server{"named", /*unused*/ true};
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nnamed"};
     Stack stack;
     if (!stack.ok()) {
         return;
