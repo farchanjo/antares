@@ -88,6 +88,7 @@ set(ANTARES_HTTP_SOURCES
     src/domain/http/url.cpp
     src/domain/http/auth.cpp
     src/domain/http/retry_policy.cpp
+    src/domain/http/sse.cpp
     src/domain/http/request.cpp
     src/domain/units/bytes.cpp
     src/adapters/http/tls_context.cpp
@@ -273,7 +274,9 @@ set(ANTARES_HTTP_CASES
     verifies-against-trusted-ca
     rejects-untrusted-ca
     cancel-completes-once
-    resolves-name-off-loop)
+    resolves-name-off-loop
+    sse-parses-events
+    sse-ceiling-holds)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

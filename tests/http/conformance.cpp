@@ -20,6 +20,7 @@
 #include "loopback_server.hpp"
 #include "test_cert.hpp"
 #include "tls_server.hpp"
+#include "domain/http/sse.hpp"
 #include "support/await.hpp"
 
 namespace {
@@ -541,6 +542,50 @@ void caseResolvesNameWithoutBlocking()
     }
 }
 
+void caseSseParsesEvents()
+{
+    const std::string wire =
+        ": keepalive\nid: 7\nevent: tick\ndata: first\ndata: second\n\nretry: 500\ndata: third\n\n";
+    antares::domain::http::SseParser parser{antares::domain::Bytes{1024}};
+
+    // Feed in two halves so a chunk boundary falls mid-event.
+    const std::size_t split = wire.size() / 2;
+    auto first = parser.feed(reinterpret_cast<const std::byte *>(wire.data()), split);
+    check(first.has_value(), "first half parsed");
+    if (first) {
+        check(first->empty(), "no event before its terminator");
+    }
+
+    auto second = parser.feed(reinterpret_cast<const std::byte *>(wire.data()) + split,
+                              wire.size() - split);
+    check(second.has_value(), "second half parsed");
+    if (!second) {
+        return;
+    }
+
+    check(second->size() == 2, "two events dispatched");
+    if (second->size() != 2) {
+        return;
+    }
+    check((*second)[0].id == "7", "id captured");
+    check((*second)[0].type == "tick", "event type captured");
+    check((*second)[0].data == "first\nsecond", "multi-line data joined with a newline");
+    check((*second)[1].data == "third", "second event data");
+    check((*second)[1].retry.has_value(), "retry captured");
+    check(parser.lastEventId() == "7", "last id offered for reconnect");
+}
+
+void caseSseCeilingHolds()
+{
+    antares::domain::http::SseParser parser{antares::domain::Bytes{8}};
+    const std::string wire = "data: a much longer line than the ceiling\n\n";
+    auto result = parser.feed(reinterpret_cast<const std::byte *>(wire.data()), wire.size());
+    check(!result, "ceiling enforced");
+    if (!result) {
+        check(result.error() == HttpError::bodyCeiling, "reported as a ceiling error");
+    }
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -570,6 +615,8 @@ std::span<const Case> cases()
         {"rejects-untrusted-ca", caseRejectsUntrustedCa},
         {"cancel-completes-once", caseCancelCompletesOnce},
         {"resolves-name-off-loop", caseResolvesNameWithoutBlocking},
+        {"sse-parses-events", caseSseParsesEvents},
+        {"sse-ceiling-holds", caseSseCeilingHolds},
     };
     return table;
 }
