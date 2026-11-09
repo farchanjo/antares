@@ -45,6 +45,9 @@ using Body = std::vector<std::byte>;
 /// One submission. `version` overrides ALPN and is test-only (FR-005).
 struct Request {
     Method method = Method::get;
+
+    /// RFC 9218 urgency, 0 (highest) .. 7. Sent as `priority: u=N`.
+    std::uint8_t priority = 3;
     std::string url;
     std::vector<Header> headers;
     Body body;

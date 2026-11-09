@@ -92,6 +92,7 @@ set(ANTARES_HTTP_SOURCES
     src/domain/http/request.cpp
     src/domain/units/bytes.cpp
     src/adapters/http/tls_context.cpp
+    src/adapters/log/console_logger.cpp
     src/adapters/http/connection.cpp
     src/adapters/http/h1_session.cpp
     src/adapters/http/h2_session.cpp

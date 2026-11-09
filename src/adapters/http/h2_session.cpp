@@ -33,8 +33,14 @@ H2Session::H2Session(std::shared_ptr<Connection> connection, domain::Bytes heade
     nghttp2_session_callbacks_del(callbacks);
 
     if (session_ != nullptr) {
-        (void)nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
-        maxConcurrent_ = 100;
+        // Cap the peer's HPACK dynamic table so a hostile encoder cannot grow it
+        // without bound (RFC 7541 §6.5).
+        const nghttp2_settings_entry settings[] = {
+            {NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, headerCeiling_.count() / 4},
+            {NGHTTP2_SETTINGS_ENABLE_PUSH, 0},
+        };
+        (void)nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, settings,
+                                      sizeof settings / sizeof settings[0]);
     }
 }
 
@@ -212,6 +218,8 @@ H2Session::submitStreaming(const domain::http::Request &request, const std::stri
     }
     add(":authority", authority);
     add(":path", path);
+    const std::string urgency = "u=" + std::to_string(request.priority);
+    add("priority", urgency);
     // RFC 9113 §8.2.2: connection-specific fields are not repeated on the
     // wire; TE survives only with the value "trailers".
     for (const domain::http::Header &header : request.headers) {
