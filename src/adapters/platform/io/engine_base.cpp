@@ -274,6 +274,7 @@ void EngineBase::resolverLoop()
 
         addrinfo *found = nullptr;
         const std::string service = std::to_string(job.port);
+        std::fprintf(stderr, "  resolve %s:%s\n", job.host.c_str(), service.c_str());
         ResolveResult result = std::unexpected(IoError::system);
 
         if (::getaddrinfo(job.host.c_str(), service.c_str(), &hints, &found) == 0 &&
@@ -284,6 +285,7 @@ void EngineBase::resolverLoop()
             result = storage;
         }
 
+        std::fprintf(stderr, "  resolved ok=%d\n", static_cast<int>(result.has_value()));
         post([done = std::move(job.done), result = std::move(result)]() mutable {
             done(std::move(result));
         });
