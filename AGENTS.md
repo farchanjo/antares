@@ -157,12 +157,15 @@ The corpus is governed; use the binary for every loop step.
 <!-- notes:start -->
 ## Rules
 
-- **Code and test on the macOS host.** Workstation is `farchanjo@192.168.202.241`,
-  checkout `~/dev/antares`. Push with `git push mac HEAD:main`, then build and
-  run there over SSH. The Linux workstation is for editing and committing only.
+- **`speckit` runs locally only.** The host has no `speckit`. Run `status`,
+  `next`, `validate`, `context score` and every phase on the workstation.
+- **Editing, committing and the spec loop are local.** The Linux workstation is
+  the hub: it edits, commits, runs `speckit` and publishes.
+- **Build and test are remote.** Push with `git push mac HEAD:main`, then build
+  and run over SSH on `farchanjo@192.168.202.241`, checkout `~/dev/antares`.
 - A green local build is **not** evidence: `kqueue` compiles on Darwin alone, and
   the acceptance target is macOS (P-05).
-- Run the suite with `ctest --preset dev` on the host, both backends, before
+- Run the suite on the host with `ctest --preset dev`, both backends, before
   claiming a case passes.
 - Nothing is published to `origin` until the host is green.
 
