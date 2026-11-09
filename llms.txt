@@ -27,10 +27,10 @@ instants are `steady_clock::time_point`, byte counts are `Bytes`. Timers run on 
 engine, so a delay costs no thread; retries back off on one. Tests wait on
 completions, never on a clock, and a literal address skips the resolver.
 
-HTTP client: TLS through memory BIOs with ALPN offering `h2` then `http/1.1`, h2
+HTTP client: TLS 1.2+ through memory BIOs (test certificates are self-signed and committed) with ALPN offering `h2` then `http/1.1`, h2
 multiplexing with the peer's stream ceiling, GOAWAY retry, and an h1 floor with
-keep-alive. OpenSSL 3 with memory BIOs for TLS, nghttp2 for framing, our pool, retry and redirect
-policy on the engine.
+keep-alive. OpenSSL 3 with memory BIOs for TLS, nghttp2 for framing, our pool, retry, redirect and keep-alive policy on the engine. A streaming
+response feeds a data handler; SSE and WebSocket build on it.
 
 ## Command surface
 
