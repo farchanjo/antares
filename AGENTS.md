@@ -168,8 +168,10 @@ The corpus is governed; use the binary for every loop step.
   the hub: it edits, commits, runs `speckit` and publishes.
 - **Build and test are remote.** Push with `git push mac HEAD:main`, then build
   and run over SSH on `farchanjo@192.168.202.241`, checkout `~/dev/antares`.
-- A green local build is **not** evidence: `kqueue` compiles on Darwin alone, and
-  the acceptance target is macOS (P-05).
+- **Nothing is built or tested locally.** The workstation edits, commits and runs
+  `speckit`; every `cmake` and `ctest` call happens on the host. A local build is
+  a convenience, never evidence — `kqueue` compiles on Darwin alone and the
+  acceptance target is macOS (P-05).
 - Run the suite on the host with `cmake --build --preset dev --target check`,
   both backends, before claiming a case passes. It uses every core; `JOBS=n`
   caps the width at configure time. A bare `ctest --preset dev` is serial —
