@@ -179,7 +179,7 @@ void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
         return;
     }
 
-    auto target = domain::http::Url::parse(*location);
+    auto target = domain::http::Url::resolve(attempt->url_, *location);
     if (!target) {
         finish(attempt, std::unexpected(target.error()));
         return;

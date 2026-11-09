@@ -27,6 +27,11 @@ struct Url {
     [[nodiscard]] bool sameOrigin(const Url &other) const noexcept;
 
     [[nodiscard]] static std::expected<Url, HttpError> parse(std::string_view text);
+
+    /// Resolve `reference` against `base` (RFC 3986 §5.2). Handles an absolute
+    /// URL, a network-path reference and a rooted or relative path.
+    [[nodiscard]] static std::expected<Url, HttpError> resolve(const Url &base,
+                                                               std::string_view reference);
 };
 
 } // namespace antares::domain::http

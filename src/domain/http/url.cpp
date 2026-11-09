@@ -20,6 +20,32 @@ bool Url::sameOrigin(const Url &other) const noexcept
     return scheme == other.scheme && host == other.host && port == other.port;
 }
 
+std::expected<Url, HttpError> Url::resolve(const Url &base, std::string_view reference)
+{
+    if (reference.empty()) {
+        return base;
+    }
+    if (reference.find("://") != std::string_view::npos) {
+        return parse(reference);
+    }
+
+    const std::string_view prefix = base.isTls() ? "https://" : "http://";
+
+    if (reference.rfind("//", 0) == 0) {
+        return parse(std::string{prefix} + std::string{reference.substr(2)});
+    }
+    if (reference.front() == '/') {
+        return parse(std::string{prefix} + base.authority + std::string{reference});
+    }
+
+    // Relative path: drop the last segment of the base target.
+    std::string target{base.target};
+    const std::size_t slash = target.rfind('/');
+    target.erase(slash == std::string::npos ? 0 : slash + 1);
+    target += reference;
+    return parse(std::string{prefix} + base.authority + target);
+}
+
 std::expected<Url, HttpError> Url::parse(std::string_view text)
 {
     Url url;
