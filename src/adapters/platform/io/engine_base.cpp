@@ -303,6 +303,38 @@ void EngineBase::resolverLoop()
     }
 }
 
+void EngineBase::cancelPending(const IoHandle &handle)
+{
+    // Completed on the loop, like any other op, so a callback never runs from
+    // the caller's thread.
+    post([this, descriptor = handle.native()] {
+        std::vector<PendingOp *> doomed;
+        for (const auto &op : ops_) {
+            if (op->handle != nullptr && op->handle->native() == descriptor) {
+                doomed.push_back(op.get());
+            }
+        }
+
+        for (PendingOp *op : doomed) {
+            switch (op->kind) {
+            case OpKind::read:
+                completeRead(*op, std::unexpected(IoError::cancelled));
+                break;
+            case OpKind::write:
+                completeWrite(*op, std::unexpected(IoError::cancelled));
+                break;
+            case OpKind::connect:
+                completeConnect(*op, std::unexpected(IoError::cancelled));
+                break;
+            case OpKind::accept:
+                completeAccept(*op, std::unexpected(IoError::cancelled));
+                break;
+            }
+            release(op);
+        }
+    });
+}
+
 void EngineBase::post(PostedTask task)
 {
     {

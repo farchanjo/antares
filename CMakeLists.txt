@@ -236,6 +236,7 @@ set(ANTARES_IO_CASES
     file-read-immediate
     stop-ends-callbacks
     no-callback-after-stop
+    cancel-pending-keeps-socket
     counters-move)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)

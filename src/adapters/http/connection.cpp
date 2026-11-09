@@ -375,6 +375,14 @@ void Connection::onSocketWritten(std::expected<std::size_t, ports::io::IoError> 
     drainOutgoing();
 }
 
+void Connection::cancelPending()
+{
+    if (state_ == State::closed) {
+        return;
+    }
+    engine_.cancelPending(handle_);
+}
+
 void Connection::close()
 {
     state_ = State::closed;

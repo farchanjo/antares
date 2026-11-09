@@ -268,6 +268,46 @@ void caseNoCallbackAfterStop()
     ::close(pair[1]);
 }
 
+void caseCancelPendingKeepsSocket()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    auto runner = makeRunner(**built);
+    antares::test::Await cancelled;
+
+    (void)(*built)->submitRead(*handle, std::nullopt, Bytes{16},
+                               [&](std::expected<Buffer, IoError> result) {
+                                   check(!result, "read failed");
+                                   if (!result) {
+                                       check(result.error() == IoError::cancelled,
+                                             "reported as cancelled");
+                                   }
+                                   cancelled.signal();
+                               });
+
+    (*built)->cancelPending(*handle);
+    check(cancelled.wait(), "pending read was withdrawn");
+
+    // The handle is still usable: a second read completes normally.
+    antares::test::Await second;
+    (void)(*built)->submitRead(*handle, std::nullopt, Bytes{16},
+                               [&](std::expected<Buffer, IoError>) { second.signal(); });
+    const char byte = 'z';
+    (void)::write(pair[1], &byte, 1);
+    check(second.wait(), "socket still serves after the cancel");
+
+    ::close(pair[1]);
+}
+
 void caseCountersMove()
 {
     auto built = makeEngine();
@@ -324,6 +364,7 @@ std::span<const Case> cases()
         {"file-read-immediate", caseFileReadIsImmediate},
         {"stop-ends-callbacks", caseStopEndsCallbacks},
         {"no-callback-after-stop", caseNoCallbackAfterStop},
+        {"cancel-pending-keeps-socket", caseCancelPendingKeepsSocket},
         {"counters-move", caseCountersMove},
     };
     return table;

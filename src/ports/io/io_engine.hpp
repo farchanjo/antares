@@ -96,6 +96,10 @@ public:
                   ConnectCompletion done) = 0;
 
     /// Enqueue work onto the engine thread.
+    /// Withdraw every operation pending on `handle`, each completing with
+    /// `cancelled`. The handle stays open, so a kept-alive socket survives.
+    virtual void cancelPending(const IoHandle &handle) = 0;
+
     virtual void post(PostedTask task) = 0;
 
     /// Run the loop on the calling thread until `stop()`.

@@ -61,6 +61,9 @@ public:
     [[nodiscard]] const domain::http::Url &url() const noexcept { return url_; }
     [[nodiscard]] ports::io::IoEngine &engine() const noexcept { return engine_; }
 
+    /// Withdraw pending operations without closing the socket.
+    void cancelPending();
+
     /// Decrypted bytes the peer sent. Replaces any previous handler.
     void onData(DataHandler handler) { handler_ = std::move(handler); }
 

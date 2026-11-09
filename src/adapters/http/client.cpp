@@ -37,7 +37,8 @@ public:
             return;
         }
         if (connection_) {
-            connection_->close();
+            // Keep-alive survives: only the pending op is withdrawn.
+            connection_->cancelPending();
         }
     }
 

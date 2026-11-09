@@ -83,6 +83,8 @@ public:
     [[nodiscard]] std::expected<void, IoError> submitResolve(std::string host, std::uint16_t port,
                                                             ResolveDone done) override;
 
+    void cancelPending(const IoHandle &handle) override;
+
     void post(PostedTask task) override;
     void run() override;
     /// Idempotent. After it returns, no completion fires until `run()` again.
