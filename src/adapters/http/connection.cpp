@@ -126,7 +126,16 @@ void Connection::open(const domain::http::Url &url, Ready ready, Failure failure
             SSL_set_bio(self->ssl_, self->incoming_, self->outgoing_);
             SSL_set_connect_state(self->ssl_);
             SSL_set_tlsext_host_name(self->ssl_, self->url_.host.c_str());
-            SSL_set1_host(self->ssl_, self->url_.host.c_str());
+            // An IP literal is checked as an address; SSL_set1_host would treat
+            // it as a DNS name and never match the SAN.
+            sockaddr_in probe{};
+            if (::inet_pton(AF_INET, self->url_.host.c_str(), &probe.sin_addr) == 1 ||
+                self->url_.host.find(':') != std::string::npos) {
+                (void)X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(self->ssl_),
+                                                    self->url_.host.c_str());
+            } else {
+                SSL_set1_host(self->ssl_, self->url_.host.c_str());
+            }
 
             self->state_ = State::handshaking;
             self->driveHandshake();
