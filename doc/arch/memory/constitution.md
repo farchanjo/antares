@@ -161,7 +161,7 @@ Enforced by: config:architecture, verify
 
 ## P-13 — Leak gate always on
 Severity: block
-MANDATE: Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a report names frames. No debug build ships without line information, and a leak report is a finding, not background noise. LeakSanitizer exists on Linux only; on macOS the pass is `leaks --atExit`.
+MANDATE: Every development run is leak-checked — `make asan` for AddressSanitizer, `make leak` for the leak pass — and the binary is symbolized with `dsymutil` so a report names frames. No debug build ships without line information, and a leak report is a finding, not background noise. LeakSanitizer exists on Linux only, and `leaks` cannot inspect an AddressSanitizer binary, so on macOS the leak pass runs a sanitizer-free `dev` build.
 Enforced by: config:project, verify
 
 ## Governance

@@ -30,8 +30,8 @@ asan: ## Build and run the suite under AddressSanitizer
 
 leak: ## Run the suite under LeakSanitizer (Linux) or leaks(1) (macOS)
 	@if [ "$$(uname -s)" = "Darwin" ]; then \
-		cmake --preset dev-asan >/dev/null && cmake --build --preset dev-asan >/dev/null && \
-		leaks --atExit -- ./build/dev-asan/antares_io_conformance; \
+		cmake --preset dev >/dev/null && cmake --build --preset dev >/dev/null && \
+		leaks --atExit -- ./build/dev/antares_io_conformance; \
 	else \
 		ASAN_OPTIONS=detect_leaks=1 cmake --build --preset dev-asan >/dev/null && \
 		ASAN_OPTIONS=detect_leaks=1 ./build/dev-asan/antares_io_conformance; \

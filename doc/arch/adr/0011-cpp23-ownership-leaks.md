@@ -26,9 +26,9 @@ noisy report hides the real fault.
   ([C++23](https://en.cppreference.com/w/cpp/23)).
 - A pointer plus a length is two facts that drift; a view is one.
 - RAII is the language's own answer to leaks ([RAII](https://en.cppreference.com/w/cpp/language/raii)).
-- LeakSanitizer runs by default on Linux; on Darwin it is absent and
-  `ASAN_OPTIONS=detect_leaks=1` aborts with "not supported on this platform", so
-  the macOS leak pass is `leaks --atExit`
+- LeakSanitizer runs by default on Linux. On Darwin it is absent, and `leaks`
+  refuses an AddressSanitizer binary ("doesn't work with memory analysis tools"),
+  so a macOS leak pass needs a sanitizer-free build
   ([ASan](https://clang.llvm.org/docs/AddressSanitizer.html)).
 
 ## Considered Options
@@ -54,11 +54,12 @@ shared. Non-owning sequences are `std::span` and `std::string_view`, and the
 view never outlives its range. A copy is avoided by moving, and a duplicated
 buffer counts as a defect.
 
-Every development run is leak-checked. `make asan` builds and runs the suite
-under AddressSanitizer; `make leak` runs the leak pass, which is LeakSanitizer on
-Linux and `leaks --atExit` on macOS. `dsymutil` symbolizes the binary so a report
-names frames, and no debug build ships without line info. A leak report is a
-finding, not background noise.
+Every development run is leak-checked, in two passes that cannot be merged.
+`make asan` builds and runs under AddressSanitizer; `make leak` runs the leak
+pass — LeakSanitizer on Linux, `leaks --atExit` against a `dev` build on macOS,
+because `leaks` cannot read an ASan heap. `dsymutil` symbolizes the binary so a
+report names frames, and no debug build ships without line info. A leak report is
+a finding, not background noise.
 
 `panic` logs and calls `std::abort()`; `std::unreachable()` marks UB, which is
 weaker than a guaranteed abort, so it is not the panic path.
@@ -75,5 +76,5 @@ weaker than a guaranteed abort, so it is not the panic path.
 ### Confirmation
 
 `submitConnect` takes `std::span<const std::byte>`; `grep -rn 'void \*' src`
-finds no port signature; `make asan` and `make leak` pass on the host, and the
+finds no port signature; `make asan` and `make leak` both pass on the host, and the
 `dev-asan` preset carries `abort_on_error=1` plus a `dsymutil` post-build step.
