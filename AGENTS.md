@@ -332,6 +332,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/crew/review.md`
 - `doc/arch/commands/decision.md`
 - `doc/arch/commands/decision/eval.md`
+- `doc/arch/commands/decision/extract.md`
 - `doc/arch/commands/decision/probe-rule.md`
 - `doc/arch/commands/decision/probe.md`
 - `doc/arch/commands/decision/status.md`
@@ -396,6 +397,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/model.md`
 - `doc/arch/commands/model/api.md`
 - `doc/arch/commands/model/api/apply.md`
+- `doc/arch/commands/model/api/chat.md`
 - `doc/arch/commands/model/api/list.md`
 - `doc/arch/commands/model/api/select.md`
 - `doc/arch/commands/module.md`
@@ -488,6 +490,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/http/connection.hpp`
 - `src/adapters/http/h1_session.cpp`
 - `src/adapters/http/h1_session.hpp`
+- `src/adapters/http/h2_session.cpp`
+- `src/adapters/http/h2_session.hpp`
 - `src/adapters/http/tls_context.cpp`
 - `src/adapters/http/tls_context.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
@@ -536,6 +540,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_stats.hpp`
 - `tests/http/conformance.cpp`
 - `tests/http/loopback_server.hpp`
+- `tests/http/test_cert.hpp`
+- `tests/http/tls_server.hpp`
 - `tests/io/conformance.cpp`
 - `tests/support/await.hpp`
 <!-- notes:end -->

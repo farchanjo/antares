@@ -29,7 +29,7 @@ completions, never on a clock, and a literal address skips the resolver.
 
 HTTP client: TLS through memory BIOs with ALPN offering `h2` then `http/1.1`, h2
 multiplexing with the peer's stream ceiling, GOAWAY retry, and an h1 floor with
-keep-alive. OpenSSL 3 for TLS, nghttp2 for framing, our pool, retry and redirect
+keep-alive. OpenSSL 3 with memory BIOs for TLS, nghttp2 for framing, our pool, retry and redirect
 policy on the engine.
 
 ## Command surface
