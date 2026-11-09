@@ -44,7 +44,7 @@ digest: d1762f9ca2bc538d9e4aaa6b62bb9b20c6dac82529c3f5a14d911fef47e38ae9
 - P-04 (block): Every production source file lives under `src/` at the project root, and `architecture.corePaths` names `src` so the layer and lint scanners read it. No… [config:architecture, verify]
 - P-05 (block): macOS is the delivery target until the first release ships; Linux follows and Windows comes last. A feature is accepted on macOS before any other target is… [config:project, verify]
 - P-06 (block): The application is C++ compiled against Qt, with no second toolkit and no second language; Qt Widgets is the UI stack and QML enters only through an ADR.… [config:project, verify]
-- P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform`.… [config:architecture, verify]
+- P-07 (block): Layers run inward as declared in `architecture.layerOrder` — `domain`, `application`, `ports`, `adapters` — and platform code lives in `src/platform/<os>`.… [config:architecture, verify]
 - P-08 (block): Development builds use the fastest configuration — Ninja, `sccache`, `lld`, `-O0 -g1`, precompiled headers, per-target builds — and the optimized… [config:project, verify]
 - P-09 (block): The transport reaches the kernel through the `IoEngine` port in `src/ports/io/`, never through `QNetworkAccessManager`; the backend is chosen at startup and… [config:architecture, verify]
 - P-10 (block): Every log call names one of `trace`, `debug`, `info`, `warn`, `error` or `panic`, plus the category of its source directory; `panic` logs and aborts, and an… [config:project, verify]
