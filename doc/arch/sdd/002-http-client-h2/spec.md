@@ -2,7 +2,7 @@
 id: 01a1c1c1-03fe-7d91-838d-722d2326419b
 number: 002
 slug: http-client-h2
-status: draft
+status: implemented
 created_at: 2026-11-09T19:20:14.590125017Z
 ---
 # Feature Specification: Http Client H2

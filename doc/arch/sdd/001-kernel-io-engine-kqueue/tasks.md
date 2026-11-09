@@ -16,8 +16,11 @@
       `src/adapters/platform/io/kqueue_engine.cpp` with `EV_ONESHOT` (FR-003).
 - [x] T007 Map `EV_EOF` to `closed` and `EV_ERROR` to `system` (FR-005).
 - [ ] T008 Implement `cancel()` so the callback fires once with `cancelled` and
+      NOTE: the client ticket cancels today (closes the h1 connection, resets the
+      h2 stream); the engine still has no op-level cancel, so a pending read on a
+      kept-alive socket cannot be withdrawn without closing it.
       never again (FR-006).
-- [ ] T009 Guarantee no callback after `stop()` returns; join the engine thread
+- [x] T009 Guarantee no callback after `stop()` returns; join the engine thread
       (FR-006, FR-007).
 - [x] T010 Add the conformance suite `tests/io/conformance.cpp` that takes
       `IoEngine&` and names no backend (FR-008).
