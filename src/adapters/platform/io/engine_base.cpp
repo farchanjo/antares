@@ -279,8 +279,19 @@ void EngineBase::resolverLoop()
 
         if (::getaddrinfo(job.host.c_str(), service.c_str(), &hints, &found) == 0 &&
             found != nullptr) {
+            // Prefer IPv4: dual-stack hosts commonly answer `::1` first while
+            // the service listens on 127.0.0.1 only.
+            const addrinfo *chosen = found;
+            for (const addrinfo *candidate = found; candidate != nullptr;
+                 candidate = candidate->ai_next) {
+                if (candidate->ai_family == AF_INET) {
+                    chosen = candidate;
+                    break;
+                }
+            }
+
             sockaddr_storage storage{};
-            std::memcpy(&storage, found->ai_addr, found->ai_addrlen);
+            std::memcpy(&storage, chosen->ai_addr, chosen->ai_addrlen);
             ::freeaddrinfo(found);
             result = storage;
         }
