@@ -13,7 +13,10 @@
 #include <string>
 #include <thread>
 
+#include "support/await.hpp"
+
 #include "application/io/engine_factory.hpp"
+#include "await.hpp"
 #include "domain/units/bytes.hpp"
 #include "ports/io/io_engine.hpp"
 #include "ports/io/io_handle.hpp"
@@ -90,17 +93,14 @@ void casePostRunsOnEngineThread()
     auto runner = makeRunner(engine);
     const auto caller = std::this_thread::get_id();
 
-    std::atomic<bool> ran{false};
+    antares::test::Await ran;
     std::atomic<bool> onEngine{false};
     engine.post([&] {
         onEngine.store(std::this_thread::get_id() != caller);
-        ran.store(true);
+        ran.signal();
     });
 
-    for (int spin = 0; spin < 400 && !ran.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    check(ran.load(), "posted task ran");
+    check(ran.wait(), "posted task ran");
     check(onEngine.load(), "posted task ran off the caller thread");
 }
 
@@ -129,14 +129,14 @@ void caseSocketReadWrite()
     }
     check(reader->kind() == antares::ports::io::HandleKind::stream, "socket is a stream");
 
-    std::atomic<bool> done{false};
+    antares::test::Await done;
     std::size_t carried = 0;
     std::expected<void, IoError> submitted =
         engine.submitRead(*reader, std::nullopt, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
             if (result) {
                 carried = result->size();
             }
-            done.store(true);
+            done.signal();
         });
     check(submitted.has_value(), "submitRead accepted");
 
@@ -148,10 +148,7 @@ void caseSocketReadWrite()
 
     check(wrote.has_value(), "submitWrite accepted");
 
-    for (int spin = 0; spin < 400 && !done.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    check(done.load(), "read completed");
+    check(done.wait(), "read completed");
     check(carried == 7, "read carried the payload");
 }
 
@@ -184,32 +181,26 @@ void caseFileReadIsImmediate()
     check(handle->kind() == antares::ports::io::HandleKind::file, "regular file is a file");
     check(handle->size() == 5, "size reported");
 
-    std::atomic<bool> done{false};
+    antares::test::Await done;
     std::size_t carried = 0;
     (void)engine.submitRead(*handle, Bytes{0}, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
         if (result) {
             carried = result->size();
         }
-        done.store(true);
+        done.signal();
     });
 
-    for (int spin = 0; spin < 400 && !done.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    check(done.load(), "file read completed without a readiness filter");
+    check(done.wait(), "file read completed without a readiness filter");
     check(carried == 5, "file read carried the content");
 
-    std::atomic<bool> eof{false};
+    antares::test::Await eof;
     std::atomic<bool> sawClosed{false};
     (void)engine.submitRead(*handle, Bytes{5}, Bytes{64}, [&](std::expected<Buffer, IoError> result) {
         sawClosed.store(!result && result.error() == IoError::closed);
-        eof.store(true);
+        eof.signal();
     });
 
-    for (int spin = 0; spin < 400 && !eof.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    check(eof.load(), "read at end of file completed");
+    check(eof.wait(), "read at end of file completed");
     check(sawClosed.load(), "end of file reports closed");
 
     ::unlink(path.c_str());
@@ -256,21 +247,18 @@ void caseCountersMove()
         return;
     }
 
-    std::atomic<bool> done{false};
+    antares::test::Await done;
     (void)engine.submitRead(*reader, std::nullopt, Bytes{32},
-                            [&](std::expected<Buffer, IoError>) { done.store(true); });
+                            [&](std::expected<Buffer, IoError>) { done.signal(); });
+    antares::test::Await wrote;
     const char byte = 'x';
     (void)engine.submitWrite(*writer, std::nullopt,
                              Buffer(reinterpret_cast<const std::byte *>(&byte),
                                     reinterpret_cast<const std::byte *>(&byte) + 1),
-                             [](std::expected<std::size_t, IoError>) {});
+                             [&](std::expected<std::size_t, IoError>) { wrote.signal(); });
 
-    // Wait for both completions, not just the read: a cold ASan run can settle
-    // them apart, and the counter check must not race the second one.
-    for (int spin = 0; spin < 800 && engine.stats().completed < 2; ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    (void)done;
+    check(done.wait(), "read completed");
+    check(wrote.wait(), "write completed");
 
     const auto after = engine.stats();
     check(after.submitted == 2, "both submissions counted");

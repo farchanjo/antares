@@ -197,6 +197,7 @@ else()
 endif()
 
 add_executable(antares_io_conformance tests/io/conformance.cpp)
+target_include_directories(antares_io_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
 
 if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
@@ -229,7 +230,7 @@ set(ANTARES_IO_CASES
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)
-target_include_directories(antares_http_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests/http)
+target_include_directories(antares_http_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests/http ${CMAKE_SOURCE_DIR}/tests)
 set_target_properties(antares_http_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
     target_link_libraries(antares_http_conformance PRIVATE mimalloc-static)

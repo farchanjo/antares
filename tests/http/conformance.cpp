@@ -17,6 +17,7 @@
 #include "application/http/blocking_client.hpp"
 #include "application/io/engine_factory.hpp"
 #include "loopback_server.hpp"
+#include "support/await.hpp"
 
 namespace {
 
@@ -106,7 +107,7 @@ void caseAsyncGet()
         return;
     }
 
-    std::atomic<bool> done{false};
+    antares::test::Await done;
     Response received;
     HttpError failure = HttpError::protocol;
 
@@ -116,15 +117,11 @@ void caseAsyncGet()
         } else {
             failure = result.error();
         }
-        done.store(true);
+        done.signal();
     });
     check(ticket.has_value(), "submit accepted");
 
-    for (int spin = 0; spin < 800 && !done.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    check(done.load(), "completion fired");
+    check(done.wait(), "completion fired");
     check(received.status == 200, "status 200");
     check(received.body.size() == 5, "body carried");
     check(failure == HttpError::protocol || received.status == 200, "no failure");
@@ -175,19 +172,16 @@ void caseReentrantFromCallback()
         return;
     }
 
-    std::atomic<bool> done{false};
+    antares::test::Await done;
     std::atomic<bool> reentrant{false};
 
     (void)stack.client().submit(get(server.url() + "/"), [&](auto) {
         auto nested = stack.blocking().send(get(server.url() + "/nested"));
         reentrant.store(!nested && nested.error() == HttpError::reentrant);
-        done.store(true);
+        done.signal();
     });
 
-    for (int spin = 0; spin < 800 && !done.load(); ++spin) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-    check(done.load(), "callback ran");
+    check(done.wait(), "callback ran");
     check(reentrant.load(), "sync call from the loop thread reports reentrant");
 }
 
