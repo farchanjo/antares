@@ -2,7 +2,7 @@
 id: 01a1c19f-2ef2-7052-b90a-6cb570c7b6f9
 number: 001
 slug: kernel-io-engine-kqueue
-status: analyzed
+status: implemented
 created_at: 2026-11-09T18:43:17.362081801Z
 ---
 # Feature Specification: Kernel Io Engine Kqueue

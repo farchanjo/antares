@@ -42,6 +42,11 @@ if(ANTARES_FAST_LINKER AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "antares: lld linker requested")
 endif()
 
+add_library(antares_io STATIC
+    src/ports/io/io_engine.cpp
+)
+target_link_libraries(antares_io PUBLIC antares_core)
+
 # -ffile-prefix-map keeps sccache keys stable across checkouts (P-08).
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options("-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=.")
