@@ -264,7 +264,9 @@ set(ANTARES_HTTP_CASES
     pool-spreads-across-loops
     https-negotiates-h2
     https-falls-back-to-h11
-    h2-multiplexes-one-connection)
+    h2-multiplexes-one-connection
+    h1-streams-chunks
+    h2-streams-data)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

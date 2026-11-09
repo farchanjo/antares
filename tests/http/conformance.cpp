@@ -26,6 +26,7 @@ namespace {
 using antares::adapters::http::HttpClient;
 using antares::application::http::BlockingClient;
 using antares::application::io::EnginePool;
+namespace ports = antares::ports;
 using antares::domain::http::ClientConfig;
 using antares::domain::http::HttpError;
 using antares::domain::http::Method;
@@ -357,6 +358,67 @@ void caseH2MultiplexesOneConnection()
     check(server.requests() >= 3, "every request reached the server");
 }
 
+void caseH1StreamsChunks()
+{
+    // Two chunks plus the terminator: the sink must see the pieces, not a blob.
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+        "5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await done;
+    std::string collected;
+    int chunks = 0;
+    int heads = 0;
+
+    ports::http::StreamHandler handler;
+    handler.onHead = [&](const auto &head) {
+        ++heads;
+        check(head.status == 200, "head arrived first");
+    };
+    handler.onChunk = [&](std::span<const std::byte> piece) {
+        ++chunks;
+        collected.append(reinterpret_cast<const char *>(piece.data()), piece.size());
+    };
+
+    (void)stack.client().submitStreaming(
+        get(server.url() + "/events"), std::move(handler), [&](auto) { done.signal(); });
+
+    check(done.wait(), "stream finished");
+    check(heads == 1, "one head");
+    check(chunks >= 2, "chunks were delivered separately");
+    check(collected == "hello world", "chunks reassemble to the body");
+}
+
+void caseH2StreamsData()
+{
+    antares::test::TlsServer server{"streamed", /*h2=*/true};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await done;
+    std::string collected;
+    int chunks = 0;
+
+    ports::http::StreamHandler handler;
+    handler.onChunk = [&](std::span<const std::byte> piece) {
+        ++chunks;
+        collected.append(reinterpret_cast<const char *>(piece.data()), piece.size());
+    };
+
+    (void)stack.client().submitStreaming(
+        get(server.url() + "/events"), std::move(handler), [&](auto) { done.signal(); });
+
+    check(done.wait(), "h2 stream finished");
+    check(chunks >= 1, "h2 delivered data");
+    check(collected == "streamed", "h2 body matched");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -378,6 +440,8 @@ std::span<const Case> cases()
         {"https-negotiates-h2", caseHttpsNegotiatesH2},
         {"https-falls-back-to-h11", caseHttpsFallsBackToH11},
         {"h2-multiplexes-one-connection", caseH2MultiplexesOneConnection},
+        {"h1-streams-chunks", caseH1StreamsChunks},
+        {"h2-streams-data", caseH2StreamsData},
     };
     return table;
 }
