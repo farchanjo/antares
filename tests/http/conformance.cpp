@@ -44,7 +44,8 @@ void check(bool condition, const char *what)
 
 class Stack {
 public:
-    Stack()
+    explicit Stack(ClientConfig config = {})
+        : config_(std::move(config))
     {
         auto built = makeEngine();
         if (!built) {
@@ -77,7 +78,7 @@ public:
     [[nodiscard]] HttpClient &client() noexcept { return *client_; }
     [[nodiscard]] BlockingClient &blocking() noexcept { return *blocking_; }
     [[nodiscard]] IoEngine &engine() noexcept { return *engine_; }
-    [[nodiscard]] ClientConfig &config() noexcept { return config_; }
+    [[nodiscard]] const ClientConfig &config() const noexcept { return config_; }
 
 private:
     std::unique_ptr<IoEngine> engine_;
@@ -213,13 +214,13 @@ void caseRetriesThenSucceeds()
         "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
         "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
         "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"}};
-    Stack stack;
+    ClientConfig config;
+    config.retry.baseDelay = std::chrono::milliseconds{5};
+    config.retry.jitter = 0.0;
+    Stack stack{config};
     if (!stack.ok()) {
         return;
     }
-    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
-    stack.config().retry.jitter = 0.0;
-
     auto result = stack.blocking().send(get(server.url() + "/flaky"));
     check(result.has_value(), "eventually succeeded");
     if (result) {
@@ -232,12 +233,13 @@ void caseRetryStopsAtCeiling()
 {
     antares::test::LoopbackServer server{
         "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n"};
-    Stack stack;
+    ClientConfig config;
+    config.retry.maxAttempts = 2;
+    config.retry.baseDelay = std::chrono::milliseconds{5};
+    Stack stack{config};
     if (!stack.ok()) {
         return;
     }
-    stack.config().retry.maxAttempts = 2;
-    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
 
     // Exhausting the attempts returns the last response, not an error: the
     // server did answer, it just answered 503.
@@ -253,11 +255,12 @@ void casePostNotRetried()
 {
     antares::test::LoopbackServer server{
         "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n"};
-    Stack stack;
+    ClientConfig config;
+    config.retry.baseDelay = std::chrono::milliseconds{5};
+    Stack stack{config};
     if (!stack.ok()) {
         return;
     }
-    stack.config().retry.baseDelay = std::chrono::milliseconds{5};
 
     Request request;
     request.method = Method::post;
