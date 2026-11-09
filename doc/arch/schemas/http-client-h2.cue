@@ -41,11 +41,3 @@ package schemas
     hops:    uint8
 }
 
-// #Limits bounds every unbounded thing, so a hostile peer cannot allocate.
-#Limits: {
-    maxRedirects:        uint8 & >=0 & <=32   | *10
-    maxStreamsPerConn:   uint16 & >0          | *100
-    maxHeaderBytes:      uint32 & >0          | *32768
-    maxBodyBytes:        uint64 & >0          | *67108864
-    idleTimeoutMs:       uint32 & >0          | *15000
-}
