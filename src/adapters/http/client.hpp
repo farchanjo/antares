@@ -54,12 +54,17 @@ private:
     [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt);
 
     void release(std::shared_ptr<Connection> connection);
-    [[nodiscard]] std::shared_ptr<Connection> acquire(const domain::http::Url &url);
+    [[nodiscard]] std::shared_ptr<Connection> acquire(ports::io::IoEngine &engine,
+                                                      const domain::http::Url &url);
 
     application::io::EnginePool &pool_;
     domain::http::ClientConfig config_;
     std::unique_ptr<TlsContext> tls_;
-    std::map<std::string, std::vector<std::shared_ptr<Connection>>> idle_;
+    /// Keyed by loop *and* authority: a connection may only be reused from
+    /// the loop that owns it.
+    std::map<std::pair<ports::io::IoEngine *, std::string>,
+             std::vector<std::shared_ptr<Connection>>>
+        idle_;
     ports::http::ClientStats stats_{};
     std::uint64_t rng_ = 0x9e3779b97f4a7c15ULL;
 };

@@ -87,7 +87,7 @@ void HttpClient::start(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 {
-    attempt->connection_ = acquire(attempt->url_);
+    attempt->connection_ = acquire(*attempt->engine_, attempt->url_);
     if (attempt->connection_) {
         ++stats_.reused;
         onReady(attempt);
@@ -336,9 +336,10 @@ void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,
     done(std::move(result));
 }
 
-std::shared_ptr<Connection> HttpClient::acquire(const domain::http::Url &url)
+std::shared_ptr<Connection> HttpClient::acquire(ports::io::IoEngine &engine,
+                                                const domain::http::Url &url)
 {
-    auto found = idle_.find(url.authority);
+    auto found = idle_.find({&engine, url.authority});
     if (found == idle_.end() || found->second.empty()) {
         return nullptr;
     }
@@ -353,7 +354,7 @@ void HttpClient::release(std::shared_ptr<Connection> connection)
         return;
     }
 
-    auto &bucket = idle_[connection->url().authority];
+    auto &bucket = idle_[{&connection->engine(), connection->url().authority}];
     if (bucket.size() >= config_.pool.maxIdlePerHost) {
         connection->close();
         ++stats_.idleClosed;

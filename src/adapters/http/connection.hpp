@@ -42,6 +42,7 @@ public:
     [[nodiscard]] bool isHttp2() const noexcept { return http2_; }
     [[nodiscard]] bool isReady() const noexcept { return state_ == State::ready; }
     [[nodiscard]] const domain::http::Url &url() const noexcept { return url_; }
+    [[nodiscard]] ports::io::IoEngine &engine() const noexcept { return engine_; }
 
     /// Write the whole buffer; the callback reports the byte count or a failure.
     using WriteDone = std::function<void(std::expected<std::size_t, domain::http::HttpError>)>;
