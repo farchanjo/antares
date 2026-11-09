@@ -202,12 +202,13 @@ void EngineBase::poke() noexcept
     }
     resolveReady_.notify_all();
     if (resolver_.joinable()) {
-        std::fprintf(stderr, "  stop self=%llu resolver=%llu\n",
-                     static_cast<unsigned long long>(
-                         std::hash<std::thread::id>{}(std::this_thread::get_id())),
-                     static_cast<unsigned long long>(
-                         std::hash<std::thread::id>{}(resolver_.get_id())));
-        resolver_.join();
+        // `stop()` may run on the resolver itself when a completion unwinds
+        // into the owner, and a thread cannot join itself.
+        if (resolver_.get_id() == std::this_thread::get_id()) {
+            resolver_.detach();
+        } else {
+            resolver_.join();
+        }
     }
 
     if (wake_[1] >= 0) {
@@ -329,12 +330,13 @@ void EngineBase::stop()
     }
     resolveReady_.notify_all();
     if (resolver_.joinable()) {
-        std::fprintf(stderr, "  stop self=%llu resolver=%llu\n",
-                     static_cast<unsigned long long>(
-                         std::hash<std::thread::id>{}(std::this_thread::get_id())),
-                     static_cast<unsigned long long>(
-                         std::hash<std::thread::id>{}(resolver_.get_id())));
-        resolver_.join();
+        // `stop()` may run on the resolver itself when a completion unwinds
+        // into the owner, and a thread cannot join itself.
+        if (resolver_.get_id() == std::this_thread::get_id()) {
+            resolver_.detach();
+        } else {
+            resolver_.join();
+        }
     }
 
     if (wake_[1] >= 0) {
