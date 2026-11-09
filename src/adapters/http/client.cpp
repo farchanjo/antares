@@ -133,6 +133,13 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     return std::static_pointer_cast<ports::http::Ticket>(attempt);
 }
 
+void HttpClient::log(ports::log::Level level, std::string_view message) const
+{
+    if (config_.logger != nullptr) {
+        config_.logger->write(level, "http", message);
+    }
+}
+
 void HttpClient::resetSession(const std::shared_ptr<Attempt> &attempt)
 {
     // A fresh session starts empty, so the stream sinks and the method are
@@ -160,6 +167,7 @@ void HttpClient::armIdleTimer(const std::shared_ptr<Attempt> &attempt)
             return;
         }
         ++self->stats_.timeouts;
+        self->log(ports::log::Level::warn, "idle timeout");
         self->settle(attempt, std::unexpected(domain::http::HttpError::timeout));
     });
 }
@@ -197,6 +205,7 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
         [self, attempt](domain::http::HttpError error) {
             if (error == domain::http::HttpError::tls) {
                 ++self->stats_.tlsFailures;
+                self->log(ports::log::Level::error, "tls handshake failed");
             }
             self->finish(attempt, std::unexpected(error));
         });
@@ -381,6 +390,9 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
 void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
                                 domain::http::Response response)
 {
+    if (response.isRedirect()) {
+        log(ports::log::Level::trace, "redirect received");
+    }
     const bool followable = config_.redirects.follow && response.isRedirect();
     const std::string *location = response.find("Location");
 
@@ -487,6 +499,7 @@ void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::
 {
     ++attempt->attempts_;
     ++stats_.retries;
+    log(ports::log::Level::debug, "retrying the request");
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     (void)attempt->engine_->submitTimer(delay, [self, attempt] { self->start(attempt); });
 }

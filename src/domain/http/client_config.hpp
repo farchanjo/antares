@@ -3,6 +3,7 @@
 #include <string>
 
 #include "domain/http/auth.hpp"
+#include "ports/log/logger.hpp"
 #include "domain/http/limits.hpp"
 #include "domain/http/pool_config.hpp"
 #include "domain/http/retry_policy.hpp"
@@ -18,6 +19,9 @@ struct ClientConfig {
     Timeouts timeouts;
     RetryPolicy retry;
     Auth auth;
+
+    /// Optional sink; null disables logging. Non-owning.
+    ports::log::Logger *logger = nullptr;
 
     /// PEM anchors that replace the system trust store when set.
     std::string trustBundlePem;

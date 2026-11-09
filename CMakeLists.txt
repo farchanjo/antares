@@ -285,7 +285,8 @@ set(ANTARES_HTTP_CASES
     ws-close-closes
     websocket-upgrades
     streaming-survives-redirect
-    streaming-survives-retry)
+    streaming-survives-retry
+    logger-receives-failures)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")

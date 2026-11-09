@@ -20,6 +20,7 @@
 #include "loopback_server.hpp"
 #include "test_cert.hpp"
 #include "tls_server.hpp"
+#include "adapters/log/console_logger.hpp"
 #include "domain/http/sse.hpp"
 #include "domain/http/websocket.hpp"
 #include "support/await.hpp"
@@ -726,6 +727,51 @@ void caseStreamingSurvivesRetry()
     check(collected == "xyz", "chunks still delivered after the retry");
 }
 
+/// Collects what the client logs so a case can assert the port is wired.
+class CapturingLogger final : public ports::log::Logger {
+public:
+    void write(ports::log::Level level, std::string_view category,
+               std::string_view message) override
+    {
+        if (level < threshold_ || category != "http") {
+            return;
+        }
+        ++lines_;
+        last_.assign(message);
+    }
+
+    [[nodiscard]] ports::log::Level threshold() const noexcept override { return threshold_; }
+    void setThreshold(ports::log::Level level) noexcept override { threshold_ = level; }
+
+    [[nodiscard]] int lines() const noexcept { return lines_; }
+    [[nodiscard]] const std::string &last() const noexcept { return last_; }
+
+private:
+    ports::log::Level threshold_ = ports::log::Level::trace;
+    int lines_ = 0;
+    std::string last_;
+};
+
+void caseLoggerReceivesFailures()
+{
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"}};
+
+    CapturingLogger sink;
+    ClientConfig config;
+    config.logger = &sink;
+    config.retry.baseDelay = std::chrono::milliseconds{5};
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    (void)stack.blocking().send(get(server.url() + "/logged"));
+    check(sink.lines() > 0, "the logger received records");
+    check(sink.last() == "retrying the request", "the retry was reported");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -763,6 +809,7 @@ std::span<const Case> cases()
         {"websocket-upgrades", caseWebSocketUpgrades},
         {"streaming-survives-redirect", caseStreamingSurvivesRedirect},
         {"streaming-survives-retry", caseStreamingSurvivesRetry},
+        {"logger-receives-failures", caseLoggerReceivesFailures},
     };
     return table;
 }
