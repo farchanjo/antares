@@ -1,0 +1,37 @@
+# Tasks: Kernel Io Engine Kqueue
+
+## Task Breakdown
+
+- [ ] T001 Declare `IoError` and the seven port operations in
+      `src/ports/io/io_engine.hpp`; no definition, header only (FR-001, FR-005).
+- [ ] T002 Declare `PendingOp` and the stable-address operation store in
+      `src/ports/io/pending_op.hpp` (FR-002).
+- [ ] T003 Write `src/application/io/engine_factory.cpp` selecting by platform
+      and honouring `ANTARES_IO_BACKEND`; expose `name()` (FR-004).
+- [ ] T004 Implement the `poll` backend in
+      `src/adapters/platform/io/poll_engine.cpp` (FR-001, FR-008).
+- [ ] T005 Implement the engine thread, the self-pipe wakeup and `post()`
+      (FR-007).
+- [ ] T006 Implement the kqueue backend in
+      `src/adapters/platform/io/kqueue_engine.cpp` with `EV_ONESHOT` (FR-003).
+- [ ] T007 Map `EV_EOF` to `closed` and `EV_ERROR` to `system` (FR-005).
+- [ ] T008 Implement `cancel()` so the callback fires once with `cancelled` and
+      never again (FR-006).
+- [ ] T009 Guarantee no callback after `stop()` returns; join the engine thread
+      (FR-006, FR-007).
+- [ ] T010 Add the conformance suite `tests/io/conformance.cpp` that takes
+      `IoEngine&` and names no backend (FR-008).
+- [ ] T011 Instantiate the suite twice through CTest, one per backend (FR-008).
+- [ ] T012 Add fault injection for `tooManyDescriptors` through a lowered
+      `RLIMIT_NOFILE` (FR-005).
+- [ ] T013 Wire `antares_io` into CMake with the kqueue sources behind
+      `if(APPLE)`; add the suite to the `dev` test preset (FR-003, FR-008).
+- [ ] T014 Add the counters named in the spec's Observability section and read
+      them from a suite case (FR-001).
+
+## Dependencies
+
+- The `dev` preset and `lld` on the host — done.
+- `kqueue` needs a Darwin host; `poll` and the suite run anywhere, so T004 and
+  T010 land before T006 is provable on the host.
+- No new library: `kqueue` and `poll` come from libc.
