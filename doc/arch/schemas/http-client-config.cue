@@ -12,11 +12,9 @@ package schemas
 }
 
 // #AuthKind is how a request proves identity (FR-013).
-#AuthKind: "none" | "bearer" | "basic" | "clientCertificate"
-
 // #Auth carries the credential material.
 #Auth: {
-    kind: #AuthKind | *"none"
+    kind: "none" | "bearer" | "basic" | "clientCertificate" | *"none"
     principal?:      string
     secret?:         string
     certificatePem?: string
@@ -43,6 +41,25 @@ package schemas
     follow:          bool | *true
     forwardAuth:     bool | *false
     maxHops:         uint8 & <=32 | *10
+}
+
+// #Retry bounds repeated attempts (FR-015).
+#Retry: {
+    maxAttempts: uint8 & >=1 & <=10 | *3
+    // #Backoff delay shape, doubled per attempt.
+    backoff: {
+        baseDelayMs: uint32 & >0        | *100
+        maxDelayMs:  uint32 & >0        | *2000
+        factor:      number & >=1       | *2.0
+        jitter:      number & >=0 & <=1 | *0.2
+    } | *{}
+    // #RetryConditions which outcomes are worth repeating.
+    conditions: {
+        onConnect:          bool | *true
+        onTimeout:          bool | *true
+        honorRetryAfter:    bool | *true
+        retryNonIdempotent: bool | *false
+    } | *{}
 }
 
 // #Transport groups what shapes the wire rather than a single request.

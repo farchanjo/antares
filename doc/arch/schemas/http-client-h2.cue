@@ -9,19 +9,7 @@ package schemas
 #HttpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS"
 
 // #HttpError is closed: every failure the client can report.
-#HttpError:
-    | "connect"
-    | "tls"
-    | "alpn"
-    | "timeout"
-    | "cancelled"
-    | "reentrant"
-    | "tooManyRedirects"
-    | "headerCeiling"
-    | "bodyCeiling"
-    | "streamCeiling"
-    | "protocol"
-    | "closed"
+#HttpError: "connect" | "tls" | "alpn" | "timeout" | "cancelled" | "reentrant" | "tooManyRedirects" | "headerCeiling" | "bodyCeiling" | "streamCeiling" | "protocol" | "closed"
 
 // #HttpRequest is one submission. `version` overrides ALPN and is test-only.
 #HttpRequest: {
