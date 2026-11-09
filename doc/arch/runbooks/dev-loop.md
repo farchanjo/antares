@@ -39,7 +39,7 @@ Run this procedure when:
 ## Preconditions
 
 - `speckit validate` exits `0` on the workstation.
-- `make lint` exits `0` on the workstation.
+- The `lint` target exits `0` on the workstation.
 - The change is committed; the host receives it by push, never by patch.
 - The host holds no remote and no upstream branch; it is a sink.
 - The host answers and its toolchain resolves: `clang`, `cmake`, `ninja`,

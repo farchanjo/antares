@@ -126,29 +126,34 @@ add_custom_target(check
     COMMENT "antares: test suite"
     VERBATIM
     USES_TERMINAL)
-add_dependencies(check antares_io_conformance)
+add_dependencies(check antares_io_conformance lint)
+
+# Presets are read from the source directory, so every command starts there.
+set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
 
 add_custom_target(asan
-    COMMAND ${CMAKE_COMMAND} --preset dev-asan -S ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build --preset dev-asan --parallel ${ANTARES_JOBS}
-    COMMAND ${CMAKE_CTEST_COMMAND} --preset dev-asan --output-on-failure --parallel ${ANTARES_JOBS}
+    COMMAND ${ANTARES_CMAKE_RUN} --preset dev-asan
+    COMMAND ${ANTARES_CMAKE_RUN} --build --preset dev-asan --parallel ${ANTARES_JOBS}
+    COMMAND ${ANTARES_CMAKE_RUN} -E chdir ${CMAKE_SOURCE_DIR} ctest --preset dev-asan
+            --output-on-failure --parallel ${ANTARES_JOBS}
     COMMENT "antares: AddressSanitizer pass"
     VERBATIM
     USES_TERMINAL)
 
 if(APPLE)
     add_custom_target(leak
-        COMMAND ${CMAKE_COMMAND} --preset dev -S ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} --build --preset dev --parallel ${ANTARES_JOBS}
-        COMMAND leaks --atExit -- ${CMAKE_SOURCE_DIR}/build/dev/antares_io_conformance
+        COMMAND ${ANTARES_CMAKE_RUN} --preset dev
+        COMMAND ${ANTARES_CMAKE_RUN} --build --preset dev --parallel ${ANTARES_JOBS}
+        COMMAND ${ANTARES_CMAKE_RUN} -E chdir ${CMAKE_SOURCE_DIR} leaks --atExit --
+                ${CMAKE_SOURCE_DIR}/build/dev/antares_io_conformance
         COMMENT "antares: leak pass (leaks)"
         VERBATIM
         USES_TERMINAL)
 else()
     add_custom_target(leak
-        COMMAND ${CMAKE_COMMAND} --preset dev-asan -S ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} --build --preset dev-asan --parallel ${ANTARES_JOBS}
-        COMMAND ${CMAKE_COMMAND} -E env ASAN_OPTIONS=detect_leaks=1
+        COMMAND ${ANTARES_CMAKE_RUN} --preset dev-asan
+        COMMAND ${ANTARES_CMAKE_RUN} --build --preset dev-asan --parallel ${ANTARES_JOBS}
+        COMMAND ${ANTARES_CMAKE_RUN} -E env ASAN_OPTIONS=detect_leaks=1
                 ${CMAKE_SOURCE_DIR}/build/dev-asan/antares_io_conformance
         COMMENT "antares: leak pass (LeakSanitizer)"
         VERBATIM

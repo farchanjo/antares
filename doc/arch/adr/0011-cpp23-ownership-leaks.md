@@ -55,7 +55,7 @@ view never outlives its range. A copy is avoided by moving, and a duplicated
 buffer counts as a defect.
 
 Every development run is leak-checked, in two passes that cannot be merged.
-`make asan` builds and runs under AddressSanitizer; `make leak` runs the leak
+The `asan` target builds and runs under AddressSanitizer; the `leak` target runs the leak
 pass — LeakSanitizer on Linux, `leaks --atExit` against a `dev` build on macOS,
 because `leaks` cannot read an ASan heap. `dsymutil` symbolizes the binary so a
 report names frames, and no debug build ships without line info. A leak report is
@@ -76,5 +76,5 @@ weaker than a guaranteed abort, so it is not the panic path.
 ### Confirmation
 
 `submitConnect` takes `std::span<const std::byte>`; `grep -rn 'void \*' src`
-finds no port signature; `make asan` and `make leak` both pass on the host, and the
+finds no port signature; the `asan` and `leak` targets both pass on the host, and the
 `dev-asan` preset carries `abort_on_error=1` plus a `dsymutil` post-build step.

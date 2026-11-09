@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <thread>
 
 #include "application/io/engine_factory.hpp"
@@ -162,8 +163,10 @@ void caseFileReadIsImmediate()
     IoEngine &engine = **built;
     auto runner = makeRunner(engine);
 
-    const char *path = "/tmp/antares-conformance.txt";
-    FILE *file = std::fopen(path, "wb");
+    // One file per process: the poll and kqueue runs share the case name and
+    // would otherwise write and unlink the same path in parallel.
+    const std::string path = "/tmp/antares-conformance-" + std::string(engine.name()) + ".txt";
+    FILE *file = std::fopen(path.c_str(), "wb");
     if (file == nullptr) {
         check(false, "create temp file");
         return;
@@ -171,7 +174,7 @@ void caseFileReadIsImmediate()
     std::fwrite("hello", 1, 5, file);
     std::fclose(file);
 
-    auto handle = IoHandle::openFile(path, antares::ports::io::Access::read);
+    auto handle = IoHandle::openFile(path.c_str(), antares::ports::io::Access::read);
     check(handle.has_value(), "open temp file");
     if (!handle) {
         return;
@@ -207,7 +210,7 @@ void caseFileReadIsImmediate()
     check(eof.load(), "read at end of file completed");
     check(sawClosed.load(), "end of file reports closed");
 
-    ::unlink(path);
+    ::unlink(path.c_str());
 }
 
 void caseStopEndsCallbacks()
