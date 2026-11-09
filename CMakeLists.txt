@@ -64,3 +64,17 @@ set_target_properties(antares_io PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options("-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=.")
 endif()
+
+enable_testing()
+
+add_executable(antares_io_conformance tests/io/conformance.cpp)
+target_link_libraries(antares_io_conformance PRIVATE antares_io)
+set_target_properties(antares_io_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
+add_test(NAME io_conformance_poll COMMAND antares_io_conformance)
+set_tests_properties(io_conformance_poll PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=poll")
+
+if(APPLE)
+    add_test(NAME io_conformance_kqueue COMMAND antares_io_conformance)
+    set_tests_properties(io_conformance_kqueue PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue")
+endif()

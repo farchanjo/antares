@@ -24,6 +24,7 @@ specScopeGlobs = [
   ".clang-format",
   ".gitignore",
   "tools/**",
+  "tests/**",
   "Makefile",
 ]
 

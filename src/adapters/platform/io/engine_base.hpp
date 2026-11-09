@@ -35,6 +35,10 @@ struct PendingOp {
     Buffer buffer;
     std::uint64_t offset = 0;
 
+    /// False for the immediate strategy: the op never reaches a readiness
+    /// filter, so a sweep must not pick it again.
+    bool readiness = true;
+
     ReadCompletion onRead;
     WriteCompletion onWrite;
     AcceptCompletion onAccept;
@@ -83,6 +87,13 @@ protected:
 
     /// Complete `op` on the engine thread through the posted queue.
     void completeImmediately(PendingOp &op);
+
+    /// Perform the syscall for a ready op and complete it. Shared by backends
+    /// so a readiness backend only reports readiness, never I/O.
+    void performRead(PendingOp &op);
+    void performWrite(PendingOp &op);
+    void performAccept(PendingOp &op);
+    void performConnect(PendingOp &op);
 
     [[nodiscard]] int wakeReader() const noexcept;
     [[nodiscard]] std::size_t pendingCount() const noexcept;

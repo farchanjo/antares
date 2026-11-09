@@ -76,29 +76,19 @@ bool KqueueEngine::waitReady(int timeoutMilliseconds)
             continue;
         }
 
-        const bool failed = (event.flags & EV_ERROR) != 0 || (event.flags & EV_EOF) != 0;
+        (void)event;
         switch (op->kind) {
-        case OpKind::read: {
-            std::expected<Buffer, IoError> result = std::move(op->buffer);
-            if (failed) {
-                result = std::unexpected(fromEventFlags(event));
-            }
-            completeRead(*op, std::move(result));
+        case OpKind::read:
+            performRead(*op);
             break;
-        }
         case OpKind::write:
-            completeWrite(*op, failed ? std::unexpected(fromEventFlags(event))
-                                      : std::expected<std::size_t, IoError>{op->buffer.size()});
+            performWrite(*op);
             break;
-        case OpKind::accept: {
-            const int accepted = failed ? -1 : ::accept(op->handle->native(), nullptr, nullptr);
-            completeAccept(*op, accepted < 0 ? std::unexpected(fromEventFlags(event))
-                                             : std::expected<int, IoError>{accepted});
+        case OpKind::accept:
+            performAccept(*op);
             break;
-        }
         case OpKind::connect:
-            completeConnect(*op, failed ? std::unexpected(fromEventFlags(event))
-                                        : std::expected<void, IoError>{});
+            performConnect(*op);
             break;
         }
 

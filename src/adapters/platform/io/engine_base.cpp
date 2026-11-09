@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 namespace antares::adapters::platform::io {
@@ -58,6 +59,7 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
     op->onRead = std::move(done);
 
     if (handle.isFile()) {
+        op->readiness = false;
         completeImmediately(*op);
         return {};
     }
@@ -84,6 +86,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
     op->onWrite = std::move(done);
 
     if (handle.isFile()) {
+        op->readiness = false;
         completeImmediately(*op);
         return {};
     }
@@ -203,7 +206,56 @@ void EngineBase::completeImmediately(PendingOp &op)
         } else {
             completeFileWrite(*target);
         }
+        release(target);
     });
+}
+
+void EngineBase::performRead(PendingOp &op)
+{
+    const ssize_t got = ::read(op.handle->native(), op.buffer.data(), op.buffer.size());
+    if (got < 0) {
+        completeRead(op, std::unexpected(errno == EAGAIN ? IoError::wouldBlock : IoError::system));
+        return;
+    }
+    if (got == 0) {
+        completeRead(op, std::unexpected(IoError::closed));
+        return;
+    }
+    op.buffer.resize(static_cast<std::size_t>(got));
+    completeRead(op, std::move(op.buffer));
+}
+
+void EngineBase::performWrite(PendingOp &op)
+{
+    const ssize_t put = ::write(op.handle->native(), op.buffer.data(), op.buffer.size());
+    if (put < 0) {
+        completeWrite(op, std::unexpected(errno == EAGAIN ? IoError::wouldBlock : IoError::system));
+        return;
+    }
+    completeWrite(op, static_cast<std::size_t>(put));
+}
+
+void EngineBase::performAccept(PendingOp &op)
+{
+    const int accepted = ::accept(op.handle->native(), nullptr, nullptr);
+    if (accepted < 0) {
+        completeAccept(op, std::unexpected(errno == EMFILE || errno == ENFILE
+                                               ? IoError::tooManyDescriptors
+                                               : IoError::system));
+        return;
+    }
+    completeAccept(op, accepted);
+}
+
+void EngineBase::performConnect(PendingOp &op)
+{
+    int pending = 0;
+    socklen_t length = sizeof pending;
+    if (::getsockopt(op.handle->native(), SOL_SOCKET, SO_ERROR, &pending, &length) != 0 || pending != 0) {
+        completeConnect(op, std::unexpected(IoError::system));
+        return;
+    }
+    completeConnect(op, {});
 }
 
 void EngineBase::completeFileRead(PendingOp &op)

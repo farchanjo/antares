@@ -155,6 +155,17 @@ The corpus is governed; use the binary for every loop step.
 ## Notes
 
 <!-- notes:start -->
+## Rules
+
+- **Code and test on the macOS host.** Workstation is `farchanjo@192.168.202.241`,
+  checkout `~/dev/antares`. Push with `git push mac HEAD:main`, then build and
+  run there over SSH. The Linux workstation is for editing and committing only.
+- A green local build is **not** evidence: `kqueue` compiles on Darwin alone, and
+  the acceptance target is macOS (P-05).
+- Run the suite with `ctest --preset dev` on the host, both backends, before
+  claiming a case passes.
+- Nothing is published to `origin` until the host is green.
+
 ## Command surface
 
 Every verb the binary exposes, grouped by command. Run `speckit <verb> --help`

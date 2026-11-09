@@ -43,8 +43,15 @@ bool PollEngine::waitReady(int timeoutMilliseconds)
         if (descriptors.size() == MAX_SWEEP) {
             break;
         }
+        if (!owned->readiness) {
+            continue;
+        }
         descriptors.push_back({owned->handle->native(), wantedEvents(owned->kind), 0});
         tracked.push_back(owned.get());
+    }
+
+    if (descriptors.empty()) {
+        return false;
     }
 
     const int ready = ::poll(descriptors.data(), descriptors.size(), timeoutMilliseconds);
@@ -59,30 +66,20 @@ bool PollEngine::waitReady(int timeoutMilliseconds)
         }
 
         PendingOp *op = tracked[index];
-        const bool failed = (revents & (POLLERR | POLLHUP | POLLNVAL)) != 0;
+        (void)revents;
 
         switch (op->kind) {
-        case OpKind::read: {
-            std::expected<Buffer, IoError> result = std::move(op->buffer);
-            if (failed) {
-                result = std::unexpected(IoError::closed);
-            }
-            completeRead(*op, std::move(result));
+        case OpKind::read:
+            performRead(*op);
             break;
-        }
         case OpKind::write:
-            completeWrite(*op, failed ? std::unexpected(IoError::closed)
-                                      : std::expected<std::size_t, IoError>{op->buffer.size()});
+            performWrite(*op);
             break;
-        case OpKind::accept: {
-            const int accepted = failed ? -1 : ::accept(op->handle->native(), nullptr, nullptr);
-            completeAccept(*op, accepted < 0 ? std::unexpected(IoError::system)
-                                             : std::expected<int, IoError>{accepted});
+        case OpKind::accept:
+            performAccept(*op);
             break;
-        }
         case OpKind::connect:
-            completeConnect(*op, failed ? std::unexpected(IoError::system)
-                                        : std::expected<void, IoError>{});
+            performConnect(*op);
             break;
         }
 
