@@ -247,6 +247,7 @@ void Connection::drainPlaintext()
             continue;
         }
         const int error = SSL_get_error(ssl_, got);
+        std::fprintf(stderr, "  ssl_read got=%d err=%d\n", got, error);
         if (error == SSL_ERROR_WANT_READ) {
             readSocket();
             return;
