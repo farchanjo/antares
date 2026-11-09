@@ -153,7 +153,7 @@ Enforced by: config:project, verify
 
 ## P-11 — C++23 in full, no C escape hatch
 Severity: block
-MANDATE: The project compiles as C++26, the newest mode the toolchain accepts, and prefers the language's facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`, `std::variant`, concepts, `constexpr`. A `void*`, a pointer-plus-count pair, a C array and a `#define` constant carry a reason, and a facility the toolchain lacks is gated by its feature-test macro instead of assumed. A duration is `std::chrono::duration`, never a bare millisecond integer; wire bytes are `std::byte`, never `char`. Language features follow the compiler; library features the standard library ships, gated by their feature-test macro — `<inplace_vector>` and `<linalg>` are absent on the current toolchain and are not assumed.
+MANDATE: The project compiles as C++26, the newest mode the toolchain accepts, and prefers the language's facilities to C — `std::expected`, `std::span`, `std::string_view`, `std::byte`, `std::optional`, `std::variant`, concepts, `constexpr`. A `void*`, a pointer-plus-count pair, a C array and a `#define` constant carry a reason, and a facility the toolchain lacks is gated by its feature-test macro instead of assumed. A duration is `std::chrono::duration`, never a bare millisecond integer; wire bytes are `std::byte`, never `char`. The toolchain floor is CMake 4.4 and the newest Xcode clang, because `CXX_STANDARD 26` needs both. Language features follow the compiler; library features the standard library ships, gated by their feature-test macro — `<inplace_vector>` and `<linalg>` are absent on the current toolchain and are not assumed.
 Enforced by: config:project, verify
 
 ## P-12 — Ownership over pointers
