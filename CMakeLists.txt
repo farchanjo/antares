@@ -99,12 +99,13 @@ add_executable(antares_io_conformance tests/io/conformance.cpp)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
 
 if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
-    target_link_libraries(antares_io_conformance PRIVATE mimalloc-static)
     if(APPLE)
-        # ld64 needs force_load: it pulls every member in, so mimalloc's
-        # malloc/free win over libSystem's instead of losing to it.
+        # ld64 needs force_load to beat libSystem, and it already pulls every
+        # member in, so the archive goes on the line once only.
         target_link_options(antares_io_conformance PRIVATE
             "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    else()
+        target_link_libraries(antares_io_conformance PRIVATE mimalloc-static)
     endif()
 endif()
 set_target_properties(antares_io_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
