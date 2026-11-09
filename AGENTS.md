@@ -173,9 +173,9 @@ The corpus is governed; use the binary for every loop step.
 - Run the suite on the host with `ctest --preset dev`, both backends, before
   claiming a case passes.
 - Nothing is published to `origin` until the host is green.
-- **Clean old builds.** Remove stale build trees (`build/probe`, `build/sys`, a
-  superseded configuration) as soon as they stop being used, and run `make clean`
-  before a release build. Disk exhaustion fails the loop silently.
+- **Clean old builds.** Delete a build tree as soon as it stops being used and
+  run `make clean` before a release build; `make clean-all` also drops the
+  dependency cache. Disk exhaustion fails the loop silently.
 
 ## Command surface
 
@@ -478,5 +478,4 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_stats.cpp`
 - `src/ports/io/io_stats.hpp`
 - `tests/io/conformance.cpp`
-
 <!-- notes:end -->
