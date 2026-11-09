@@ -805,6 +805,36 @@ void caseWsCloseHandshake()
     check(!closed.wait(std::chrono::milliseconds{10}) || true, "single close");
 }
 
+void caseHundredStreamsStayUnblocked()
+{
+    // The loop must keep serving while many streams are in flight: a hundred
+    // concurrent requests finish, and a sync call from another thread still
+    // returns instead of queueing behind them.
+    antares::test::TlsServer server{"s", /*h2=*/true};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await all;
+    std::atomic<int> done{0};
+    constexpr int TOTAL = 100;
+
+    for (int index = 0; index < TOTAL; ++index) {
+        (void)stack.client().submit(get(server.url() + "/many"), [&](auto) {
+            if (done.fetch_add(1) + 1 == TOTAL) {
+                all.signal();
+            }
+        });
+    }
+
+    check(all.wait(std::chrono::seconds{10}), "every stream finished");
+    check(done.load() == TOTAL, "count matched");
+
+    auto sync = stack.blocking().send(get(server.url() + "/after"));
+    check(sync.has_value(), "a sync call still got through");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -844,6 +874,7 @@ std::span<const Case> cases()
         {"streaming-survives-retry", caseStreamingSurvivesRetry},
         {"logger-receives-failures", caseLoggerReceivesFailures},
         {"ws-close-handshake", caseWsCloseHandshake},
+        {"hundred-streams-stay-unblocked", caseHundredStreamsStayUnblocked},
     };
     return table;
 }

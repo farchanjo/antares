@@ -26,7 +26,7 @@ Ordered so each task compiles on its own and proves one requirement.
 - [x] T010 Implement the blocking facade with reentrancy detection (FR-008).
 - [x] T011 Add a loopback TLS test server and prove h2, h1 fallback, redirect
       and cancellation on both engine backends (FR-003…FR-010).
-- [ ] T012 Prove the engine stays unblocked: a hundred open streams, sync call
+- [x] T012 Prove the engine stays unblocked: a hundred open streams, sync call
       from a callback, idle CPU near zero (FR-002).
 - [x] T013 Wire the counters and log events the spec's Observability section
       names (FR-007).

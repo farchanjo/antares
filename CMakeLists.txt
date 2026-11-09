@@ -287,7 +287,8 @@ set(ANTARES_HTTP_CASES
     streaming-survives-redirect
     streaming-survives-retry
     logger-receives-failures
-    ws-close-handshake)
+    ws-close-handshake
+    hundred-streams-stay-unblocked)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
