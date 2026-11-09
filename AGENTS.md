@@ -273,7 +273,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0008-io-handle-abstraction.md`
 - `doc/arch/adr/0009-kqueue-forced-poll-fallback.md`
 - `doc/arch/adr/0010-log-levels.md`
-- `doc/arch/adr/0011-cpp23-ownership-leaks.md`
+- `doc/arch/adr/0011-newest-cpp-ownership-leaks.md`
 - `doc/arch/adr/0012-mimalloc-allocator.md`
 - `doc/arch/adr/0013-http-client-h2.md`
 - `doc/arch/agents/implement-lead.md`
@@ -492,6 +492,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/http/http_error.hpp`
 - `src/domain/http/limits.hpp`
 - `src/domain/http/pool_config.hpp`
+- `src/domain/http/request.cpp`
 - `src/domain/http/request.hpp`
 - `src/domain/http/response.cpp`
 - `src/domain/http/response.hpp`
