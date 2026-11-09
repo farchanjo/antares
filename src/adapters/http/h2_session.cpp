@@ -181,7 +181,7 @@ H2Session::submit(const domain::http::Request &request, const std::string &targe
     add(":scheme", scheme);
     // RFC 9113 §8.3.1: :authority must not be empty.
     if (authority.empty()) {
-        return std::unexpected(domain::http::HttpError::invalidUrl);
+        return std::unexpected(domain::http::HttpError::protocol);
     }
     add(":authority", authority);
     add(":path", target.empty() ? "/" : target);
