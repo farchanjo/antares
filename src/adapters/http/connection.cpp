@@ -230,13 +230,17 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
 
 void Connection::drainPlaintext()
 {
+    // A handler may replace itself (a redirect re-enters), so keep a copy on
+    // the stack instead of calling through the member.
+    auto handler = handler_;
+
     if (ssl_ == nullptr) {
-        if (plain_.empty() || !handler_) {
+        if (plain_.empty() || !handler) {
             return;
         }
         std::string swap;
         swap.swap(plain_);
-        handler_(reinterpret_cast<const std::byte *>(swap.data()), swap.size());
+        handler(reinterpret_cast<const std::byte *>(swap.data()), swap.size());
         if (state_ == State::ready) {
             readSocket();
         }
@@ -248,8 +252,8 @@ void Connection::drainPlaintext()
     while (true) {
         const int got = SSL_read(ssl_, buffer, sizeof buffer);
         if (got > 0) {
-            if (handler_) {
-                handler_(reinterpret_cast<const std::byte *>(buffer), static_cast<std::size_t>(got));
+            if (handler) {
+                handler(reinterpret_cast<const std::byte *>(buffer), static_cast<std::size_t>(got));
             }
             continue;
         }
