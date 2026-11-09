@@ -12,15 +12,9 @@ constexpr domain::Bytes READ_CHUNK{16 * 1024};
 /// One in-flight request. Also the ticket handed to the caller.
 class HttpClient::Attempt : public ports::http::Ticket, public std::enable_shared_from_this<Attempt> {
 public:
-    Attempt(domain::http::Request request, ports::http::Completion done)
-        : request_(std::move(request))
-        , done_(std::move(done))
-    {
-    }
-
     void cancel() override
     {
-        if (done_ == nullptr) {
+        if (!done_) {
             return;
         }
         cancelled_ = true;
@@ -30,7 +24,7 @@ public:
     }
 
     [[nodiscard]] bool cancelled() const noexcept { return cancelled_; }
-    [[nodiscard]] bool finished() const noexcept { return done_ == nullptr; }
+    [[nodiscard]] bool finished() const noexcept { return !done_; }
 
     domain::http::Request request_;
     domain::http::Url url_;
@@ -40,13 +34,6 @@ public:
     bool cancelled_ = false;
     ports::http::Completion done_;
 
-private:
-    [[nodiscard]] H1Session makeSession(const domain::http::ClientConfig &config)
-    {
-        return H1Session{config.limits.maxHeaderBytes, config.limits.maxBodyBytes};
-    }
-
-public:
     Attempt(domain::http::Request request, ports::http::Completion done,
             const domain::http::ClientConfig &config)
         : request_(std::move(request))

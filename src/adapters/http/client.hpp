@@ -15,7 +15,8 @@ namespace antares::adapters::http {
 
 /// HTTP client over the engine. All state lives on the engine thread, so no
 /// mutex guards the pool and a completion never waits (FR-002).
-class HttpClient final : public ports::http::Client {
+class HttpClient final : public ports::http::Client,
+                         public std::enable_shared_from_this<HttpClient> {
 public:
     HttpClient(ports::io::IoEngine &engine, domain::http::ClientConfig config);
     ~HttpClient() override;

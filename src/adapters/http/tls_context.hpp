@@ -24,7 +24,7 @@ public:
     TlsContext(TlsContext &&) = delete;
     TlsContext &operator=(TlsContext &&) = delete;
 
-    [[nodiscard]] SSL_CTX *raw() noexcept { return context_; }
+    [[nodiscard]] SSL_CTX *raw() const noexcept { return context_; }
 
     /// True when the last verification failure came from the trust store.
     [[nodiscard]] static domain::http::HttpError lastError() noexcept;
