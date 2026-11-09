@@ -265,6 +265,20 @@ void casePostNotRetried()
     check(stack.client().stats().retries == 0, "POST is not retried by default");
 }
 
+void caseIdleTimerFires()
+{
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    // A timer is the only pending work: the loop must sleep, wake for the
+    // deadline and run the task, not poll.
+    antares::test::Await fired;
+    (void)stack.engine().submitTimer(std::chrono::milliseconds{50}, [&] { fired.signal(); });
+    check(fired.wait(), "timer fired");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -281,6 +295,7 @@ std::span<const Case> cases()
         {"retries-then-succeeds", caseRetriesThenSucceeds},
         {"retry-stops-at-ceiling", caseRetryStopsAtCeiling},
         {"post-not-retried", casePostNotRetried},
+        {"idle-timer-fires", caseIdleTimerFires},
     };
     return table;
 }
