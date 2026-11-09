@@ -36,7 +36,8 @@ H2Session::H2Session(std::shared_ptr<Connection> connection, domain::Bytes heade
         // Cap the peer's HPACK dynamic table so a hostile encoder cannot grow it
         // without bound (RFC 7541 §6.5).
         const nghttp2_settings_entry settings[] = {
-            {NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, headerCeiling_.count() / 4},
+            {NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+             static_cast<std::uint32_t>(headerCeiling_.count() / 4)},
             {NGHTTP2_SETTINGS_ENABLE_PUSH, 0},
         };
         (void)nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, settings,
