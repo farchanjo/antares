@@ -19,10 +19,10 @@
       never again (FR-006).
 - [ ] T009 Guarantee no callback after `stop()` returns; join the engine thread
       (FR-006, FR-007).
-- [ ] T010 Add the conformance suite `tests/io/conformance.cpp` that takes
+- [x] T010 Add the conformance suite `tests/io/conformance.cpp` that takes
       `IoEngine&` and names no backend (FR-008).
-- [ ] T011 Instantiate the suite twice through CTest, one per backend (FR-008).
-- [ ] T012 Add fault injection for `tooManyDescriptors` through a lowered
+- [x] T011 Instantiate the suite twice through CTest, one per backend (FR-008).
+- [x] T012 Add fault injection for `tooManyDescriptors` through a lowered
       `RLIMIT_NOFILE` (FR-005).
 - [x] T013 Wire `antares_io` into CMake with the kqueue sources behind
       `if(APPLE)`; add the suite to the `dev` test preset (FR-003, FR-008).
@@ -40,9 +40,9 @@
 - [x] T019 Give the kqueue backend the same immediate strategy and assert the
       loop stays idle on a file read (FR-010).
 
-- [ ] T020 Force kqueue in the factory and reach `poll` only by kernel refusal
+- [x] T020 Force kqueue in the factory and reach `poll` only by kernel refusal
       or `ANTARES_IO_BACKEND` (FR-004).
-- [ ] T021 Log the selected backend name once at startup (FR-004).
+- [x] T021 Log the selected backend name once at startup (FR-004).
 
 ## Dependencies
 
