@@ -79,30 +79,31 @@ private:
             if (client < 0) {
                 return;
             }
-            const int index = accepted_.fetch_add(1);
-            readRequest(client);
-            const std::string &response =
-                responses_[static_cast<std::size_t>(index) < responses_.size()
-                               ? static_cast<std::size_t>(index)
-                               : responses_.size() - 1];
-            (void)::write(client, response.data(), response.size());
+            // Keep-alive: answer every request on this connection until EOF.
+            while (!stopping_.load() && readRequest(client)) {
+                const std::size_t index = static_cast<std::size_t>(accepted_.fetch_add(1));
+                const std::string &response =
+                    responses_[index < responses_.size() ? index : responses_.size() - 1];
+                (void)::write(client, response.data(), response.size());
+            }
             ::close(client);
         }
     }
 
-    void readRequest(int client)
+    [[nodiscard]] bool readRequest(int client)
     {
         char scratch[2048];
         std::string seen;
         while (seen.find("\r\n\r\n") == std::string::npos) {
             const ssize_t got = ::read(client, scratch, sizeof scratch);
             if (got <= 0) {
-                return;
+                return false;
             }
             seen.append(scratch, static_cast<std::size_t>(got));
         }
         const std::lock_guard<std::mutex> guard{mutex_};
         lastRequest_ = seen;
+        return true;
     }
 
 public:
