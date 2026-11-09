@@ -51,7 +51,7 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
     : pool_(pool)
     , config_(std::move(config))
 {
-    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/false);
+    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true);
 }
 
 HttpClient::~HttpClient() = default;
@@ -115,8 +115,74 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
         });
 }
 
+std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
+                                                  const std::string &authority)
+{
+    auto &slot = sessions_[{&engine, authority}];
+    if (slot && !slot->isClosed()) {
+        return slot;
+    }
+
+    auto connection = std::make_shared<Connection>(engine, *tls_);
+    slot = std::make_shared<H2Session>(connection, config_.limits.maxHeaderBytes,
+                                       config_.limits.maxBodyBytes);
+    return slot;
+}
+
+void HttpClient::pump(const std::shared_ptr<H2Session> &session)
+{
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    session->connection()->read(
+        READ_CHUNK, [self, session](std::expected<ports::io::Buffer, domain::http::HttpError> chunk) {
+            if (!chunk) {
+                session->fail(chunk.error());
+                return;
+            }
+            session->receive(chunk->data(), chunk->size());
+            if (!session->isClosed()) {
+                self->pump(session);
+            }
+        });
+}
+
+void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
+{
+    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    auto session = sessionFor(*attempt->engine_, attempt->url_.authority);
+
+    auto submitNow = [self, session, attempt] {
+        auto submitted = session->submit(
+            attempt->request_, attempt->url_.target, attempt->url_.authority,
+            [self, attempt](auto result) { self->settle(attempt, std::move(result)); });
+        if (!submitted) {
+            self->settle(attempt, std::unexpected(submitted.error()));
+        }
+    };
+
+    const auto &connection = session->connection();
+    if (connection->isReady()) {
+        if (session->activeStreams() == 0) {
+            pump(session);
+        }
+        submitNow();
+        return;
+    }
+
+    connection->open(
+        attempt->url_, [self, session, submitNow] {
+            self->pump(session);
+            submitNow();
+        },
+        [self, session](domain::http::HttpError error) { session->fail(error); });
+}
+
 void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
 {
+    if (attempt->connection_ && attempt->connection_->isHttp2()) {
+        startHttp2(attempt);
+        return;
+    }
+
     std::string wire = H1Session::serialize(attempt->request_, attempt->url_.target,
                                             attempt->url_.authority, config_.userAgent);
 
@@ -299,11 +365,13 @@ void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
             }
         }
 
-        // A pooled connection is only worth keeping when the response arrived.
-        if (result && attempt->connection_ && attempt->connection_->isReady()) {
-            release(std::move(attempt->connection_));
-        } else if (attempt->connection_) {
-            attempt->connection_->close();
+        // The session owns an h2 connection; only h1 goes back to the pool.
+        if (attempt->connection_ && !attempt->connection_->isHttp2()) {
+            if (result && attempt->connection_->isReady()) {
+                release(std::move(attempt->connection_));
+            } else {
+                attempt->connection_->close();
+            }
         }
 
         attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes};
@@ -323,11 +391,13 @@ void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,
 
     if (result) {
         result->hops = attempt->hops_;
-        if (attempt->connection_ && attempt->connection_->isReady()) {
+    }
+    if (attempt->connection_ && !attempt->connection_->isHttp2()) {
+        if (result && attempt->connection_->isReady()) {
             release(std::move(attempt->connection_));
+        } else if (!result) {
+            attempt->connection_->close();
         }
-    } else if (attempt->connection_) {
-        attempt->connection_->close();
     }
 
     ++stats_.completed;

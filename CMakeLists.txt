@@ -93,6 +93,7 @@ set(ANTARES_HTTP_SOURCES
     src/adapters/http/tls_context.cpp
     src/adapters/http/connection.cpp
     src/adapters/http/h1_session.cpp
+    src/adapters/http/h2_session.cpp
     src/adapters/http/client.cpp
     src/application/http/blocking_client.cpp
 )

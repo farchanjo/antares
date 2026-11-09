@@ -136,6 +136,7 @@ void Connection::afterConnected()
         return;
     }
 
+    protocol_ = Protocol::http1;
     state_ = State::ready;
     if (ready_) {
         auto callback = std::move(ready_);
@@ -153,7 +154,8 @@ void Connection::afterHandshake(int result)
         const unsigned char *selected = nullptr;
         unsigned int length = 0;
         SSL_get0_alpn_selected(ssl_, &selected, &length);
-        http2_ = length == 2 && std::memcmp(selected, "h2", 2) == 0;
+        protocol_ = (length == 2 && std::memcmp(selected, "h2", 2) == 0) ? Protocol::http2
+                                                                        : Protocol::http1;
         state_ = State::ready;
         if (ready_) {
             auto callback = std::move(ready_);

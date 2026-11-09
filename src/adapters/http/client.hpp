@@ -8,6 +8,7 @@
 
 #include "adapters/http/connection.hpp"
 #include "adapters/http/h1_session.hpp"
+#include "adapters/http/h2_session.hpp"
 #include "adapters/http/tls_context.hpp"
 #include "application/io/engine_pool.hpp"
 #include "ports/http/client.hpp"
@@ -53,6 +54,10 @@ private:
                                                        domain::http::HttpError> &result) const;
     [[nodiscard]] domain::Duration backoffFor(std::uint8_t attempt);
 
+    void startHttp2(const std::shared_ptr<Attempt> &attempt);
+    void pump(const std::shared_ptr<H2Session> &session);
+    [[nodiscard]] std::shared_ptr<H2Session> sessionFor(ports::io::IoEngine &engine,
+                                                       const std::string &authority);
     void release(std::shared_ptr<Connection> connection);
     [[nodiscard]] std::shared_ptr<Connection> acquire(ports::io::IoEngine &engine,
                                                       const domain::http::Url &url);
@@ -65,6 +70,9 @@ private:
     std::map<std::pair<ports::io::IoEngine *, std::string>,
              std::vector<std::shared_ptr<Connection>>>
         idle_;
+
+    /// One multiplexed session per loop and origin (FR-019).
+    std::map<std::pair<ports::io::IoEngine *, std::string>, std::shared_ptr<H2Session>> sessions_;
     ports::http::ClientStats stats_{};
     std::uint64_t rng_ = 0x9e3779b97f4a7c15ULL;
 };

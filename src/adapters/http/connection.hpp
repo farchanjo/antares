@@ -29,6 +29,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
 public:
     enum class State : std::uint8_t { idle, connecting, handshaking, ready, closed };
 
+    /// What TLS negotiated. `none` means the URL was plaintext.
+    enum class Protocol : std::uint8_t { none, http1, http2 };
+
     Connection(ports::io::IoEngine &engine, const TlsContext &tls);
     ~Connection();
 
@@ -38,8 +41,9 @@ public:
     /// Resolve, connect, handshake, negotiate. Calls `ready` or `failure` once.
     void open(const domain::http::Url &url, Ready ready, Failure failure);
 
-    /// True when the negotiated protocol is HTTP/2.
-    [[nodiscard]] bool isHttp2() const noexcept { return http2_; }
+    /// What ALPN selected. Only meaningful once ready.
+    [[nodiscard]] Protocol protocol() const noexcept { return protocol_; }
+    [[nodiscard]] bool isHttp2() const noexcept { return protocol_ == Protocol::http2; }
     [[nodiscard]] bool isReady() const noexcept { return state_ == State::ready; }
     [[nodiscard]] const domain::http::Url &url() const noexcept { return url_; }
     [[nodiscard]] ports::io::IoEngine &engine() const noexcept { return engine_; }
@@ -64,7 +68,7 @@ private:
     SSL *ssl_ = nullptr;
     domain::http::Url url_;
     State state_ = State::idle;
-    bool http2_ = false;
+    Protocol protocol_ = Protocol::none;
     Ready ready_;
     Failure failure_;
 };

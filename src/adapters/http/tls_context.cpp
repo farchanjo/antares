@@ -56,11 +56,14 @@ std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2)
     }
 
     SSL_CTX_set_min_proto_version(context, TLS1_2_VERSION);
+    // h2 first, http/1.1 second: the server picks, and a server without h2
+    // still answers on 1.1 instead of failing the handshake.
+    static constexpr unsigned char OFFER[] = {2, 'h', '2', 8, 'h', 't', 't', 'p', '/', '1', '.', '1'};
+    static constexpr unsigned char OFFER_H1[] = {8, 'h', 't', 't', 'p', '/', '1', '.', '1'};
     if (http2) {
-        SSL_CTX_set_alpn_select_cb(context, &selectProtocol, nullptr);
+        SSL_CTX_set_alpn_protos(context, OFFER, sizeof OFFER);
     } else {
-        static constexpr unsigned char H11[] = {8, 'h', 't', 't', 'p', '/', '1', '.', '1'};
-        SSL_CTX_set_alpn_protos(context, H11, sizeof H11);
+        SSL_CTX_set_alpn_protos(context, OFFER_H1, sizeof OFFER_H1);
     }
     SSL_CTX_set_mode(context, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
