@@ -563,6 +563,7 @@ void caseSseParsesEvents()
         return;
     }
 
+    std::fprintf(stderr, "  events=%zu\n", second->size());
     check(second->size() == 2, "two events dispatched");
     if (second->size() != 2) {
         return;
