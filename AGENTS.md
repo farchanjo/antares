@@ -482,6 +482,12 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/specs/features/http-client-h2.feature`
 - `doc/arch/specs/features/kernel-io-engine-kqueue.feature`
 - `doc/arch/threat-model/privacy-threat-model.md`
+- `src/adapters/http/client.cpp`
+- `src/adapters/http/client.hpp`
+- `src/adapters/http/connection.cpp`
+- `src/adapters/http/connection.hpp`
+- `src/adapters/http/h1_session.cpp`
+- `src/adapters/http/h1_session.hpp`
 - `src/adapters/http/tls_context.cpp`
 - `src/adapters/http/tls_context.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
@@ -490,6 +496,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/platform/io/kqueue_engine.hpp`
 - `src/adapters/platform/io/poll_engine.cpp`
 - `src/adapters/platform/io/poll_engine.hpp`
+- `src/application/http/blocking_client.cpp`
+- `src/application/http/blocking_client.hpp`
 - `src/application/io/engine_factory.cpp`
 - `src/application/io/engine_factory.hpp`
 - `src/domain/http/auth.cpp`
@@ -502,6 +510,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/http/request.hpp`
 - `src/domain/http/response.cpp`
 - `src/domain/http/response.hpp`
+- `src/domain/http/retry_policy.cpp`
+- `src/domain/http/retry_policy.hpp`
 - `src/domain/http/timeouts.hpp`
 - `src/domain/http/url.cpp`
 - `src/domain/http/url.hpp`
@@ -518,5 +528,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/ports/io/io_handle.hpp`
 - `src/ports/io/io_stats.cpp`
 - `src/ports/io/io_stats.hpp`
+- `tests/http/conformance.cpp`
+- `tests/http/loopback_server.hpp`
 - `tests/io/conformance.cpp`
+- `tests/support/await.hpp`
 <!-- notes:end -->
