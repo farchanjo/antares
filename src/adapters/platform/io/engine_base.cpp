@@ -152,7 +152,8 @@ void EngineBase::post(PostedTask task)
 
 void EngineBase::run()
 {
-    stopped_.store(false);
+    // Do not reset the flag here: a stop() issued before the thread reaches the
+    // loop must survive, or the loop runs forever.
     while (!stopped_.load()) {
         drainWakeup();
         drainTasks();
