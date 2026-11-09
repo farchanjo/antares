@@ -38,6 +38,9 @@ Ordered so each task compiles on its own and proves one requirement.
 
 - [x] T016 Add the engine timer, retry policy and backoff (FR-012, FR-015).
 
+- [ ] T017 Move name resolution behind the engine port so no call blocks the
+      loop, with the numeric path kept as the fast route (FR-016).
+
 ## Dependencies
 
 - T002 before T003; T004 and T005 before T006; T006 before T011.

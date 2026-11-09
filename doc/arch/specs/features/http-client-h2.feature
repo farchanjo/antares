@@ -106,3 +106,17 @@ Feature: Http Client H2
     Then  it succeeds on the third attempt
     And   the retry count is two
     And   a POST with the same history is not retried
+
+  @planned
+  Scenario: FR-016 resolution stays off the hot path
+    Given a URL with a literal address
+    When  the connection is opened
+    Then  the address is parsed in-process
+    And   the resolver is not consulted
+
+  @planned
+  Scenario: FR-017 no test sleeps on a clock
+    Given the whole suite
+    When  a case waits for a completion
+    Then  it blocks on the waiter
+    And   no case calls a sleep

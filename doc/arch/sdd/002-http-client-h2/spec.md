@@ -110,6 +110,17 @@ mutual TLS. The credential is applied at header-build time and never stored in a
 log record. Basic auth is base64 of `user:password` computed once, at
 configuration load.
 
+### FR-016 Resolution stays off the hot path
+
+A literal address is parsed in-process, so it never blocks the loop. Only a host
+name reaches `getaddrinfo`, and only on the loop thread. A name that must not
+block at all is the open item: the resolver moves behind the port (FR-017).
+
+### FR-017 No test sleeps on a clock
+
+A test waits on a completion, never on a wall-clock delay. A failing wait is a
+timeout on the waiter, never a spin.
+
 ### FR-014 One published configuration surface
 
 `ClientConfig` carries pool, timeouts, auth, limits and the two redirect and
