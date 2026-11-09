@@ -76,8 +76,14 @@ Runner makeRunner(IoEngine &engine)
     return Runner{engine};
 }
 
-void casePostRunsOnEngineThread(IoEngine &engine)
+void casePostRunsOnEngineThread()
 {
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
     auto runner = makeRunner(engine);
     const auto caller = std::this_thread::get_id();
 
@@ -95,8 +101,14 @@ void casePostRunsOnEngineThread(IoEngine &engine)
     check(onEngine.load(), "posted task ran off the caller thread");
 }
 
-void caseSocketReadWrite(IoEngine &engine)
+void caseSocketReadWrite()
 {
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
     auto runner = makeRunner(engine);
 
     int pair[2] = {-1, -1};
@@ -140,8 +152,14 @@ void caseSocketReadWrite(IoEngine &engine)
     check(carried == 7, "read carried the payload");
 }
 
-void caseFileReadIsImmediate(IoEngine &engine)
+void caseFileReadIsImmediate()
 {
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
     auto runner = makeRunner(engine);
 
     const char *path = "/tmp/antares-conformance.txt";
@@ -192,8 +210,14 @@ void caseFileReadIsImmediate(IoEngine &engine)
     ::unlink(path);
 }
 
-void caseStopEndsCallbacks(IoEngine &engine)
+void caseStopEndsCallbacks()
 {
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
     auto runner = makeRunner(engine);
     runner.stop();
     runner.stop();
@@ -207,26 +231,20 @@ void caseStopEndsCallbacks(IoEngine &engine)
 
 int main()
 {
-    auto engine = makeEngine();
-    if (!engine) {
-        std::fprintf(stderr, "factory failed\n");
-        return 1;
+    {
+        auto probe = makeEngine();
+        if (!probe) {
+            std::fprintf(stderr, "factory failed\n");
+            return 1;
+        }
+        std::printf("backend: %s\n", std::string((*probe)->name()).c_str());
+        std::fflush(stdout);
     }
 
-    std::printf("backend: %s\n", std::string((*engine)->name()).c_str());
-
-    casePostRunsOnEngineThread(**engine);
-    std::printf("case post ok\n");
-    std::fflush(stdout);
-    caseSocketReadWrite(**engine);
-    std::printf("case socket ok\n");
-    std::fflush(stdout);
-    caseFileReadIsImmediate(**engine);
-    std::printf("case file ok\n");
-    std::fflush(stdout);
-    caseStopEndsCallbacks(**engine);
-    std::printf("case stop ok\n");
-    std::fflush(stdout);
+    casePostRunsOnEngineThread();
+    caseSocketReadWrite();
+    caseFileReadIsImmediate();
+    caseStopEndsCallbacks();
 
     std::printf("%d check(s), %d failure(s)\n", checks, failures);
     return failures == 0 ? 0 : 1;
