@@ -553,5 +553,4 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `tests/http/tls_server.hpp`
 - `tests/io/conformance.cpp`
 - `tests/support/await.hpp`
-
 <!-- notes:end -->
