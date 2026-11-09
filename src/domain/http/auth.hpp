@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <string>
+
+#include "domain/http/http_error.hpp"
 
 namespace antares::domain::http {
 
@@ -27,6 +30,10 @@ struct Auth {
     [[nodiscard]] static Auth bearer(std::string token);
     [[nodiscard]] static Auth basic(std::string user, std::string password);
     [[nodiscard]] static Auth clientCertificate(std::string certificate, std::string key);
+
+    /// The `Authorization` field value (RFC 9110 §11.6). Empty for mutual TLS,
+    /// which proves identity in the handshake instead.
+    [[nodiscard]] std::expected<std::string, HttpError> authorizationValue() const;
 };
 
 } // namespace antares::domain::http

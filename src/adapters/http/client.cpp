@@ -54,7 +54,7 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
     : pool_(pool)
     , config_(std::move(config))
 {
-    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true);
+    tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true, config_.auth);
 }
 
 HttpClient::~HttpClient() = default;
@@ -78,6 +78,19 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     }
 
     const domain::http::Method method = request.method;
+    auto credential = config_.auth.authorizationValue();
+    if (!credential) {
+        return std::unexpected(credential.error());
+    }
+    if (!credential->empty()) {
+        const bool explicitHeader =
+            std::any_of(request.headers.begin(), request.headers.end(),
+                        [](const domain::http::Header &header) { return header.name == "Authorization"; });
+        if (!explicitHeader) {
+            request.headers.push_back(domain::http::Header{"Authorization", *credential});
+        }
+    }
+
     auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
     attempt->stream = std::move(handler);
     attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes, method};

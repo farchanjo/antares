@@ -419,6 +419,38 @@ void caseH2StreamsData()
     check(collected == "streamed", "h2 body matched");
 }
 
+void caseBearerIsSent()
+{
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"};
+    ClientConfig config;
+    config.auth = antares::domain::http::Auth::bearer("token-123");
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    (void)stack.blocking().send(get(server.url() + "/"));
+    check(server.lastRequest().find("authorization: Bearer token-123") != std::string::npos ||
+              server.lastRequest().find("Authorization: Bearer token-123") != std::string::npos,
+          "bearer reached the wire");
+}
+
+void caseBasicEncodesCredential()
+{
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"};
+    ClientConfig config;
+    config.auth = antares::domain::http::Auth::basic("Aladdin", "open sesame");
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    (void)stack.blocking().send(get(server.url() + "/"));
+    // RFC 7617: base64("Aladdin:open sesame").
+    check(server.lastRequest().find("Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==") != std::string::npos,
+          "basic encodes the pair");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -442,6 +474,8 @@ std::span<const Case> cases()
         {"h2-multiplexes-one-connection", caseH2MultiplexesOneConnection},
         {"h1-streams-chunks", caseH1StreamsChunks},
         {"h2-streams-data", caseH2StreamsData},
+        {"bearer-is-sent", caseBearerIsSent},
+        {"basic-encodes-credential", caseBasicEncodesCredential},
     };
     return table;
 }

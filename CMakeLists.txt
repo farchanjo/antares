@@ -266,7 +266,9 @@ set(ANTARES_HTTP_CASES
     https-falls-back-to-h11
     h2-multiplexes-one-connection
     h1-streams-chunks
-    h2-streams-data)
+    h2-streams-data
+    bearer-is-sent
+    basic-encodes-credential)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
