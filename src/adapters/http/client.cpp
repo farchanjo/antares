@@ -50,6 +50,7 @@ public:
     std::shared_ptr<Connection> connection_;
     H1Session session_;
     std::uint8_t hops_ = 0;
+    domain::http::Method method_ = domain::http::Method::get;
     ports::http::StreamHandler stream;
     std::uint64_t timerGeneration = 0;
     std::shared_ptr<H2Session> h2_;
@@ -111,13 +112,8 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
 
     auto attempt = std::make_shared<Attempt>(std::move(request), std::move(done), config_);
     attempt->stream = std::move(handler);
-    attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes, method};
-    if (attempt->stream.onChunk) {
-        attempt->session_.onChunk(attempt->stream.onChunk);
-    }
-    if (attempt->stream.onHead) {
-        attempt->session_.onHead(attempt->stream.onHead);
-    }
+    attempt->method_ = method;
+    resetSession(attempt);
     attempt->url_ = std::move(*parsed);
 
     // Bind the attempt to one loop for its whole life; hop there now, so every
@@ -137,6 +133,20 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     return std::static_pointer_cast<ports::http::Ticket>(attempt);
 }
 
+void HttpClient::resetSession(const std::shared_ptr<Attempt> &attempt)
+{
+    // A fresh session starts empty, so the stream sinks and the method are
+    // reattached here rather than at every call site.
+    attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes,
+                                  attempt->method_};
+    if (attempt->stream.onChunk) {
+        attempt->session_.onChunk(attempt->stream.onChunk);
+    }
+    if (attempt->stream.onHead) {
+        attempt->session_.onHead(attempt->stream.onHead);
+    }
+}
+
 void HttpClient::armIdleTimer(const std::shared_ptr<Attempt> &attempt)
 {
     if (config_.timeouts.read.count() <= 0) {
@@ -149,6 +159,7 @@ void HttpClient::armIdleTimer(const std::shared_ptr<Attempt> &attempt)
         if (attempt->finished() || generation != attempt->timerGeneration) {
             return;
         }
+        ++self->stats_.timeouts;
         self->settle(attempt, std::unexpected(domain::http::HttpError::timeout));
     });
 }
@@ -410,7 +421,7 @@ void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
     }
 
     attempt->url_ = std::move(*target);
-    attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes};
+    resetSession(attempt);
     ++attempt->hops_;
     ++stats_.redirects;
 
@@ -506,7 +517,7 @@ void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
             }
         }
 
-        attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes};
+        resetSession(attempt);
         scheduleRetry(attempt, delay);
         return;
     }

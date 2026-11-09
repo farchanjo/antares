@@ -672,6 +672,60 @@ void caseWebSocketUpgrades()
           "version 13 sent");
 }
 
+void caseStreamingSurvivesRedirect()
+{
+    // The handler must be reattached to the session the redirect creates.
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+        "3\r\nabc\r\n0\r\n\r\n"}};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await done;
+    std::string collected;
+    ports::http::StreamHandler handler;
+    handler.onChunk = [&](std::span<const std::byte> piece) {
+        collected.append(reinterpret_cast<const char *>(piece.data()), piece.size());
+    };
+
+    (void)stack.client().submitStreaming(get(server.url() + "/start"), std::move(handler),
+                                        [&](auto) { done.signal(); });
+
+    check(done.wait(), "redirected stream finished");
+    check(collected == "abc", "chunks still delivered after the redirect");
+}
+
+void caseStreamingSurvivesRetry()
+{
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+        "3\r\nxyz\r\n0\r\n\r\n"}};
+    ClientConfig config;
+    config.retry.baseDelay = std::chrono::milliseconds{5};
+    config.retry.jitter = 0.0;
+    Stack stack{config};
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await done;
+    std::string collected;
+    ports::http::StreamHandler handler;
+    handler.onChunk = [&](std::span<const std::byte> piece) {
+        collected.append(reinterpret_cast<const char *>(piece.data()), piece.size());
+    };
+
+    (void)stack.client().submitStreaming(get(server.url() + "/flaky"), std::move(handler),
+                                        [&](auto) { done.signal(); });
+
+    check(done.wait(), "retried stream finished");
+    check(collected == "xyz", "chunks still delivered after the retry");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -707,6 +761,8 @@ std::span<const Case> cases()
         {"ws-splits-across-reads", caseWsSplitsAcrossReads},
         {"ws-close-closes", caseWsCloseCloses},
         {"websocket-upgrades", caseWebSocketUpgrades},
+        {"streaming-survives-redirect", caseStreamingSurvivesRedirect},
+        {"streaming-survives-retry", caseStreamingSurvivesRetry},
     };
     return table;
 }

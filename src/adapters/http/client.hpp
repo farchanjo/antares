@@ -54,6 +54,7 @@ private:
 
     void start(const std::shared_ptr<Attempt> &attempt);
     void armIdleTimer(const std::shared_ptr<Attempt> &attempt);
+    void resetSession(const std::shared_ptr<Attempt> &attempt);
     void connect(const std::shared_ptr<Attempt> &attempt);
     void onReady(const std::shared_ptr<Attempt> &attempt);
     void finish(const std::shared_ptr<Attempt> &attempt,
