@@ -491,4 +491,181 @@ ports::k8s::ClientStats HttpKubeClient::stats() const noexcept
     return stats_;
 }
 
+
+namespace {
+
+/// Collects the two discovery replies onto one answer.
+///
+/// Both halves arrive on the engine thread, but not necessarily in the same
+/// pass, so the state is shared rather than captured by value. The first
+/// failure wins and the second reply is dropped: half a cluster is worse than a
+/// named error.
+struct GroupMerge {
+    ports::k8s::Discovery::ResourceResult result{std::vector<ports::k8s::Discovery::GroupVersion>{}};
+    std::function<void(ports::k8s::Discovery::ResourceResult)> done;
+    int remaining = 2;
+    bool settled = false;
+
+    void settle()
+    {
+        if (settled || --remaining > 0) {
+            return;
+        }
+        settled = true;
+        auto out = std::move(done);
+        out(std::move(result));
+    }
+};
+
+/// Cancels every request behind a call that needed more than one.
+class MultiTicket final : public ports::k8s::Ticket {
+public:
+    void adopt(std::shared_ptr<ports::k8s::Ticket> ticket)
+    {
+        if (ticket) {
+            inner_.push_back(std::move(ticket));
+        }
+    }
+
+    void cancel() override
+    {
+        for (const auto &ticket : inner_) {
+            ticket->cancel();
+        }
+    }
+
+private:
+    std::vector<std::shared_ptr<ports::k8s::Ticket>> inner_;
+};
+
+} // namespace
+
+std::expected<std::shared_ptr<ports::k8s::Ticket>, ApiError> HttpKubeClient::apiGroups(
+    std::function<void(ports::k8s::Discovery::ResourceResult)> done)
+{
+    auto merge = std::make_shared<GroupMerge>();
+    merge->done = std::move(done);
+    auto ticket = std::make_shared<MultiTicket>();
+    const auto weak = weak_from_this();
+
+    // `append` differs per half; everything else about the two requests is the
+    // same, so the loop below runs once per document instead of twice by hand.
+    const auto fetch = [&](std::string_view path,
+                           void (*append)(const domain::json::Value &,
+                                          std::vector<ports::k8s::Discovery::GroupVersion> &))
+        -> std::expected<void, ApiError> {
+        auto completion = [weak, merge, append](
+                              std::expected<domain::http::Response, domain::http::HttpError> result) {
+            const auto self = weak.lock();
+            if (!result) {
+                if (self) {
+                    ++self->stats_.failed;
+                }
+                merge->result = std::unexpected(transportFailure(result.error()));
+                merge->settle();
+                return;
+            }
+            if (result->status < 200 || result->status >= 300) {
+                if (self) {
+                    ++self->stats_.failed;
+                }
+                merge->result = std::unexpected(
+                    domain::k8s::mapFailure(result->status, toText(result->body)));
+                merge->settle();
+                return;
+            }
+            if (self) {
+                ++self->stats_.succeeded;
+            }
+            const auto document = domain::json::Value::parse(toText(result->body));
+            if (!document) {
+                merge->result = std::unexpected(ApiError{});
+                merge->settle();
+                return;
+            }
+            append(*document, *merge->result);
+            merge->settle();
+        };
+
+        auto submitted =
+            http_->submit(request(domain::http::Method::get, path, {}), std::move(completion));
+        if (!submitted) {
+            return std::unexpected(transportFailure(submitted.error()));
+        }
+        ticket->adopt(std::shared_ptr<ports::k8s::Ticket>{new TicketHandle(std::move(*submitted))});
+        return {};
+    };
+
+    ++stats_.submitted;
+    if (const auto core = fetch("/api", domain::k8s::appendCoreVersions); !core) {
+        --stats_.submitted;
+        return std::unexpected(core.error());
+    }
+    if (const auto groups = fetch("/apis", domain::k8s::appendGroups); !groups) {
+        return std::unexpected(groups.error());
+    }
+    return std::shared_ptr<ports::k8s::Ticket>{std::move(ticket)};
+}
+
+std::expected<std::shared_ptr<ports::k8s::Ticket>, ApiError> HttpKubeClient::serverResources(
+    std::string_view group, std::string_view version,
+    std::function<void(ports::k8s::Discovery::ResourceResult)> done)
+{
+    if (version.empty()) {
+        return std::unexpected(ApiError{});
+    }
+
+    // The core group has no name segment; every other group does.
+    std::string path{"/api/"};
+    if (!group.empty()) {
+        path = "/apis/" + std::string{group} + "/";
+    }
+    path += version;
+
+    ++stats_.submitted;
+    const auto weak = weak_from_this();
+
+    auto completion = [weak, done = std::move(done)](
+                          std::expected<domain::http::Response, domain::http::HttpError> result) {
+        const auto self = weak.lock();
+        if (!result) {
+            if (self) {
+                ++self->stats_.failed;
+            }
+            done(ports::k8s::Discovery::ResourceResult{std::unexpected(transportFailure(result.error()))});
+            return;
+        }
+        if (result->status < 200 || result->status >= 300) {
+            if (self) {
+                ++self->stats_.failed;
+            }
+            done(ports::k8s::Discovery::ResourceResult{
+                std::unexpected(domain::k8s::mapFailure(result->status, toText(result->body)))});
+            return;
+        }
+        if (self) {
+            ++self->stats_.succeeded;
+        }
+
+        const auto document = domain::json::Value::parse(toText(result->body));
+        if (!document) {
+            done(ports::k8s::Discovery::ResourceResult{std::unexpected(ApiError{})});
+            return;
+        }
+
+        ports::k8s::Discovery::GroupVersion served =
+            domain::k8s::parseResourceList(*document);
+        std::vector<ports::k8s::Discovery::GroupVersion> versions;
+        versions.push_back(std::move(served));
+        done(ports::k8s::Discovery::ResourceResult{std::move(versions)});
+    };
+
+    auto ticket = http_->submit(request(domain::http::Method::get, path, {}), std::move(completion));
+    if (!ticket) {
+        --stats_.submitted;
+        return std::unexpected(transportFailure(ticket.error()));
+    }
+    return std::shared_ptr<ports::k8s::Ticket>{new TicketHandle(std::move(*ticket))};
+}
+
 } // namespace antares::adapters::k8s

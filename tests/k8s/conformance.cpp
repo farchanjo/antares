@@ -10,6 +10,7 @@
 
 #include "domain/json/value.hpp"
 #include "domain/k8s/api_path.hpp"
+#include "domain/k8s/discovery.hpp"
 #include "domain/k8s/kubeconfig.hpp"
 #include "domain/k8s/options.hpp"
 #include "domain/k8s/status.hpp"
@@ -396,6 +397,94 @@ void caseJsonRefusesTruncation()
     check(json::Value::parse("null").has_value(), "a null document parses");
 }
 
+/// FR-010: a served resource keeps the flags a UI needs, above all whether it
+/// is namespaced. A resource silently taken as cluster scoped sends the caller
+/// to a path the server refuses.
+void caseDiscoveryParsesResources()
+{
+    const auto document = json::Value::parse(R"({"groupVersion":"apps/v1","resources":[)"
+                                             R"({"name":"deployments","kind":"Deployment",)"
+                                             R"("namespaced":true,"verbs":["get","list"],)"
+                                             R"("shortNames":["deploy"]}]})");
+    check(document.has_value(), "document parsed");
+    if (!document) {
+        return;
+    }
+
+    const GroupVersionDescriptor served = parseResourceList(*document);
+    checkEqual(served.group, "apps/v1", "group version kept");
+    check(served.resources.size() == 1, "one resource read");
+    if (served.resources.empty()) {
+        return;
+    }
+    checkEqual(served.resources.front().name, "deployments", "name kept");
+    checkEqual(served.resources.front().kind, "Deployment", "kind kept");
+    check(served.resources.front().namespaced, "namespaced kept");
+    checkEqual(served.resources.front().shortNames, "deploy", "short name joined");
+    check(served.resources.front().verbs.size() == 2, "verbs kept");
+}
+
+/// FR-010: a cluster scoped resource must not be mistaken for a namespaced one.
+void caseDiscoveryClusterScoped()
+{
+    const auto document = json::Value::parse(R"({"groupVersion":"v1","resources":[)"
+                                             R"({"name":"nodes","kind":"Node",)"
+                                             R"("namespaced":false,"verbs":["get"]}]})");
+    check(document.has_value(), "document parsed");
+    if (!document) {
+        return;
+    }
+
+    const GroupVersionDescriptor served = parseResourceList(*document);
+    check(!served.resources.empty(), "one resource read");
+    if (served.resources.empty()) {
+        return;
+    }
+    check(!served.resources.front().namespaced, "cluster scoped kept");
+}
+
+/// FR-010: the core group arrives under `/api` with no name, and must survive
+/// with an empty group rather than being dropped.
+void caseDiscoveryCoreVersions()
+{
+    const auto document = json::Value::parse(R"({"kind":"APIVersions","versions":["v1"]})");
+    check(document.has_value(), "document parsed");
+    if (!document) {
+        return;
+    }
+
+    std::vector<GroupVersionDescriptor> out;
+    appendCoreVersions(*document, out);
+    check(out.size() == 1, "core version read");
+    if (out.empty()) {
+        return;
+    }
+    check(out.front().group.empty(), "core group stays empty");
+    checkEqual(out.front().version, "v1", "version kept");
+}
+
+/// FR-010: every named group comes back with each version it serves.
+void caseDiscoveryGroups()
+{
+    const auto document = json::Value::parse(
+        R"({"kind":"APIGroupList","groups":[{"name":"apps",)"
+        R"("versions":[{"groupVersion":"apps/v1","version":"v1"}])"
+        R"(},{"name":"batch","versions":[{"groupVersion":"batch/v1","version":"v1"}]}]})");
+    check(document.has_value(), "document parsed");
+    if (!document) {
+        return;
+    }
+
+    std::vector<GroupVersionDescriptor> out;
+    appendGroups(*document, out);
+    check(out.size() == 2, "both groups read");
+    if (out.size() != 2) {
+        return;
+    }
+    checkEqual(out.front().group, "apps", "first group kept");
+    checkEqual(out.back().group, "batch", "second group kept");
+}
+
 struct Case {
     std::string_view name;
     void (*run)();
@@ -423,6 +512,10 @@ constexpr Case cases[] = {
     {"bearer-credential", caseBearerCredential},
     {"json-round-trip", caseJsonRoundTrip},
     {"json-refuses-truncation", caseJsonRefusesTruncation},
+    {"discovery-parses-resources", caseDiscoveryParsesResources},
+    {"discovery-cluster-scoped", caseDiscoveryClusterScoped},
+    {"discovery-core-versions", caseDiscoveryCoreVersions},
+    {"discovery-groups", caseDiscoveryGroups},
 };
 
 } // namespace

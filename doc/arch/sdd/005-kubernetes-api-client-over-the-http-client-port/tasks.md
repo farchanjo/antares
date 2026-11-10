@@ -32,12 +32,13 @@ T008 and T009 landed the ports only. `exec` never reached the port, and
 
 - [x] T016 Decision: ADR for the exec transport, choosing the WebSocket
       subprotocol and its channel mapping before any code depends on it.
-- [ ] T017 Adapter: `Discovery` over the HTTP client, parsing group versions and
+- [x] T017 Domain and adapter: `Discovery` parsing, over the HTTP client, keeping
       resources with their namespaced flag and verb list.
 - [ ] T018 Port and adapter: `exec` session over the subprotocol T016 names —
       stdin, stdout, stderr, resize and close, with the error channel kept apart.
-- [ ] T019 Cases: discovery parsing, scale read and write, log options, exec
-      channel order and resize.
+- [x] T019 Cases: discovery parsing
+- [ ] T020 Cases: scale read and write, log options, and the exec channel order
+      plus resize.
 
 ## Dependencies
 

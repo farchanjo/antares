@@ -22,6 +22,7 @@ namespace antares::adapters::k8s {
 /// material are fixed at construction, so a request cannot accidentally carry
 /// another cluster's identity.
 class HttpKubeClient final : public ports::k8s::KubeClient,
+                             public ports::k8s::Discovery,
                              public std::enable_shared_from_this<HttpKubeClient> {
 public:
     using Binding = ClusterBinding;
@@ -77,6 +78,16 @@ public:
 
     [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
     serverVersion(std::function<void(ports::k8s::VersionResult)> done) override;
+
+    /// The core group answers under `/api`, every other group under `/apis`.
+    /// One reply alone would hide half the cluster, so both are merged before
+    /// the caller sees anything.
+    [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
+    apiGroups(std::function<void(ports::k8s::Discovery::ResourceResult)> done) override;
+
+    [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
+    serverResources(std::string_view group, std::string_view version,
+                    std::function<void(ports::k8s::Discovery::ResourceResult)> done) override;
 
 private:
     HttpKubeClient(Binding binding, std::shared_ptr<ports::http::Client> http);

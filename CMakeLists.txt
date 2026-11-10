@@ -139,6 +139,7 @@ set(ANTARES_K8S_SOURCES
     src/domain/k8s/api_error.cpp
     src/domain/k8s/api_path.cpp
     src/domain/k8s/options.cpp
+    src/domain/k8s/discovery.cpp
     src/domain/k8s/status.cpp
     src/domain/k8s/watch_event.cpp
     src/domain/k8s/kubeconfig.cpp
@@ -363,7 +364,11 @@ set(ANTARES_K8S_CASES
     kubeconfig-failures
     bearer-credential
     json-round-trip
-    json-refuses-truncation)
+    json-refuses-truncation
+    discovery-parses-resources
+    discovery-cluster-scoped
+    discovery-core-versions
+    discovery-groups)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")

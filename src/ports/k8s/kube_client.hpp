@@ -11,6 +11,7 @@
 
 #include "domain/k8s/api_error.hpp"
 #include "domain/k8s/api_path.hpp"
+#include "domain/k8s/discovery.hpp"
 #include "domain/k8s/kubeconfig.hpp"
 #include "domain/k8s/options.hpp"
 #include "domain/k8s/status.hpp"
@@ -189,23 +190,12 @@ public:
     Discovery &operator=(Discovery &&) = delete;
     virtual ~Discovery() = default;
 
-    /// One served resource, with what it allows.
-    struct Resource {
-        std::string name;
-        std::string kind;
-        std::string group;
-        std::string version;
-        bool namespaced = true;
-        std::vector<std::string> verbs;
-        std::string shortNames;
-    };
+    /// One served resource, with what it allows. The shape is the domain's:
+    /// parsing a document is domain work, so it is not declared twice.
+    using Resource = domain::k8s::ResourceDescriptor;
 
     /// One served group version.
-    struct GroupVersion {
-        std::string group;
-        std::string version;
-        std::vector<Resource> resources;
-    };
+    using GroupVersion = domain::k8s::GroupVersionDescriptor;
 
     using ResourceResult = std::expected<std::vector<GroupVersion>, domain::k8s::ApiError>;
 
