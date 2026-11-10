@@ -42,6 +42,7 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - `tests/http/conformance.cpp` — the HTTP client suite
 - `tests/io/conformance.cpp` — the engine suite
 - `doc/arch/quality/quality-scenarios.md` — quality scenarios
+- `doc/arch/threat-model/threat-model.md` — STRIDE threats and mitigations
 - `doc/arch/threat-model/privacy-threat-model.md` — privacy threats
 - `doc/arch/observability/observability.md` — signals and cardinality
 

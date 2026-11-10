@@ -466,6 +466,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/version.md`
 - `doc/arch/commands/workflow.md`
 - `doc/arch/commands/workflow/render.md`
+- `doc/arch/domain/.gitkeep`
 - `doc/arch/domain/cli-surface.md`
 - `doc/arch/functional/product-overview.md`
 - `doc/arch/memory/constitution.md`
@@ -489,12 +490,14 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/sdd/003-kubernetes-api-client-over-the-http-client-port/tasks.md`
 - `doc/arch/skills/implement.md`
 - `doc/arch/skills/review.md`
+- `doc/arch/sdd/renumber-crosswalk.md`
 - `doc/arch/slo/service-level-objectives.md`
 - `doc/arch/speckit.toml`
 - `doc/arch/specs/features/http-client-h2.feature`
 - `doc/arch/specs/features/kernel-io-engine-kqueue.feature`
 - `doc/arch/specs/features/kubernetes-api-client-over-the-http-client-port.feature`
 - `doc/arch/threat-model/privacy-threat-model.md`
+- `doc/arch/threat-model/threat-model.md`
 - `src/adapters/http/client.cpp`
 - `src/adapters/http/client.hpp`
 - `src/adapters/http/connection.cpp`
