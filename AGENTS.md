@@ -19,7 +19,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: b8a9b1128b4c6eea88db9b5ded146cd546d793fac2cd98f8d8b65129918767f9
+digest: 2a1d0891e4ffff8a3483d5bcfe8c7922698dded6cb64dfc41296c25a4e2a73ef
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]
@@ -37,7 +37,7 @@ digest: b8a9b1128b4c6eea88db9b5ded146cd546d793fac2cd98f8d8b65129918767f9
 - D-14 (block): A service declares its OpenAPI or AsyncAPI document before the implementation, and the document is the interface review. Author `doc/arch/contracts… [contract.info.missing, contract.openapi.version]
 - D-15 (block): A service ships an observability strategy and names its signals per feature, with bounded metric labels. Declare the strategy document, add the `##… [observability.strategy.missing, observability.strategy.section-missing, observability.cardinality.unbounded-label]
 - D-16 (block): Every public contract declares its version and first breaking change is first new version, never an in-place edit. Bump the declared document version and… [contract.openapi.version, contract.asyncapi.version]
-- D-17 (advisory): A library publishes an exact, lockfile-anchored dependency set so first consumer resolves what its author tested. Commit the lockfile and pin direct… [(manual)]
+- D-17 (advisory): A library publishes an exact, lockfile-anchored dependency set so first consumer resolves what its author tested. Commit the lockfile and pin direct… [pin.docker.unpinned-image, pin.ci.unpinned-action]
 - P-01 (advisory): A design choice survives being explained to a newcomer in one paragraph; if the paragraph needs a second, the choice is not ready. [config:guard, config:project, llm-context, verify]
 - P-02 (block): Scope is bounded. A feature outside it starts a separate initiative rather than widening this one. [config:guard, config:project, verify]
 - P-03 (block): The same input produces the same result on a second run; an action that cannot repeat is a defect. [verify]

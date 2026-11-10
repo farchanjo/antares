@@ -101,7 +101,7 @@ Enforced by: contract.openapi.version, contract.asyncapi.version
 ## D-17 — Reproducible dependency surface
 Severity: advisory
 MANDATE: A library publishes an exact, lockfile-anchored dependency set so first consumer resolves what its author tested. Commit the lockfile and pin direct dependencies to exact versions.
-Enforced by: (manual)
+Enforced by: pin.docker.unpinned-image, pin.ci.unpinned-action
 
 ## Principles
 
