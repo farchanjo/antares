@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <condition_variable>
 #include <deque>
+#include <list>
 #include <mutex>
 #include <string>
 #include <memory>
@@ -40,6 +41,10 @@ enum class OpKind : std::uint8_t {
 
 /// One in-flight operation. Address is stable: a backend stores it in `udata`.
 struct PendingOp {
+    /// Where the op sits in the store, so releasing it is O(1) instead of a
+    /// scan. Filled in by `allocate`; only the engine reads it.
+    std::list<std::unique_ptr<PendingOp>>::iterator slot;
+
     OpKind kind = OpKind::read;
     const IoHandle *handle = nullptr;
     Buffer buffer;
@@ -138,7 +143,13 @@ protected:
     /// Drop a settled op. Call after its completion ran.
     void release(const PendingOp *op);
 
-    std::deque<std::unique_ptr<PendingOp>> ops_;
+    /// Drop the most recently allocated op, for a submit that could not arm it.
+    void releaseLast();
+
+    /// Guarded: a caller thread allocates while the loop releases, and an
+    /// unguarded push_back reallocates under the loop's open iterator.
+    mutable std::mutex opsMutex_;
+    std::list<std::unique_ptr<PendingOp>> ops_;
 
 private:
     void drainWakeup();

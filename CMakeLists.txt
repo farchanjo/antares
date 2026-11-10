@@ -261,6 +261,17 @@ else()
 endif()
 
 add_executable(antares_io_conformance tests/io/conformance.cpp)
+
+# Throwaway micro-benchmark: completion cost against in-flight operations.
+add_executable(antares_io_bench tools/bench_io.cpp)
+target_link_libraries(antares_io_bench PRIVATE antares_io)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(antares_io_bench PRIVATE PkgConfig::LIBURING)
+endif()
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_include_directories(antares_io_bench PRIVATE "${ANTARES_MIMALLOC_INCLUDE}")
+    target_link_libraries(antares_io_bench PRIVATE mimalloc-static)
+endif()
 target_include_directories(antares_io_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

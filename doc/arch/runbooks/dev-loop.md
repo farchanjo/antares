@@ -162,3 +162,27 @@ uses it — that is what shrank the link.
 `dev-unity` remains for the case where a wide header change would otherwise
 rebuild everything; it is not the default, because a unity build hides missing
 includes until it is switched off.
+
+## Engine core: what is one operation worth
+
+`tools/bench_io.cpp` measures completion cost against in-flight operations. It
+is a throwaway harness, built by `antares_io_bench`, and it exists because a
+number settles an argument that reading cannot.
+
+Two findings came out of it and are now fixed:
+
+- The op store was unguarded. A caller thread allocated while the loop released,
+  so a few hundred submissions from one thread raced and crashed. It is a
+  `std::list` behind a mutex now, and `release` erases through the stored slot
+  instead of scanning, which took completion from O(n) to O(1).
+- `nextWaitMilliseconds` returned the nanosecond count of a `Duration` as a
+  millisecond delay, so a five second deadline became eight days.
+
+One limitation is still open and worth stating plainly: **an engine holds one
+armed op per descriptor**. epoll and kqueue both key an interest by descriptor,
+so a second arm on the same one replaces the first and the first never fires.
+The HTTP client arms one read per connection, which is why the suite is green
+without serialisation. Anything that wants several concurrent ops on one
+descriptor — HTTP/2 stream multiplexing over a single socket, several watchers on
+one connection — needs the base to serialise per descriptor and per direction
+before it can work.

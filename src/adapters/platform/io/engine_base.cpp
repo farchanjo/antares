@@ -53,14 +53,21 @@ EngineBase::~EngineBase()
 
 int EngineBase::wakeReader() const noexcept { return wake_[0]; }
 
-std::size_t EngineBase::pendingCount() const noexcept { return ops_.size(); }
+std::size_t EngineBase::pendingCount() const noexcept
+{
+    const std::lock_guard<std::mutex> guard{opsMutex_};
+    return ops_.size();
+}
 
 PendingOp *EngineBase::allocate(OpKind kind, const IoHandle &handle)
 {
     auto op = std::make_unique<PendingOp>();
     op->kind = kind;
     op->handle = &handle;
+
+    const std::lock_guard<std::mutex> guard{opsMutex_};
     ops_.push_back(std::move(op));
+    ops_.back()->slot = std::prev(ops_.end());
     return ops_.back().get();
 }
 
@@ -86,7 +93,7 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
 
     if (!armRead(*op)) {
         op->onRead = nullptr;
-        ops_.pop_back();
+        releaseLast();
         return std::unexpected(IoError::tooManyDescriptors);
     }
     poke();
@@ -115,7 +122,7 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
 
     if (!armWrite(*op)) {
         op->onWrite = nullptr;
-        ops_.pop_back();
+        releaseLast();
         return std::unexpected(IoError::tooManyDescriptors);
     }
     poke();
@@ -135,7 +142,7 @@ std::expected<void, IoError> EngineBase::submitAccept(const IoHandle &listener,
 
     if (!armAccept(*op)) {
         op->onAccept = nullptr;
-        ops_.pop_back();
+        releaseLast();
         return std::unexpected(IoError::tooManyDescriptors);
     }
     poke();
@@ -174,7 +181,7 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
 
     if (!armConnect(*op)) {
         op->onConnect = nullptr;
-        ops_.pop_back();
+        releaseLast();
         return std::unexpected(IoError::tooManyDescriptors);
     }
     poke();
@@ -580,14 +587,18 @@ void EngineBase::completeFileWrite(PendingOp &op)
     completeWrite(op, static_cast<std::size_t>(put));
 }
 
+void EngineBase::releaseLast()
+{
+    const std::lock_guard<std::mutex> guard{opsMutex_};
+    ops_.pop_back();
+}
+
 void EngineBase::release(const PendingOp *op)
 {
-    for (auto it = ops_.begin(); it != ops_.end(); ++it) {
-        if (it->get() == op) {
-            ops_.erase(it);
-            return;
-        }
-    }
+    // The slot makes this O(1): with a few thousand watches open, a scan per
+    // completion is quadratic on the loop.
+    const std::lock_guard<std::mutex> guard{opsMutex_};
+    ops_.erase(op->slot);
 }
 
 void EngineBase::countCompletion(const IoError *failure) noexcept
