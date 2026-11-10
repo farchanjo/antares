@@ -645,15 +645,23 @@ void caseWsCloseCloses()
                                           std::string_view after = {})
 {
     const std::string head{request};
-    const std::size_t at = head.find("sec-websocket-key:");
+    // The client spells the header `Sec-WebSocket-Key`, so the search is folded
+    // while the value is taken from the original text.
+    std::string folded{head};
+    for (char &value : folded) {
+        value = static_cast<char>(std::tolower(static_cast<unsigned char>(value)));
+    }
+
     std::string key;
+    constexpr std::string_view needle = "sec-websocket-key:";
+    const std::size_t at = folded.find(needle);
     if (at != std::string::npos) {
-        const std::size_t start = at + std::strlen("sec-websocket-key:");
+        std::size_t start = at + needle.size();
         const std::size_t stop = head.find("\r\n", start);
-        key = head.substr(start, stop - start);
-        while (!key.empty() && (key.front() == ' ' || key.front() == '\t')) {
-            key.erase(key.begin());
+        while (start < stop && (head[start] == ' ' || head[start] == '\t')) {
+            ++start;
         }
+        key = head.substr(start, stop - start);
     }
 
     std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
