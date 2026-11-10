@@ -188,6 +188,9 @@ The corpus is governed; use the binary for every loop step.
 - **A shared queue is guarded.** The loop owns its op table, but a timer is
   armed from the caller thread, so the timer vector takes a mutex. An unguarded
   push reallocates under an open reference and reads freed memory.
+- **An upgrade proves itself.** A WebSocket key is sixteen random bytes, and a
+  101 is only trusted when its accept digests that key and its subprotocol is one
+  we offered. A pointer-derived key passes a peer that never reads it.
 - **Use the native types.** Durations are `std::chrono`, instants are
   `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
   standard library already provides is a defect, not a defence.

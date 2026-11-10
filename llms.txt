@@ -86,6 +86,9 @@ and mTLS credentials, chunked streaming with an idle timeout, SSE and WebSocket.
 The loop owns its op table; the timer queue is the one shared container and takes
 a mutex, because a caller arms a delay while the loop walks it.
 
+WebSocket: a random `Sec-WebSocket-Key` per upgrade, and a 101 is refused unless
+its accept digests that key and it echoes an offered subprotocol.
+
 Kubernetes client: a path value type validated as DNS-1123, list options rendered
 as a query, `Status` mapped to a typed reason, watch frames split across chunks,
 a kubeconfig parsed from a YAML subset, and credentials resolved once per context.
