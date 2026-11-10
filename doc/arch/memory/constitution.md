@@ -112,7 +112,7 @@ Enforced by: config:guard, config:project, llm-context, verify
 ## P-02 — Constraints create focus
 Severity: block
 MANDATE: Scope is bounded. A feature outside it starts a separate initiative rather than widening this one.
-Enforced by: config:guard, config:project, llm-context, verify
+Enforced by: config:guard, config:project, verify
 ## P-03 — Reproducibility by default
 Severity: block
 MANDATE: The same input produces the same result on a second run; an action that cannot repeat is a defect.
