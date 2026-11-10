@@ -676,6 +676,19 @@ void caseWsCloseCloses()
     return response;
 }
 
+void caseWsAcceptMatchesRfc()
+{
+    // RFC 6455 section 1.3 works the example through, so a wrong digest is
+    // caught here rather than against a live server.
+    check(antares::adapters::http::WebSocket::acceptFor("dGhlIHNhbXBsZSBub25jZQ==") ==
+              "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+          "accept matches the RFC example");
+
+    const std::string key = antares::adapters::http::WebSocket::newKey();
+    check(key.size() == 24, "a key is 24 base64 characters");
+    check(key != antares::adapters::http::WebSocket::newKey(), "two keys differ");
+}
+
 void caseWsRefusesBadAccept()
 {
     // RFC 6455 §4.1: a server proves it read the key by echoing a digest of it.
@@ -943,6 +956,7 @@ std::span<const Case> cases()
         {"ws-close-closes", caseWsCloseCloses},
         {"websocket-upgrades", caseWebSocketUpgrades},
         {"ws-refuses-bad-accept", caseWsRefusesBadAccept},
+        {"ws-accept-matches-rfc", caseWsAcceptMatchesRfc},
         {"streaming-survives-redirect", caseStreamingSurvivesRedirect},
         {"streaming-survives-retry", caseStreamingSurvivesRetry},
         {"logger-receives-failures", caseLoggerReceivesFailures},

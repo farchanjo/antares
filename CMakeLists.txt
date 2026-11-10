@@ -364,6 +364,7 @@ set(ANTARES_HTTP_CASES
     ws-close-closes
     websocket-upgrades
     ws-refuses-bad-accept
+    ws-accept-matches-rfc
     streaming-survives-redirect
     streaming-survives-retry
     logger-receives-failures
