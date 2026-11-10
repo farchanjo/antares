@@ -72,3 +72,68 @@ Feature: Kubernetes API client
     Given a user with a token
     When the credential is rendered
     Then the authorization header carries the bearer scheme
+
+  Scenario: FR-008 log lines arrive as they do
+    Given a pod whose log is being followed
+    When the container writes a line
+    Then the line reaches the caller before the stream ends
+
+  Scenario: FR-008 log options are rendered
+    Given a log request naming a container and a tail count
+    When the query is rendered
+    Then both appear as query parameters
+
+  Scenario: FR-008 cancel ends the stream
+    Given a followed log stream
+    When the caller cancels the ticket
+    Then no line is delivered afterwards
+
+  Scenario: FR-009 exec session carries the three channels
+    Given an exec request for a container with a TTY
+    When the session opens
+    Then stdout and stderr are readable and stdin is writable
+
+  Scenario: FR-009 resize reaches the peer
+    Given an open exec session
+    When the caller resizes to a new column and row count
+    Then one resize frame is sent with both numbers
+
+  Scenario: FR-009 channel order is fixed
+    Given an exec session
+    When a frame arrives on the error channel
+    Then it is reported apart from stdout and stderr
+
+  Scenario: FR-010 discovery parses resources
+    Given a discovery document listing a namespaced resource
+    When the document is read
+    Then the resource is namespaced and its verbs are kept
+
+  Scenario: FR-010 cluster scoped resource
+    Given a discovery document listing a cluster scoped resource
+    When the document is read
+    Then the resource is not namespaced
+
+  Scenario: FR-011 scale reads replicas
+    Given a workload with a scale subresource
+    When the scale is read
+    Then replicas and the observed selector are returned
+
+  Scenario: FR-011 scale writes replicas
+    Given a workload and a new replica count
+    When the scale is written
+    Then the request targets the scale subresource with that count
+
+  Scenario: FR-012 read retries on a retryable status
+    Given a read answered with 429 and a Retry-After
+    When the client retries
+    Then the retry waits the advertised delay
+
+  Scenario: FR-012 write retries only when marked idempotent
+    Given a write answered with 503
+    When the caller did not mark it idempotent
+    Then the write is not retried
+
+  Scenario: FR-012 retry is bounded
+    Given a read answered with 503 every time
+    When the configured attempt count is spent
+    Then the last status is returned as the error

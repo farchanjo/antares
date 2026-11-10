@@ -27,6 +27,18 @@
       failures, credentials.
 - [x] T015 Wire the module into CMake and the conformance binary.
 
+T008 and T009 landed the ports only. `exec` never reached the port, and
+`Discovery` has no adapter, so the following finish what those two opened.
+
+- [ ] T016 Decision: ADR for the exec transport, choosing the WebSocket
+      subprotocol and its channel mapping before any code depends on it.
+- [ ] T017 Adapter: `Discovery` over the HTTP client, parsing group versions and
+      resources with their namespaced flag and verb list.
+- [ ] T018 Port and adapter: `exec` session over the subprotocol T016 names —
+      stdin, stdout, stderr, resize and close, with the error channel kept apart.
+- [ ] T019 Cases: discovery parsing, scale read and write, log options, exec
+      channel order and resize.
+
 ## Dependencies
 
 The HTTP client port (feature 002) and the logging port. No new third-party

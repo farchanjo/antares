@@ -169,3 +169,20 @@ Feature: Http Client H2
     When  the suite runs
     Then  every virtual has a case that reaches it
     And   a stream keeps its sink across a redirect and a retry
+
+  Scenario: FR-023 server sent events split across chunks
+    Given an event stream cut in the middle of a field
+    When  the parser sees each chunk
+    Then  one whole event comes out
+    And   its identifier is kept for reconnection
+
+  Scenario: FR-023 a control payload stays short
+    Given a close frame carrying more than 125 bytes
+    When  the codec encodes it
+    Then  the length is rejected
+
+  Scenario: FR-023 a client frame is masked
+    Given a text frame from the client
+    When  the codec encodes it
+    Then  the mask bit is set
+    And   the peer can unmask the payload

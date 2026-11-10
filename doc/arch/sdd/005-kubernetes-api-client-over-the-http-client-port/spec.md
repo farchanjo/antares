@@ -2,7 +2,7 @@
 id: 01a1c25a-655d-7d53-b841-837cd4b2bc96
 number: 005
 slug: kubernetes-api-client-over-the-http-client-port
-status: tasked
+status: analyzed
 created_at: 2026-11-09T22:07:46.525570625Z
 ---
 # Feature Specification: Kubernetes Api Client Over The Http Client Port
