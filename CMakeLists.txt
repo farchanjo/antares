@@ -10,9 +10,6 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# libc++ on both targets, and it is not only a Darwin matter: libstdc++ 13 gates
-# `<expected>` behind `__cpp_concepts >= 202002`, which clang 18 reports as
-# 201907, so libstdc++ hides the header under the compiler this project uses.
 # The fastest available linker, in descending order. Link time dominates an
 # incremental build here, and on Linux mold is several times quicker than lld.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -22,7 +19,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 endif()
 
-add_compile_options(-stdlib=libc++)
+# libc++ on both targets, and it is not only a Darwin matter: libstdc++ 13 gates
+# `<expected>` behind `__cpp_concepts >= 202002`, which clang 18 reports as
+# 201907, so libstdc++ hides the header under the compiler this project uses.
+#
+# The flag is scoped to C++ on purpose. C sources exist (mimalloc is one), and
+# clang counts `-stdlib` as an unused argument for them; under the release
+# preset's -Werror that alone fails the build.
+add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>")
 add_link_options(-stdlib=libc++)
 
 # FetchContent works outside the tree, so the corpus scanners never read
@@ -216,6 +220,7 @@ add_custom_target(lint
     COMMAND ${CMAKE_SOURCE_DIR}/tools/check-include-paths.sh
     COMMAND ${CMAKE_SOURCE_DIR}/tools/check-domain-purity.sh
     COMMAND ${CMAKE_SOURCE_DIR}/tools/check-pins.sh
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/check-tidy.sh ${CMAKE_BINARY_DIR}
     COMMENT "antares: lint rules"
     VERBATIM
     USES_TERMINAL)

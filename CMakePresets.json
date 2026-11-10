@@ -158,6 +158,18 @@
       "execution": {
         "noTestsAction": "error"
       }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "displayName": "Test release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
     }
   ]
 }
