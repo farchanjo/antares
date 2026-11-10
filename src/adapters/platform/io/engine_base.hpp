@@ -138,7 +138,14 @@ protected:
     /// Make an idle wait return, so a submit from another thread is seen.
     void poke() noexcept;
 
-    PendingOp *allocate(OpKind kind, const IoHandle &handle);
+    /// Build an op without publishing it, so every field is set before the
+    /// loop can see it. `readiness` false means the op completes immediately
+    /// and must never reach a readiness filter.
+    static std::unique_ptr<PendingOp> allocate(OpKind kind, const IoHandle &handle,
+                                               bool readiness);
+
+    /// Put the op in the store and hand back its stable address.
+    PendingOp *publish(std::unique_ptr<PendingOp> op);
 
     /// Drop a settled op. Call after its completion ran.
     void release(const PendingOp *op);

@@ -28,7 +28,7 @@ namespace antares::adapters::platform::io {
 namespace {
 
 constexpr int POLL_TIMEOUT_MS = 50;
-constexpr std::size_t READ_CHUNK = 64 * 1024;
+constexpr std::size_t READ_CHUNK = std::size_t{64} * 1024;
 
 } // namespace
 
@@ -59,12 +59,20 @@ std::size_t EngineBase::pendingCount() const noexcept
     return ops_.size();
 }
 
-PendingOp *EngineBase::allocate(OpKind kind, const IoHandle &handle)
+std::unique_ptr<PendingOp> EngineBase::allocate(OpKind kind, const IoHandle &handle,
+                                                bool readiness)
 {
     auto op = std::make_unique<PendingOp>();
     op->kind = kind;
     op->handle = &handle;
+    // Published already decided: the loop may pick the op up the instant it is
+    // in the store, so a field written after the push is a field read stale.
+    op->readiness = readiness;
+    return op;
+}
 
+PendingOp *EngineBase::publish(std::unique_ptr<PendingOp> op)
+{
     const std::lock_guard<std::mutex> guard{opsMutex_};
     ops_.push_back(std::move(op));
     ops_.back()->slot = std::prev(ops_.end());
@@ -80,13 +88,13 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
         return std::unexpected(IoError::system);
     }
 
-    PendingOp *op = allocate(OpKind::read, handle);
-    op->offset = offset.value_or(Bytes{});
-    op->buffer.resize(maxBytes.count());
-    op->onRead = std::move(done);
+    auto owned = allocate(OpKind::read, handle, !handle.isFile());
+    owned->offset = offset.value_or(Bytes{});
+    owned->buffer.resize(maxBytes.count());
+    owned->onRead = std::move(done);
+    PendingOp *op = publish(std::move(owned));
 
-    if (handle.isFile()) {
-        op->readiness = false;
+    if (!op->readiness) {
         completeImmediately(*op);
         return {};
     }
@@ -109,13 +117,13 @@ std::expected<void, IoError> EngineBase::submitWrite(const IoHandle &handle,
         return std::unexpected(IoError::system);
     }
 
-    PendingOp *op = allocate(OpKind::write, handle);
-    op->offset = offset.value_or(Bytes{});
-    op->buffer = std::move(bytes);
-    op->onWrite = std::move(done);
+    auto owned = allocate(OpKind::write, handle, !handle.isFile());
+    owned->offset = offset.value_or(Bytes{});
+    owned->buffer = std::move(bytes);
+    owned->onWrite = std::move(done);
+    PendingOp *op = publish(std::move(owned));
 
-    if (handle.isFile()) {
-        op->readiness = false;
+    if (!op->readiness) {
         completeImmediately(*op);
         return {};
     }
@@ -137,8 +145,9 @@ std::expected<void, IoError> EngineBase::submitAccept(const IoHandle &listener,
         return std::unexpected(IoError::system);
     }
 
-    PendingOp *op = allocate(OpKind::accept, listener);
-    op->onAccept = std::move(done);
+    auto owned = allocate(OpKind::accept, listener, true);
+    owned->onAccept = std::move(done);
+    PendingOp *op = publish(std::move(owned));
 
     if (!armAccept(*op)) {
         op->onAccept = nullptr;
@@ -164,8 +173,9 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
     const int flags = ::fcntl(descriptor, F_GETFL, 0);
     (void)::fcntl(descriptor, F_SETFL, flags | O_NONBLOCK);
 
-    PendingOp *op = allocate(OpKind::connect, handle);
-    op->onConnect = std::move(done);
+    auto owned = allocate(OpKind::connect, handle, true);
+    owned->onConnect = std::move(done);
+    PendingOp *op = publish(std::move(owned));
 
     if (::connect(descriptor, reinterpret_cast<const sockaddr *>(address.data()), address.size()) ==
         0) {
@@ -175,7 +185,10 @@ std::expected<void, IoError> EngineBase::submitConnect(const IoHandle &handle,
     }
     if (errno != EINPROGRESS) {
         op->readiness = false;
-        post([this, op] { completeConnect(*op, std::unexpected(IoError::connect)); release(op); });
+        post([this, op] {
+            completeConnect(*op, std::unexpected(IoError::system));
+            release(op);
+        });
         return {};
     }
 
@@ -249,12 +262,12 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
     // The watchdog. It runs on the loop, which outlives every timer, so the
     // bare `this` is sound; `claimResolve` makes sure only one of the two
     // settles the job.
-    (void)submitTimer(resolveTimeout, [this, serial, shared] {
+    static_cast<void>(submitTimer(resolveTimeout, [this, serial, shared] {
         if (!claimResolve(serial)) {
             return;
         }
         (*shared)(std::unexpected(IoError::timeout));
-    });
+    }));
     return {};
 }
 
@@ -325,7 +338,7 @@ void EngineBase::resolverLoop()
     }
 }
 
-void EngineBase::forget(PendingOp &) {}
+void EngineBase::forget(PendingOp &op) { (void)op; }
 
 void EngineBase::cancelPending(const IoHandle &handle)
 {
