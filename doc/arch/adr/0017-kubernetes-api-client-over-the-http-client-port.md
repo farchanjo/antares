@@ -68,3 +68,10 @@ format, and loses streaming control.
 
 Related: ADR-0013 (HTTP client), ADR-0006 (I/O port). Spec:
 `doc/arch/sdd/003-kubernetes-api-client-over-the-http-client-port/spec.md`.
+
+## Threats Addressed
+
+`doc/arch/threat-model/threat-model.md` carries the entry for each: TM-05 (a
+kubeconfig is parsed, never trusted), TM-14 (a credential plugin is invoked,
+not evaluated), TM-15 (the path is built from a value, so a namespace cannot
+drift) and TM-16 (a write retries only when it is idempotent).

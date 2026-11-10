@@ -72,3 +72,12 @@ get wrong:
 A request completes over h2 against a TLS peer; a sync call from inside a
 callback returns `reentrant`; the loop's idle CPU stays near zero with a hundred
 open streams.
+
+## Threats Addressed
+
+`doc/arch/threat-model/threat-model.md` carries the entry for each: TM-01 and
+TM-02 (the peer is verified and a redirect cannot move the credential), TM-03
+and TM-04 (the record layer and the size ceilings), TM-06 and TM-07 (the call
+and the resume stay provable), TM-08, TM-09 and TM-10 (the credential, the pooled identity and the error
+text), TM-11, TM-12 and TM-13 (idle sockets, stream concurrency and name
+resolution).
