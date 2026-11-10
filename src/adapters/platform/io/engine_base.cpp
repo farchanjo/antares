@@ -199,21 +199,9 @@ bool EngineBase::isEngineThread() const noexcept
 
 void EngineBase::poke() noexcept
 {
-    {
-        const std::lock_guard<std::mutex> guard{resolveMutex_};
-        resolveStop_ = true;
-    }
-    resolveReady_.notify_all();
-    if (resolver_.joinable()) {
-        // `stop()` may run on the resolver itself when a completion unwinds
-        // into the owner, and a thread cannot join itself.
-        if (resolver_.get_id() == std::this_thread::get_id()) {
-            resolver_.detach();
-        } else {
-            resolver_.join();
-        }
-    }
-
+    // Only the wake byte. Stopping and joining here would end the resolver on
+    // the first wakeup and race the join against a detach from the resolver
+    // thread itself; `stop()` owns that.
     if (wake_[1] >= 0) {
         const char byte = 1;
         (void)::write(wake_[1], &byte, 1);
@@ -255,7 +243,6 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
     // bare `this` is sound; `claimResolve` makes sure only one of the two
     // settles the job.
     (void)submitTimer(resolveTimeout, [this, serial, shared] {
-        std::fprintf(stderr, "[timer] fire serial=%llu\n", static_cast<unsigned long long>(serial));
         if (!claimResolve(serial)) {
             return;
         }
@@ -266,12 +253,7 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
 
 bool EngineBase::claimResolve(std::uint64_t serial)
 {
-    const auto previous = resolveSettled_.exchange(serial);
-    std::fprintf(stderr, "[claim] serial=%llu previous=%llu win=%d\n",
-                 static_cast<unsigned long long>(serial),
-                 static_cast<unsigned long long>(previous),
-                 static_cast<int>(previous != serial));
-    return previous != serial;
+    return resolveSettled_.exchange(serial) != serial;
 }
 
 void EngineBase::startResolver()
