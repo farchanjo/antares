@@ -57,6 +57,7 @@ private:
 };
 
 int failures = 0;
+bool stalled = false;
 
 void step(bool ok, const std::string &what)
 {
@@ -147,6 +148,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
         });
         if (!gate.wait(std::chrono::seconds{20})) {
             step(false, "GET /version  timed out");
+            stalled = true;
         }
     }
 
@@ -172,6 +174,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
             });
             if (!gate.wait(std::chrono::seconds{20})) {
                 step(false, "GET /api/v1/namespaces  timed out");
+                stalled = true;
             }
         }
     }
@@ -217,6 +220,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                 // The server honours timeoutSeconds; the wait is the backstop.
                 if (!gate.wait(std::chrono::seconds{25})) {
                     step(false, "WATCH  timed out locally");
+                    stalled = true;
                 }
             }
         }
@@ -231,6 +235,14 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                 static_cast<unsigned long long>(stats.bookmarks));
 
     http.reset();
+    if (stalled) {
+        // A stuck resolve blocks the loop thread inside getaddrinfo, and there
+        // is no way to interrupt it. Joining would hang the tool forever, which
+        // is the opposite of what a diagnostic is for.
+        std::printf("\nstalled: a step never completed, skipping the clean shutdown\n");
+        std::fflush(stdout);
+        std::_Exit(1);
+    }
     pool.stop();
     return failures == 0 ? 0 : 1;
 }
