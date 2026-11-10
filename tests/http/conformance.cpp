@@ -687,6 +687,27 @@ void caseWsAcceptMatchesRfc()
     const std::string key = antares::adapters::http::WebSocket::newKey();
     check(key.size() == 24, "a key is 24 base64 characters");
     check(key != antares::adapters::http::WebSocket::newKey(), "two keys differ");
+
+    // A 101 has to prove it read the key, and it has to pick one of the offers.
+    const std::string good =
+        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+        "Connection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n"
+        "Sec-WebSocket-Protocol: chat\r\n";
+    check(antares::adapters::http::WebSocket::verifyHandshake(
+              good, "dGhlIHNhbXBsZSBub25jZQ==", "chat"),
+          "a correct handshake is accepted");
+
+    std::string wrongProtocol = good;
+    wrongProtocol.replace(wrongProtocol.find("chat"), 4, "other");
+    check(!antares::adapters::http::WebSocket::verifyHandshake(
+              wrongProtocol, "dGhlIHNhbXBsZSBub25jZQ==", "chat"),
+          "a different subprotocol is refused");
+
+    std::string wrongAccept = good;
+    wrongAccept.replace(wrongAccept.find("s3pP"), 4, "AAAA");
+    check(!antares::adapters::http::WebSocket::verifyHandshake(
+              wrongAccept, "dGhlIHNhbXBsZSBub25jZQ==", "chat"),
+          "a wrong accept is refused");
 }
 
 void caseWsRefusesBadAccept()
