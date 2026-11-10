@@ -463,13 +463,17 @@ int EngineBase::nextWaitMilliseconds() const
         timers_.begin(), timers_.end(),
         [](const Timer &left, const Timer &right) { return left.due < right.due; });
 
-    const auto until = std::chrono::duration_cast<domain::Duration>(
-        nearest->due - std::chrono::steady_clock::now());
-    if (until.count() <= 0) {
+    // Milliseconds, not the duration's own unit: `Duration` is nanosecond based,
+    // and handing its count back as a millisecond delay turns five seconds into
+    // eight days.
+    const auto until = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           nearest->due - std::chrono::steady_clock::now())
+                           .count();
+    if (until <= 0) {
         return 0;
     }
     // Exact deadline, not a capped slice: the pipe wakes us for new work.
-    return static_cast<int>(until.count());
+    return static_cast<int>(std::min<std::int64_t>(until, 60'000));
 }
 
 void EngineBase::drainWakeup()
