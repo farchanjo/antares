@@ -30,7 +30,7 @@
 T008 and T009 landed the ports only. `exec` never reached the port, and
 `Discovery` has no adapter, so the following finish what those two opened.
 
-- [ ] T016 Decision: ADR for the exec transport, choosing the WebSocket
+- [x] T016 Decision: ADR for the exec transport, choosing the WebSocket
       subprotocol and its channel mapping before any code depends on it.
 - [ ] T017 Adapter: `Discovery` over the HTTP client, parsing group versions and
       resources with their namespaced flag and verb list.
