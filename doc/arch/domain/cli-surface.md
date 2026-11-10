@@ -5,6 +5,9 @@ is the build and check surface, and it is stable.
 
 ## Build surface
 
+The cycle these verbs serve is `doc/arch/runbooks/dev-loop.md`: author here,
+validate on the macOS host, and only then publish.
+
 | Verb | Effect |
 |------|--------|
 | `cmake --preset dev` | configure the development build |

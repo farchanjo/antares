@@ -5,6 +5,8 @@ engine keeps its loop free and whether the client tells the truth about what the
 peer did. Each row is an ATAM-style scenario mapped onto an ISO/IEC 25010:2023
 characteristic.
 
+The product the scenarios constrain is `doc/arch/functional/product-overview.md`.
+
 The `Attribute` column uses the ISO/IEC 25010:2023 names exactly.
 `speckit validate` scans the table below (never the prose around it).
 
