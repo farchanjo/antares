@@ -255,6 +255,7 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
     // bare `this` is sound; `claimResolve` makes sure only one of the two
     // settles the job.
     (void)submitTimer(resolveTimeout, [this, serial, shared] {
+        std::fprintf(stderr, "[timer] fire serial=%llu\n", static_cast<unsigned long long>(serial));
         if (!claimResolve(serial)) {
             return;
         }
@@ -265,7 +266,12 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
 
 bool EngineBase::claimResolve(std::uint64_t serial)
 {
-    return resolveSettled_.exchange(serial) != serial;
+    const auto previous = resolveSettled_.exchange(serial);
+    std::fprintf(stderr, "[claim] serial=%llu previous=%llu win=%d\n",
+                 static_cast<unsigned long long>(serial),
+                 static_cast<unsigned long long>(previous),
+                 static_cast<int>(previous != serial));
+    return previous != serial;
 }
 
 void EngineBase::startResolver()
