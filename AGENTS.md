@@ -162,17 +162,15 @@ The corpus is governed; use the binary for every loop step.
 <!-- notes:start -->
 ## Rules
 
-- **`speckit` runs locally only.** The host has no binary. Run `status`, `next`,
+- **`speckit` runs locally only.** The host has no binary; run `status`, `next`,
   `validate`, `context score` and every phase here.
-- **The workstation edits, commits and publishes.** Push with
-  `git push mac HEAD:main`, then build and test over SSH on
-  `farchanjo@192.168.202.241`, checkout ``$HOME/dev/antares``.
+- **The workstation edits, commits and publishes.** Build and test over SSH on
+  `farchanjo@192.168.202.241`; nothing reaches
+  `origin` until the host is green.
 - **Darwin is the acceptance target (P-05).** A local build is a convenience.
   `kqueue` is Darwin-only; Linux runs `io_uring` or `epoll`.
-- Run the suite with `cmake --build --preset dev --target check`, every backend,
-  before claiming a case passes. `ctest --preset dev` alone is serial; `JOBS=n`
-  caps the width at configure time.
-- Nothing is published to `origin` until the host is green.
+- Run the suite with `cmake --build --preset dev --target check`, every backend.
+  `ctest --preset dev` alone is serial; `JOBS=n` caps the width at configure time.
 - **Clean old builds.** Delete a tree when it stops being used, and before a
   release build. Disk exhaustion fails the loop silently.
 - **A port method is covered.** Every virtual has a case that reaches it, and a
@@ -181,21 +179,17 @@ The corpus is governed; use the binary for every loop step.
   missing signal, and the waiter times out instead.
 - **A shared queue is guarded.** A timer is armed from another thread, so the
   vector takes a mutex: an unguarded push reallocates under an open reference.
-- **An upgrade proves itself.** A WebSocket key is sixteen random bytes and a
-  101 is trusted only when its accept digests that key and echoes an offered
+- **An upgrade proves itself.** A WebSocket key is sixteen random bytes and a 101
+  is trusted only when its accept digests that key and echoes an offered
   subprotocol. A pointer-derived key passes a peer that never reads it.
-- **The linker is a build decision.** `mold` when present, `lld` otherwise;
-  debug info stays `-g1 -fno-standalone-debug`. The build is link-bound, so a
-  full `-g` costs more than it gives.
-- **The PCH names no project header.** Only stdlib and the two third parties
-  live in `src/pch.hpp`; one project header there and every edit invalidates it,
-  slower than no PCH at all.
+- **The linker is a build decision.** `mold` when present, `lld` otherwise; debug
+  info stays `-g1 -fno-standalone-debug`. The build is link-bound.
+- **The PCH names no project header.** Only stdlib and the two third parties live
+  in `src/pch.hpp`; one project header there and every edit invalidates it.
 - **Use the native types.** Durations are `std::chrono`, instants
-  `steady_clock::time_point`, byte counts `Bytes`; a wrapper over what the
-  standard library already gives is a defect, not a defence.
+  `steady_clock::time_point`, byte counts `Bytes`; a wrapper is a defect.
 - **Commit no artifacts.** Binaries, objects, caches, generated reports and the
-  `doc/.specify` runtime state stay out of the tree. A `git add -A` that stages
-  a `.o` means a rule is missing, not that the file belongs.
+  `doc/.specify` runtime state stay out of the tree.
 
 ## Command surface
 
@@ -291,6 +285,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0014-offline-default-advisory.md`
 - `doc/arch/adr/0017-kubernetes-api-client-over-the-http-client-port.md`
 - `doc/arch/adr/0018-linux-io-uring-epoll-poll.md`
+- `doc/arch/adr/0019-exec-over-websocket-channels.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
@@ -561,6 +556,10 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/k8s/api_error.hpp`
 - `src/domain/k8s/api_path.cpp`
 - `src/domain/k8s/api_path.hpp`
+- `src/domain/k8s/discovery.cpp`
+- `src/domain/k8s/discovery.hpp`
+- `src/domain/k8s/exec_channel.cpp`
+- `src/domain/k8s/exec_channel.hpp`
 - `src/domain/k8s/kubeconfig.cpp`
 - `src/domain/k8s/kubeconfig.hpp`
 - `src/domain/k8s/options.cpp`
@@ -575,6 +574,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/domain/units/instant.hpp`
 - `src/domain/yaml/node.cpp`
 - `src/domain/yaml/node.hpp`
+- `src/pch.hpp`
 - `src/platform/common/allocator.cpp`
 - `src/platform/linux/thread_tuning.cpp`
 - `src/platform/linux/thread_tuning.hpp`

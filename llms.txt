@@ -33,6 +33,8 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - `src/domain/k8s/` — path, options, status, watch frame, kubeconfig
 - `src/domain/json/value.hpp` — the JSON reader the API client rests on
 - `src/domain/yaml/node.hpp` — the YAML subset a kubeconfig needs
+- `src/domain/k8s/discovery.hpp` — group and resource descriptors
+- `src/domain/k8s/exec_channel.hpp` — the exec channel framing
 - `src/ports/k8s/kube_client.hpp` — the Kubernetes client port
 - `src/adapters/k8s/http_kube_client.cpp` — the port over the HTTP client
 - `tools/k8s_live/main.cpp` — the read-only live smoke
@@ -55,6 +57,7 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 - `doc/arch/adr/0014-offline-default-advisory.md` — D-13 downgraded
 - `doc/arch/adr/0017-kubernetes-api-client-over-the-http-client-port.md` — the API client
 - `doc/arch/adr/0018-linux-io-uring-epoll-poll.md` — Linux backend order
+- `doc/arch/adr/0019-exec-over-websocket-channels.md` — exec transport
 
 ## Roles
 
@@ -88,6 +91,7 @@ and mTLS credentials, chunked streaming with an idle timeout, SSE and WebSocket.
 Kubernetes client: a path value type validated as DNS-1123, list options rendered
 as a query, `Status` mapped to a typed reason, watch frames split across chunks,
 a kubeconfig parsed from a YAML subset, and credentials resolved once per context.
+Discovery parses groups and resources; exec runs over WebSocket channels 0-5.
 
 ## Command surface
 

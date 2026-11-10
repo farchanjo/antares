@@ -1,65 +1,88 @@
 # antares — Product Overview
 
-Functional documentation for antares, written from the user's point of
-view: what the product does, who uses it, how the main flow runs, and how we
-know it works. Keep this in sync with the executable specs under
+Functional documentation for antares, written from the user's point of view:
+what the product does, who uses it, how the main flow runs, and how we know it
+works. Keep this in sync with the executable specs under
 `doc/arch/specs/features/`.
 
 ## Overview
 
-antares exists to <state the product's purpose in one sentence —
-replace this placeholder>. Describe the problem it solves and the outcome a
-user can expect. Keep this section high level; the details belong in the
-per-feature specs.
+antares is a desktop manager for Kubernetes clusters. It shows what a cluster
+actually holds — workloads, their health, their logs — and lets an operator act
+on one without dropping to a terminal and retyping a resource name.
+
+The problem it solves is context loss. A terminal forgets which cluster,
+namespace and object it was on between commands, and one wrong `kubectl` against
+the wrong context is a real incident. antares keeps that context on screen and
+derives every request from it.
+
+The outcome for a user: pick a context once, see the objects, read a log, open a
+shell, scale a workload — all from one window that never silently switches
+clusters underneath them.
 
 ## Actors
 
-The people and systems that interact with antares:
-
-- **End user** — the primary human who uses the product to accomplish a goal.
-- **Operator** — installs, configures, and runs the deployment.
-- **External system** — any upstream or downstream service the product
-  integrates with.
-
-Replace these placeholders with the real actors for antares.
+- **Operator** — the human running the app. Holds the kubeconfig, chooses the
+  context, reads state, and acts on it.
+- **kubeconfig** — the local file naming clusters, users and contexts. The only
+  source of identity; antares stores no credential of its own.
+- **API server** — the cluster's own front door. Owns authorisation: antares
+  shows what the credential is allowed to see and surfaces a refusal as a
+  refusal.
+- **exec plugin** — an optional local process a kubeconfig names instead of a
+  token. It prints a credential and antares uses it for that session.
 
 ## Main Flow
 
-The primary end-to-end flow through antares:
+The path a session takes, from launch to an act on the cluster:
 
 ```mermaid
 flowchart LR
-    A[User request] --> B[Validate input]
-    B --> C[Apply business rule]
-    C --> D[Persist result]
-    D --> E[Return response]
+    A[Read kubeconfig] --> B[Choose context]
+    B --> C[Resolve credential]
+    C --> D[Prove the chain]
+    D --> E[List resources]
+    E --> F[Inspect, stream or act]
+    F --> E
 ```
 
-Replace the placeholder steps above with the product's real main flow.
+Each step refuses rather than guesses:
+
+- A kubeconfig that fails to parse is named, not skipped.
+- A context naming an absent cluster is an error, not an empty view.
+- A credential that does not resolve stops before the first request.
+- **Prove the chain** is a real request — the API server's version — because a
+  client that never spoke to a server has proven nothing.
+- A refusal (401, 403) is shown as itself. The app does not retry into a loop.
 
 ## Acceptance
 
-Acceptance criteria for antares are expressed as executable
-specifications. The authoritative behavior lives in the Gherkin corpus under
-`doc/arch/specs/features/`; each `.feature` file there is a scenario the
-product must satisfy.
+Acceptance criteria are executable specifications. The authoritative behaviour
+lives in the Gherkin corpus under `doc/arch/specs/features/`; each `.feature`
+file there is a scenario the product must satisfy.
 
-- Every user-visible behavior has a matching feature in
+- Every user-visible behaviour has a matching feature in
   `doc/arch/specs/features/`.
 - A change to the Main Flow above starts with a change to those specs, not to
   the code.
 - Run `speckit verify` to check the implementation against the feature corpus.
 
+The current corpus covers the transport under the client
+(`http-client-h2.feature`), the kernel engine that carries it
+(`kernel-io-engine-kqueue.feature`), and the cluster surface itself
+(`kubernetes-api-client-over-the-http-client-port.feature`).
+
 ## Observability
 
-How we see antares working in production:
+How we see antares working:
 
-- **Metrics** — user-visible health signals (request rate, error rate,
-  latency) exported via OTLP.
-- **Logs** — structured log events for the Main Flow's decisions, carrying
-  trace context.
-- **Tracing** — one trace per user request through the Main Flow, with
-  request-scoped identifiers carried as span attributes.
+- **Metrics** — request counts per backend, failure families from the engine,
+  and pool reuse. Label sets stay bounded; a resource name never becomes a
+  label.
+- **Logs** — one line per state change, carrying the context and namespace it
+  happened in. A log line that omits the cluster is unreadable once two are
+  open.
+- **Tracing** — one trace per user action, so a slow list is distinguishable
+  from a slow server.
 
-Keep metric label sets bounded; the full conventions live in
-`doc/arch/observability/observability.md`.
+The conventions live in `doc/arch/observability/observability.md`.
