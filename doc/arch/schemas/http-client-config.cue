@@ -10,14 +10,18 @@ package schemas
     maxBodyBytes:        uint64 & >0          | *67108864
 }
 
+// #Credential is any non-empty material: a principal, a secret, a PEM
+// certificate chain or a PEM private key. Empty is the absence case.
+#Credential: string & !=""
+
 // #AuthKind is how a request proves identity (FR-013).
 // #Auth carries the credential material.
 #Auth: {
     kind: "none" | "bearer" | "basic" | "clientCertificate" | *"none"
-    principal?:      string
-    secret?:         string
-    certificatePem?: string
-    privateKeyPem?:  string
+    principal?:      #Credential
+    secret?:         #Credential
+    certificatePem?: #Credential
+    privateKeyPem?:  #Credential
 }
 
 // #Pool bounds connection reuse (FR-011).

@@ -11,12 +11,21 @@ package schemas
 // #HttpError is closed: every failure the client can report.
 #HttpError: "connect" | "tls" | "alpn" | "timeout" | "cancelled" | "reentrant" | "tooManyRedirects" | "headerCeiling" | "bodyCeiling" | "streamCeiling" | "protocol" | "closed"
 
+// #Url is an absolute http(s) target.
+#Url: string & =~"^https?://"
+
+// #Headers is the header map, named so the shape is first class.
+#Headers: [string]: string
+
+// #Body is an opaque payload; the client never inspects it.
+#Body: bytes
+
 // #HttpRequest is one submission. `version` overrides ALPN and is test-only.
 #HttpRequest: {
     method:   #HttpMethod
-    url:      string & =~"^https?://"
-    headers?: [string]: string
-    body?:    bytes
+    url:      #Url
+    headers?: #Headers
+    body?:    #Body
     version?: #HttpVersion
 }
 
@@ -24,8 +33,8 @@ package schemas
 #HttpResponse: {
     status:  uint16 & >=100 & <=599
     version: #HttpVersion
-    headers: [string]: string
-    body:    bytes
+    headers: #Headers
+    body:    #Body
     hops:    uint8
 }
 
