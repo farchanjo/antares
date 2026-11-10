@@ -162,38 +162,33 @@ The corpus is governed; use the binary for every loop step.
 <!-- notes:start -->
 ## Rules
 
-- **`speckit` runs locally only.** The host has no `speckit`. Run `status`,
-  `next`, `validate`, `context score` and every phase on the workstation.
-- **Editing, committing and the spec loop are local.** The Linux workstation is
-  the hub: it edits, commits, runs `speckit` and publishes.
-- **Build and test are remote.** Push with `git push mac HEAD:main`, then build
-  and run over SSH on `farchanjo@192.168.202.241`, checkout ``$HOME/dev/antares``.
-- **Nothing is built or tested locally.** The workstation edits, commits and runs
-  `speckit`; every `cmake` and `ctest` call happens on the host. A local build is
-  a convenience, never evidence — `kqueue` compiles on Darwin alone and the
-  acceptance target is macOS (P-05).
-- Run the suite on the host with `cmake --build --preset dev --target check`,
-  both backends, before claiming a case passes. It uses every core; `JOBS=n`
-  caps the width at configure time. A bare `ctest --preset dev` is serial —
-  `--parallel` with no value is serial too.
+- **`speckit` runs locally only.** The host has no binary. Run `status`, `next`,
+  `validate`, `context score` and every phase here.
+- **The workstation edits, commits and publishes.** Push with
+  `git push mac HEAD:main`, then build and test over SSH on
+  `farchanjo@192.168.202.241`, checkout ``$HOME/dev/antares``.
+- **Darwin is the acceptance target (P-05).** A local build is a convenience.
+  `kqueue` is Darwin-only; Linux runs `io_uring` or `epoll`.
+- Run the suite with `cmake --build --preset dev --target check`, every backend,
+  before claiming a case passes. `ctest --preset dev` alone is serial; `JOBS=n`
+  caps the width at configure time.
 - Nothing is published to `origin` until the host is green.
-- **Clean old builds.** Delete a build tree as soon as it stops being used and
-  delete the tree before a release build. Disk exhaustion fails
-  the loop silently.
-- **A port method is covered.** A virtual on a port has a case that reaches it,
-  and a counter with no increment is a defect. Linking is not working.
+- **Clean old builds.** Delete a tree as soon as it stops being used, and before
+  a release build. Disk exhaustion fails the loop silently.
+- **A port method is covered.** Every virtual has a case that reaches it, and a
+  counter with no increment is a defect. Linking is not working.
 - **Never sleep in a test.** Wait on the completion. A spin with
   `sleep_for` hides a missing signal and slows the suite; the waiter times out
   instead.
-- **A shared queue is guarded.** The loop owns its op table, but a timer is
-  armed from the caller thread, so the timer vector takes a mutex. An unguarded
-  push reallocates under an open reference and reads freed memory.
+- **A shared queue is guarded.** A timer is armed from the caller thread while
+  the loop walks the same vector, so it takes a mutex: an unguarded push
+  reallocates under an open reference and reads freed memory.
 - **An upgrade proves itself.** A WebSocket key is sixteen random bytes, and a
   101 is only trusted when its accept digests that key and its subprotocol is one
   we offered. A pointer-derived key passes a peer that never reads it.
-- **The linker is a build decision.** `mold` when present, `lld` otherwise, and
-  debug info stays `-g1 -fno-standalone-debug`. An incremental build here is
-  link-bound, so a full `-g` costs an order of magnitude more than it gives.
+- **The linker is a build decision.** `mold` when present, `lld` otherwise;
+  debug info stays `-g1 -fno-standalone-debug`. An incremental build is
+  link-bound, so a full `-g` costs more than it gives.
 - **Use the native types.** Durations are `std::chrono`, instants are
   `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
   standard library already provides is a defect, not a defence.
@@ -295,6 +290,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0013-http-client-h2.md`
 - `doc/arch/adr/0014-offline-default-advisory.md`
 - `doc/arch/adr/0017-kubernetes-api-client-over-the-http-client-port.md`
+- `doc/arch/adr/0018-linux-io-uring-epoll-poll.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
@@ -516,6 +512,8 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/http/tls_context.hpp`
 - `src/adapters/http/websocket.cpp`
 - `src/adapters/http/websocket.hpp`
+- `src/adapters/k8s/cluster_binding.cpp`
+- `src/adapters/k8s/cluster_binding.hpp`
 - `src/adapters/k8s/http_kube_client.cpp`
 - `src/adapters/k8s/http_kube_client.hpp`
 - `src/adapters/k8s/kubeconfig_loader.cpp`
@@ -524,6 +522,10 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `src/adapters/log/console_logger.hpp`
 - `src/adapters/platform/io/engine_base.cpp`
 - `src/adapters/platform/io/engine_base.hpp`
+- `src/adapters/platform/io/epoll_engine.cpp`
+- `src/adapters/platform/io/epoll_engine.hpp`
+- `src/adapters/platform/io/io_uring_engine.cpp`
+- `src/adapters/platform/io/io_uring_engine.hpp`
 - `src/adapters/platform/io/kqueue_engine.cpp`
 - `src/adapters/platform/io/kqueue_engine.hpp`
 - `src/adapters/platform/io/poll_engine.cpp`
