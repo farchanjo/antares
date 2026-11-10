@@ -25,12 +25,12 @@
     {
       "name": "dev",
       "displayName": "Development \u2014 fastest loop",
-      "description": "Unoptimized, line debug info, lld, sccache, PCH. The default for every edit.",
+      "description": "Nothing optimized: -O0, line debug info, mold, sccache, PCH, hidden visibility. The default for every edit.",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g1 -fno-standalone-debug",
-        "CMAKE_C_FLAGS_DEBUG": "-O0 -g1 -fno-standalone-debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g1 -fno-standalone-debug -fvisibility=hidden -fvisibility-inlines-hidden -ffile-prefix-map=${sourceDir}=.",
+        "CMAKE_C_FLAGS_DEBUG": "-O0 -g1 -fno-standalone-debug -fvisibility=hidden -ffile-prefix-map=${sourceDir}=.",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "OFF",
         "CMAKE_PCH_INSTANTIATE_TEMPLATES": "ON",
         "CMAKE_UNITY_BUILD": "OFF",
@@ -38,7 +38,8 @@
         "CMAKE_EXE_LINKER_FLAGS": ""
       },
       "environment": {
-        "SCCACHE_BASEDIR": "${sourceDir}"
+        "SCCACHE_BASEDIR": "${sourceDir}",
+        "SCCACHE_CACHE_SIZE": "20G"
       }
     },
     {
@@ -82,7 +83,8 @@
         "CMAKE_EXE_LINKER_FLAGS": ""
       },
       "environment": {
-        "SCCACHE_BASEDIR": "${sourceDir}"
+        "SCCACHE_BASEDIR": "${sourceDir}",
+        "SCCACHE_CACHE_SIZE": "20G"
       }
     },
     {

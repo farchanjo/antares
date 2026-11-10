@@ -46,7 +46,9 @@ if(Qt6_FOUND)
     target_link_libraries(antares_core INTERFACE Qt6::Core Qt6::Widgets)
 endif()
 
-# Stable-header precompiled header. Empty until the first shared header exists.
+# Stable-header precompiled header, propagated to every consumer through the
+# interface target. It holds the standard library and the two third parties, so
+# a project header change never invalidates it.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp")
     target_precompile_headers(antares_core INTERFACE
         "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp>"

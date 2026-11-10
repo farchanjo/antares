@@ -146,6 +146,15 @@ Measured on this tree, one edited `.cpp`:
 | `ld.lld` | `-g` | 2.9 s |
 | `mold` | `-O0 -g1 -fno-standalone-debug` | 0.25 s |
 
+The `dev` preset optimizes nothing: `-O0`, `-g1`, no standalone debug info,
+hidden visibility, and a precompiled header over the standard library and the two
+third parties. A full clean build with the cache off is under two seconds; the
+same build with the cache on is a third of a second.
+
+The precompiled header must never name a project header. That is the whole rule:
+the moment it does, every edit invalidates it and the build gets slower than
+without it.
+
 `mold` is chosen automatically when present and `lld` is the fallback. The debug
 flags are P-08's, and `-fno-standalone-debug` keeps type info only where a frame
 uses it — that is what shrank the link.
