@@ -1,5 +1,29 @@
 # antares — clang-tidy, strongest level (D-07, P-06).
 # Every check family is on; the excludes below name a reason each.
+#
+# Reason key, per family that is off:
+#   libc++-as-a-library  the project links libc++ as a library, it is not the
+#                        llvm-libc build, so LIBC_NAMESPACE is undefined
+#                        (llvmlibc-callee-namespace, -implementation-in-namespace,
+#                        -restrict-system-libc-headers)
+#   pch                  the PCH supplies the standard headers, so the per-TU
+#                        include set is not the contract (misc-include-cleaner)
+#   ABI                  the type is the kernel or OpenSSL ABI, not a style pick
+#                        (reinterpret_cast, C arrays, short/long, int-to-ptr,
+#                        constant-array-index, array-to-pointer decay)
+#   libc++-18            <print> is incomplete in libc++ 18 (modernize-use-std-print)
+#   aggregate            session state is a plain struct on purpose; private
+#                        members would buy nothing (misc-non-private-member-variables-
+#                        in-classes)
+#   by-design            the recursion and the throw-through are the design
+#                        (misc-no-recursion, bugprone-exception-escape)
+#   nghttp2              the library takes non-const byte buffers, so the
+#                        const is peeled at the boundary (pro-type-const-cast)
+#   startup              getenv is read once, before a thread exists
+#                        (concurrency-mt-unsafe)
+#   dtor                 ~EngineBase calls stop() on purpose; the derived state
+#                        is already gone and the base stop is the one wanted
+#                        (clang-analyzer-optin.cplusplus.VirtualCall)
 Checks: >
   *,
   -fuchsia-*,
@@ -20,7 +44,25 @@ Checks: >
   -objc-*,
   -hicpp-*,
   -cert-*,
-  -clang-diagnostic-unused-command-line-argument
+  -clang-diagnostic-unused-command-line-argument,
+  -llvmlibc-callee-namespace,
+  -llvmlibc-implementation-in-namespace,
+  -llvmlibc-restrict-system-libc-headers,
+  -misc-include-cleaner,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -performance-no-int-to-ptr,
+  -cppcoreguidelines-avoid-c-arrays,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -google-runtime-int,
+  -modernize-use-std-print,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  -bugprone-exception-escape,
+  -cppcoreguidelines-pro-type-const-cast,
+  -concurrency-mt-unsafe,
+  -clang-analyzer-optin.cplusplus.VirtualCall
 
 WarningsAsErrors: '*'
 
@@ -55,6 +97,10 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.TypedefCase
     value: CamelCase
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 45
+  - key: bugprone-unused-return-value.AllowCastToVoid
+    value: true
   - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
     value: true
   - key: modernize-use-nullptr.NullMacros

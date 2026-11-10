@@ -49,7 +49,7 @@ TlsContext::~TlsContext()
 }
 
 std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2,
-                                               const domain::http::Auth &auth,
+                                               [[maybe_unused]] const domain::http::Auth &auth,
                                                std::string_view trustBundlePem)
 {
     SSL_CTX *context = SSL_CTX_new(TLS_client_method());

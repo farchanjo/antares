@@ -22,13 +22,29 @@ std::string_view PollEngine::name() const noexcept { return "poll"; }
 
 void PollEngine::armWakeup() {}
 
-bool PollEngine::armRead(PendingOp &) { return true; }
+bool PollEngine::armRead(PendingOp &op)
+{
+    (void)op;
+    return true;
+}
 
-bool PollEngine::armWrite(PendingOp &) { return true; }
+bool PollEngine::armWrite(PendingOp &op)
+{
+    (void)op;
+    return true;
+}
 
-bool PollEngine::armAccept(PendingOp &) { return true; }
+bool PollEngine::armAccept(PendingOp &op)
+{
+    (void)op;
+    return true;
+}
 
-bool PollEngine::armConnect(PendingOp &) { return true; }
+bool PollEngine::armConnect(PendingOp &op)
+{
+    (void)op;
+    return true;
+}
 
 bool PollEngine::waitReady(int timeoutMilliseconds)
 {

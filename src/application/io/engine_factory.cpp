@@ -36,16 +36,16 @@ bool overrideRequestsPoll() noexcept
 }
 
 #if defined(__APPLE__) || defined(__linux__)
-constexpr bool kernelEngineCompiledIn = true;
-constexpr std::string_view kernelEngineName = 
+constexpr bool KERNEL_ENGINE_COMPILED_IN = true;
+constexpr std::string_view KERNEL_ENGINE_NAME = 
 #if defined(__APPLE__)
     "kqueue";
 #else
     "epoll";
 #endif
 #else
-constexpr bool kernelEngineCompiledIn = false;
-constexpr std::string_view kernelEngineName = "poll";
+constexpr bool KERNEL_ENGINE_COMPILED_IN = false;
+constexpr std::string_view KERNEL_ENGINE_NAME = "poll";
 #endif
 
 } // namespace
@@ -55,7 +55,7 @@ std::string selectedBackendName()
     if (forcedBackend() != nullptr) {
         return std::string{forcedBackend()};
     }
-    return std::string{kernelEngineName};
+    return std::string{KERNEL_ENGINE_NAME};
 }
 
 std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngine()

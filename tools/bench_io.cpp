@@ -11,8 +11,13 @@
 #include "domain/units/bytes.hpp"
 #include "ports/io/io_handle.hpp"
 
-using namespace antares;
-using namespace antares::ports::io;
+namespace application = antares::application;
+namespace domain = antares::domain;
+
+using antares::ports::io::Buffer;
+using antares::ports::io::IoEngine;
+using antares::ports::io::IoError;
+using antares::ports::io::IoHandle;
 
 int main(int argc, char **argv)
 {
@@ -35,8 +40,9 @@ int main(int argc, char **argv)
     // engine and not a race on its op table.
     engine.post([&engine, &reader, &done, total, writeEnd = pair[1]] {
         for (int index = 0; index < total; ++index) {
-            (void)engine.submitRead(*reader, std::nullopt, domain::Bytes{1},
-                                    [&done](std::expected<Buffer, IoError>) { ++done; });
+            static_cast<void>(
+                engine.submitRead(*reader, std::nullopt, domain::Bytes{1},
+                                  [&done](std::expected<Buffer, IoError>) { ++done; }));
             const char byte = 'x';
             (void)::write(writeEnd, &byte, 1);
         }

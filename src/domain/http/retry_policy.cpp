@@ -4,12 +4,8 @@ namespace antares::domain::http {
 
 bool RetryPolicy::isRetryableStatus(std::uint16_t status) const noexcept
 {
-    for (const std::uint16_t candidate : retryOnStatus) {
-        if (candidate == status) {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(retryOnStatus,
+                               [status](std::uint16_t candidate) { return candidate == status; });
 }
 
 } // namespace antares::domain::http

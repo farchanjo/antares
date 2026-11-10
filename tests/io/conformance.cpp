@@ -261,7 +261,7 @@ void caseNoCallbackAfterStop()
         tick.signal();
     });
     assist.join();
-    tick.wait();
+    check(tick.wait(), "the assist signalled before the wait timed out");
 
     check(completions.load() == settled, "no completion after stop returned");
     check(!late.load(), "nothing arrived late");

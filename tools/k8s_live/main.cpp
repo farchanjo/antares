@@ -28,9 +28,13 @@
 #include "domain/k8s/api_path.hpp"
 #include "ports/k8s/kube_client.hpp"
 
-namespace {
-
+namespace adapters = antares::adapters;
+namespace application = antares::application;
+namespace domain = antares::domain;
 namespace k8s = antares::domain::k8s;
+namespace ports = antares::ports;
+
+namespace {
 
 /// A latch the engine thread opens, so the tool never spins or sleeps.
 class Gate {
@@ -56,8 +60,8 @@ private:
     bool open_ = false;
 };
 
-int failures = 0;
-bool stalled = false;
+int failures = 0;      // NOLINT — mutable, shared by every step
+bool stalled = false;  // NOLINT
 
 void step(bool ok, const std::string &what)
 {
@@ -92,8 +96,6 @@ void listContexts(const k8s::Kubeconfig &config)
 /// The full reading slice against one context.
 int smoke(const std::string &contextName, const std::vector<std::string> &paths)
 {
-    using namespace antares;
-
     auto config = adapters::k8s::KubeconfigLoader::load(paths);
     if (!config) {
         std::printf("FAIL  kubeconfig: %s\n",
@@ -137,7 +139,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
 
     {
         Gate gate;
-        (void)reader.serverVersion([&](ports::k8s::VersionResult result) {
+        static_cast<void>(reader.serverVersion([&](ports::k8s::VersionResult result) {
             if (result) {
                 step(true, "GET /version  " + result->gitVersion + "  (" + result->platform + ")");
             } else {
@@ -145,7 +147,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                                 result.error().message);
             }
             gate.open();
-        });
+        }));
         if (!gate.wait(std::chrono::seconds{20})) {
             step(false, "GET /version  timed out");
             stalled = true;
@@ -161,7 +163,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
             const k8s::ApiPath path{*namespaceType, std::nullopt, std::nullopt, k8s::Subresource::none};
             k8s::ListOptions options;
             options.limit = 5;
-            (void)reader.list(path, options, [&](ports::k8s::ListResult result) {
+            static_cast<void>(reader.list(path, options, [&](ports::k8s::ListResult result) {
                 if (result) {
                     step(true, "GET /api/v1/namespaces  " + std::to_string(result->items.size()) +
                                    " visible (limit 5)");
@@ -171,7 +173,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                                     result.error().message);
                 }
                 gate.open();
-            });
+            }));
             if (!gate.wait(std::chrono::seconds{20})) {
                 step(false, "GET /api/v1/namespaces  timed out");
                 stalled = true;
@@ -201,7 +203,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                         seen.fetch_add(1);
                     }
                 };
-                (void)reader.watch(*scoped, options, handler,
+                static_cast<void>(reader.watch(*scoped, options, handler,
                                    [&](ports::k8s::StatusResult result) {
                                        if (result) {
                                            step(true, "WATCH pods/" +
@@ -216,7 +218,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                                                            ": " + result.error().message);
                                        }
                                        gate.open();
-                                   });
+                                   }));
                 // The server honours timeoutSeconds; the wait is the backstop.
                 if (!gate.wait(std::chrono::seconds{25})) {
                     step(false, "WATCH  timed out locally");

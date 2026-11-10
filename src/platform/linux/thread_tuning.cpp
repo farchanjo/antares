@@ -13,7 +13,7 @@ constexpr std::size_t MAX_NAME = 15;
 
 void tuneLoopThread(std::string_view name) noexcept
 {
-    std::string truncated{name.substr(0, MAX_NAME)};
+    std::string const truncated{name.substr(0, MAX_NAME)};
     (void)::pthread_setname_np(::pthread_self(), truncated.c_str());
 }
 

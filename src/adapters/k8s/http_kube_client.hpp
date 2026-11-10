@@ -104,7 +104,7 @@ private:
                                                 std::string_view query) const;
 
     [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
-    send(domain::http::Request request, std::function<void(ports::k8s::ObjectResult)> done);
+    send(domain::http::Request built, std::function<void(ports::k8s::ObjectResult)> done);
 
     Binding binding_;
     std::shared_ptr<ports::http::Client> http_;

@@ -23,7 +23,7 @@ public:
         if (level < threshold_ || stream_ == nullptr) {
             return;
         }
-        (void)std::fprintf(stream_, "%-5s [%.*s] %.*s\n", name(level),
+        (void)std::fprintf(stream_, "%-5s [%.*s] %.*s\n", name(level).data(),
                            static_cast<int>(category.size()), category.data(),
                            static_cast<int>(message.size()), message.data());
         (void)std::fflush(stream_);

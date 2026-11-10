@@ -23,8 +23,8 @@ constexpr int IDLE_TIMEOUT_MS = 200;
 /// The split matters: a `poll_remove` acknowledgement also carries a tag, and
 /// treating it as the wake pipe would clear the flag with the request still
 /// parked, which loses the wakeup for good.
-constexpr std::uint64_t wakeTag = 1;
-constexpr std::uint64_t auxTag = 2;
+constexpr std::uint64_t WAKE_TAG = 1;
+constexpr std::uint64_t AUX_TAG = 2;
 
 /// What a poll request asks for, from the op kind. Mirrors the epoll masks.
 [[nodiscard]] std::uint32_t maskFor(OpKind kind) noexcept
@@ -120,7 +120,7 @@ void IoUringEngine::rearmWake()
 
     // A wake tag marks the pipe: nothing to complete, only to drain.
     io_uring_prep_poll_add(sqe, wakeReader(), POLLIN);
-    sqe->user_data = wakeTag;
+    sqe->user_data = WAKE_TAG;
     wakeArmed_ = true;
     ++queued_;
 }
@@ -151,7 +151,7 @@ void IoUringEngine::forget(PendingOp &op)
     // Removing a request that already completed is harmless: the kernel answers
     // ENOENT, which arrives as an auxiliary completion and is ignored.
     io_uring_prep_poll_remove(sqe, reinterpret_cast<std::uint64_t>(&op));
-    sqe->user_data = auxTag;
+    sqe->user_data = AUX_TAG;
     ++queued_;
     (void)flushLocked();
 }
@@ -192,7 +192,7 @@ bool IoUringEngine::waitReady(int timeoutMilliseconds)
     int handled = 0;
     struct io_uring_cqe *cqe = first;
     while (cqe != nullptr) {
-        if (cqe->user_data == auxTag) {
+        if (cqe->user_data == AUX_TAG) {
             // A removal acknowledged. Nothing to complete.
             io_uring_cqe_seen(ring_, cqe);
             cqe = nullptr;
@@ -201,7 +201,7 @@ bool IoUringEngine::waitReady(int timeoutMilliseconds)
             }
             continue;
         }
-        if (cqe->user_data == wakeTag) {
+        if (cqe->user_data == WAKE_TAG) {
             wakeArmed_ = false;
             io_uring_cqe_seen(ring_, cqe);
             cqe = nullptr;

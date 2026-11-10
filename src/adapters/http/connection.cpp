@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <cstdio>
 #include <cstring>
 
 #include <arpa/inet.h>
@@ -20,7 +19,7 @@
 namespace antares::adapters::http {
 namespace {
 
-constexpr domain::Bytes SOCKET_CHUNK{16 * 1024};
+constexpr domain::Bytes SOCKET_CHUNK{std::size_t{16} * 1024};
 
 /// Literal addresses never leave the process; a name goes through the engine,
 /// so the loop keeps running while the resolver works.
@@ -173,8 +172,8 @@ void Connection::driveHandshake()
 
     const int error = SSL_get_error(ssl_, result);
     if (error != SSL_ERROR_WANT_READ && error != SSL_ERROR_WANT_WRITE) {
-        std::fprintf(stderr, "  handshake fail err=%d verify=%ld\n", error,
-                     static_cast<long>(SSL_get_verify_result(ssl_)));
+        std::fprintf(
+            stderr, "  handshake fail err=%d verify=%ld\n", error, SSL_get_verify_result(ssl_));
     }
     if (error == SSL_ERROR_WANT_READ) {
         readSocket();
@@ -281,8 +280,11 @@ void Connection::drainPlaintext()
             continue;
         }
         const int error = SSL_get_error(ssl_, got);
-        std::fprintf(stderr, "  [c] ssl_read got=%d err=%d init=%d\n", got, error,
-                     static_cast<int>(SSL_is_init_finished(ssl_)));
+        std::fprintf(stderr,
+                     "  [c] ssl_read got=%d err=%d init=%d\n",
+                     got,
+                     error,
+                     SSL_is_init_finished(ssl_));
         if (error == SSL_ERROR_WANT_READ) {
             readSocket();
             return;
@@ -306,9 +308,12 @@ void Connection::write(ports::io::Buffer bytes, WriteDone done)
     if (ssl_ == nullptr) {
         // No TLS: the caller's completion is the socket completion.
         auto self = shared_from_this();
+        // submitWrite may refuse; the caller's completion must survive the
+        // refusal, so the lambda captures a copy of `done` and not `done`.
+        auto completed = done;
         auto submitted = engine_.submitWrite(
             handle_, std::nullopt, std::move(bytes),
-            [self, done = std::move(done)](auto wrote) {
+            [self, done = std::move(completed)](auto wrote) {
                 if (wrote) {
                     done(WriteOutcome{.bytes = *wrote, .ok = true});
                     return;
@@ -337,7 +342,7 @@ void Connection::drainOutgoing()
         return;
     }
 
-    const std::size_t pending = static_cast<std::size_t>(BIO_ctrl_pending(outgoing_));
+    const auto pending = static_cast<std::size_t>(BIO_ctrl_pending(outgoing_));
     if (pending == 0) {
         if (!writeQueue_.empty() && state_ == State::ready) {
             std::deque<WriteDone> queue;

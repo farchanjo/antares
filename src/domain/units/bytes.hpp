@@ -10,7 +10,7 @@ namespace antares::domain {
 class Bytes {
 public:
     constexpr Bytes() = default;
-    constexpr explicit constexpr Bytes(std::size_t value) noexcept
+    constexpr explicit Bytes(std::size_t value) noexcept
         : value_(value)
     {
     }

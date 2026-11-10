@@ -13,7 +13,7 @@ struct Pair {
 };
 
 /// The tokens the API server uses, plus the ones a watch frame carries.
-constexpr std::array<Pair, 11> table{{{"NotFound", Reason::notFound},
+constexpr std::array<Pair, 11> TABLE{{{"NotFound", Reason::notFound},
                                       {"AlreadyExists", Reason::alreadyExists},
                                       {"Conflict", Reason::conflict},
                                       {"Forbidden", Reason::forbidden},
@@ -29,7 +29,7 @@ constexpr std::array<Pair, 11> table{{{"NotFound", Reason::notFound},
 
 Reason reasonFromToken(std::string_view token) noexcept
 {
-    for (const Pair &entry : table) {
+    for (const Pair &entry : TABLE) {
         if (entry.token == token) {
             return entry.reason;
         }

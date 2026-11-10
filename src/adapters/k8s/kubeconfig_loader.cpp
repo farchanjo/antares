@@ -10,7 +10,7 @@ namespace antares::adapters::k8s {
 
 namespace {
 
-constexpr std::string_view pathSeparator = ":";
+constexpr std::string_view PATH_SEPARATOR = ":";
 
 [[nodiscard]] std::string fromEnvironment(std::string_view name)
 {
@@ -31,7 +31,7 @@ constexpr std::string_view pathSeparator = ":";
     if (path.empty()) {
         return {};
     }
-    std::ifstream file{path, std::ios::binary};
+    std::ifstream const file{path, std::ios::binary};
     if (!file) {
         return {};
     }
@@ -54,7 +54,7 @@ void splitInto(std::string_view list, std::vector<std::string> &out)
 {
     std::size_t start = 0;
     while (start <= list.size()) {
-        const std::size_t at = list.find(pathSeparator, start);
+        const std::size_t at = list.find(PATH_SEPARATOR, start);
         const std::size_t stop = at == std::string_view::npos ? list.size() : at;
         if (stop > start) {
             out.emplace_back(list.substr(start, stop - start));
@@ -62,7 +62,7 @@ void splitInto(std::string_view list, std::vector<std::string> &out)
         if (at == std::string_view::npos) {
             return;
         }
-        start = at + pathSeparator.size();
+        start = at + PATH_SEPARATOR.size();
     }
 }
 
@@ -174,13 +174,9 @@ KubeconfigLoader::load(const std::vector<std::string> &paths)
 
 bool KubeconfigLoader::present()
 {
-    for (const std::string &path : searchPaths()) {
-        std::ifstream file{path, std::ios::binary};
-        if (file) {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(searchPaths(), [](const std::string &path) {
+        return std::ifstream{path, std::ios::binary}.good();
+    });
 }
 
 std::expected<domain::k8s::User, domain::k8s::ConfigError>

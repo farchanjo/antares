@@ -16,12 +16,8 @@ struct Line {
 
 [[nodiscard]] bool blank(std::string_view text) noexcept
 {
-    for (const char value : text) {
-        if (value != ' ' && value != '\t' && value != '\r') {
-            return false;
-        }
-    }
-    return true;
+    return std::ranges::all_of(
+        text, [](char value) { return value == ' ' || value == '\t' || value == '\r'; });
 }
 
 /// Strip a trailing comment. A `#` only starts one when preceded by space or at
@@ -89,8 +85,7 @@ public:
     }
 
 private:
-    [[nodiscard]] std::unexpected<ParseError> fail(std::string detail, std::size_t line) const
-    {
+    [[nodiscard]] static std::unexpected<ParseError> fail(std::string detail, std::size_t line) {
         return std::unexpected(ParseError{std::move(detail), line});
     }
 

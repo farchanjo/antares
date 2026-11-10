@@ -11,11 +11,11 @@
 namespace antares::adapters::http {
 namespace {
 
-constexpr std::size_t MAX_FRAME = 16 * 1024;
+constexpr std::size_t MAX_FRAME = std::size_t{16} * 1024;
 
 std::string_view withoutPseudo(const std::string &name)
 {
-    return name.rfind(':', 0) == 0 ? std::string_view{name}.substr(1) : std::string_view{name};
+    return name.starts_with(':') ? std::string_view{name}.substr(1) : std::string_view{name};
 }
 
 } // namespace
@@ -92,7 +92,7 @@ void H2Session::configureCallbacks(nghttp2_session_callbacks *callbacks)
                 stream->response.version = domain::http::Version::http2;
                 return 0;
             }
-            if (header.rfind(':', 0) == 0) {
+            if (header.starts_with(':')) {
                 return 0;
             }
 

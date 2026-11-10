@@ -10,7 +10,7 @@
 namespace antares::adapters::http {
 namespace {
 
-constexpr domain::Bytes READ_CHUNK{16 * 1024};
+constexpr domain::Bytes READ_CHUNK{std::size_t{16} * 1024};
 
 } // namespace
 
@@ -188,8 +188,7 @@ void HttpClient::log(ports::log::Level level, std::string_view message) const
     }
 }
 
-void HttpClient::resetSession(const std::shared_ptr<Attempt> &attempt)
-{
+void HttpClient::resetSession(const std::shared_ptr<Attempt>& attempt) const {
     // A fresh session starts empty, so the stream sinks and the method are
     // reattached here rather than at every call site.
     attempt->session_ = H1Session{config_.limits.maxHeaderBytes, config_.limits.maxBodyBytes,
@@ -210,14 +209,15 @@ void HttpClient::armIdleTimer(const std::shared_ptr<Attempt> &attempt)
 
     const std::uint64_t generation = ++attempt->timerGeneration;
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    (void)attempt->engine_->submitTimer(config_.timeouts.read, [self, attempt, generation] {
-        if (attempt->finished() || generation != attempt->timerGeneration) {
-            return;
-        }
-        ++self->stats_.timeouts;
-        self->log(ports::log::Level::warn, "idle timeout");
-        self->settle(attempt, std::unexpected(domain::http::HttpError::timeout));
-    });
+    static_cast<void>(attempt->engine_->submitTimer(
+        config_.timeouts.read, [self, attempt, generation] {
+            if (attempt->finished() || generation != attempt->timerGeneration) {
+                return;
+            }
+            ++self->stats_.timeouts;
+            self->log(ports::log::Level::warn, "idle timeout");
+            self->settle(attempt, std::unexpected(domain::http::HttpError::timeout));
+        }));
 }
 
 void HttpClient::start(const std::shared_ptr<Attempt> &attempt)
@@ -264,7 +264,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto connection = std::make_shared<Connection>(pool_.next(), *tls_);
-    auto engine = &connection->engine();
+    auto* engine = &connection->engine();
 
     engine->post([self, connection, url = std::move(url), subprotocol = std::move(subprotocol),
                   ready = std::move(ready), failed = std::move(failed)]() mutable {
@@ -539,7 +539,7 @@ domain::Duration HttpClient::backoffFor(std::uint8_t attempt)
 {
     const domain::http::RetryPolicy &policy = config_.retry;
 
-    double delay = static_cast<double>(policy.baseDelay.count());
+    auto delay = static_cast<double>(policy.baseDelay.count());
     for (std::uint8_t step = 1; step < attempt; ++step) {
         delay *= policy.factor;
     }
@@ -563,7 +563,8 @@ void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::
     ++stats_.retries;
     log(ports::log::Level::debug, "retrying the request");
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    (void)attempt->engine_->submitTimer(delay, [self, attempt] { self->start(attempt); });
+    static_cast<void>(
+        attempt->engine_->submitTimer(delay, [self, attempt] { self->start(attempt); }));
 }
 
 void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,

@@ -51,7 +51,7 @@ public:
     /// Starts the closing handshake (RFC 6455 §7.1.2): send close, then wait
     /// for the peer's close before dropping the socket. The timeout closes
     /// unilaterally.
-    void close(std::string_view reason = {});
+    void close(std::string_view reason);
 
     [[nodiscard]] bool isOpen() const noexcept { return open_; }
 

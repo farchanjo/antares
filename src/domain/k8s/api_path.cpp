@@ -8,8 +8,8 @@ namespace antares::domain::k8s {
 
 namespace {
 
-constexpr std::size_t labelCeiling = 63;
-constexpr std::size_t subdomainCeiling = 253;
+constexpr std::size_t LABEL_CEILING = 63;
+constexpr std::size_t SUBDOMAIN_CEILING = 253;
 
 [[nodiscard]] bool isLowerAlnum(char value) noexcept
 {
@@ -42,7 +42,7 @@ std::string_view subresourceName(Subresource subresource) noexcept
 
 bool isDnsLabel(std::string_view text) noexcept
 {
-    if (text.empty() || text.size() > labelCeiling) {
+    if (text.empty() || text.size() > LABEL_CEILING) {
         return false;
     }
     if (!isLowerAlnum(text.front()) || !isLowerAlnum(text.back())) {
@@ -55,7 +55,7 @@ bool isDnsLabel(std::string_view text) noexcept
 
 bool isDnsSubdomain(std::string_view text) noexcept
 {
-    if (text.empty() || text.size() > subdomainCeiling) {
+    if (text.empty() || text.size() > SUBDOMAIN_CEILING) {
         return false;
     }
 

@@ -34,7 +34,7 @@ protected:
 
 private:
     /// Register or drop interest. `events` is the epoll mask; zero removes.
-    bool arm(PendingOp &op, std::uint32_t events);
+    bool arm(PendingOp& op, std::uint32_t events) const;
 
     int set_ = -1;
 };

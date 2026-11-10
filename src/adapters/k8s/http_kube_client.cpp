@@ -12,8 +12,8 @@ namespace {
 using domain::k8s::ApiError;
 using domain::k8s::Reason;
 
-constexpr std::string_view jsonContentType = "application/json";
-constexpr std::string_view acceptType = "application/json";
+constexpr std::string_view JSON_CONTENT_TYPE = "application/json";
+constexpr std::string_view ACCEPT_TYPE = "application/json";
 
 /// The request body as bytes. A kube request is little, so the copy costs less
 /// than the bookkeeping a view would need.
@@ -103,7 +103,7 @@ domain::http::Request HttpKubeClient::request(domain::http::Method method, std::
         built.url += '?';
         built.url += query;
     }
-    built.headers.push_back(domain::http::Header{"accept", std::string{acceptType}});
+    built.headers.push_back(domain::http::Header{"accept", std::string{ACCEPT_TYPE}});
 
     if (!binding_.user.token.empty()) {
         built.headers.push_back(
@@ -211,7 +211,7 @@ HttpKubeClient::create(const domain::k8s::ApiPath &path, domain::json::Value bod
 {
     auto built = request(domain::http::Method::post, path.render(), {});
     built.headers.push_back(
-        domain::http::Header{"content-type", std::string{jsonContentType}});
+        domain::http::Header{"content-type", std::string{JSON_CONTENT_TYPE}});
     built.body = toBody(body.dump());
     return send(std::move(built), std::move(done));
 }
@@ -222,7 +222,7 @@ HttpKubeClient::update(const domain::k8s::ApiPath &path, domain::json::Value bod
 {
     auto built = request(domain::http::Method::put, path.render(), {});
     built.headers.push_back(
-        domain::http::Header{"content-type", std::string{jsonContentType}});
+        domain::http::Header{"content-type", std::string{JSON_CONTENT_TYPE}});
     built.body = toBody(body.dump());
     return send(std::move(built), std::move(done));
 }
@@ -277,7 +277,7 @@ HttpKubeClient::remove(const domain::k8s::ApiPath &path,
 
     auto built = request(domain::http::Method::del, path.render(), {});
     built.headers.push_back(
-        domain::http::Header{"content-type", std::string{jsonContentType}});
+        domain::http::Header{"content-type", std::string{JSON_CONTENT_TYPE}});
     built.body = toBody(options.render());
 
     auto ticket = http_->submit(std::move(built), std::move(completion));
@@ -306,7 +306,7 @@ HttpKubeClient::watch(const domain::k8s::ApiPath &path,
     ports::http::StreamHandler streaming;
     streaming.onChunk = [buffer, sharedHandler, weak](std::span<const std::byte> chunk) {
         buffer->append(reinterpret_cast<const char *>(chunk.data()), chunk.size());
-        for (std::string &frame : domain::k8s::takeFrames(*buffer)) {
+        for (std::string const& frame : domain::k8s::takeFrames(*buffer)) {
             auto event = domain::k8s::decodeWatchEvent(frame);
             if (!event) {
                 continue;
@@ -385,7 +385,7 @@ HttpKubeClient::logs(const domain::k8s::ApiPath &path,
     ports::http::StreamHandler streaming;
     streaming.onChunk = [buffer, sink](std::span<const std::byte> chunk) {
         buffer->append(reinterpret_cast<const char *>(chunk.data()), chunk.size());
-        for (std::string &line : domain::k8s::takeFrames(*buffer)) {
+        for (std::string const& line : domain::k8s::takeFrames(*buffer)) {
             (*sink)(line);
         }
     };

@@ -16,7 +16,7 @@ namespace {
     return alpha || digit || mark;
 }
 
-constexpr std::array<char, 16> hexDigits{'0', '1', '2', '3', '4',
+constexpr std::array<char, 16> HEX_DIGITS{'0', '1', '2', '3', '4',
                                          '5', '6', '7', '8', '9',
                                          'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -48,8 +48,8 @@ std::string percentEncode(std::string_view text)
         }
         const auto byte = static_cast<unsigned char>(value);
         out += '%';
-        out += hexDigits[byte >> 4U];
-        out += hexDigits[byte & 0x0FU];
+        out += HEX_DIGITS[byte >> 4U];
+        out += HEX_DIGITS[byte & 0x0FU];
     }
     return out;
 }

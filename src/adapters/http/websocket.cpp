@@ -14,7 +14,7 @@ namespace antares::adapters::http {
 namespace {
 
 /// RFC 6455 §1.3: the GUID a server appends before hashing the client's key.
-constexpr std::string_view acceptGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+constexpr std::string_view ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 [[nodiscard]] std::string base64(std::string_view bytes)
 {
@@ -70,10 +70,10 @@ std::string WebSocket::newKey()
 std::string WebSocket::acceptFor(std::string_view key)
 {
     std::string material{key};
-    material += acceptGuid;
+    material += ACCEPT_GUID;
 
     std::array<unsigned char, SHA_DIGEST_LENGTH> digest{};
-    const unsigned char *data = reinterpret_cast<const unsigned char *>(material.data());
+    const auto* data = reinterpret_cast<const unsigned char*>(material.data());
     (void)SHA1(data, material.size(), digest.data());
     return base64(std::string_view{reinterpret_cast<const char *>(digest.data()), digest.size()});
 }
@@ -135,11 +135,12 @@ void WebSocket::armCloseTimer()
 {
     const std::uint64_t generation = ++closeGeneration_;
     auto self = shared_from_this();
-    (void)connection_->engine().submitTimer(std::chrono::seconds{5}, [self, generation] {
-        if (generation == self->closeGeneration_) {
-            self->finish(domain::http::HttpError::timeout);
-        }
-    });
+    static_cast<void>(
+        connection_->engine().submitTimer(std::chrono::seconds{5}, [self, generation] {
+            if (generation == self->closeGeneration_) {
+                self->finish(domain::http::HttpError::timeout);
+            }
+        }));
 }
 
 void WebSocket::close(std::string_view reason)

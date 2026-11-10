@@ -33,7 +33,7 @@ std::expected<Url, HttpError> Url::resolve(const Url &base, std::string_view ref
 
     const std::string_view prefix = base.isTls() ? "https://" : "http://";
 
-    if (reference.rfind("//", 0) == 0) {
+    if (reference.starts_with("//")) {
         return parse(std::string{prefix} + std::string{reference.substr(2)});
     }
     if (reference.front() == '/') {

@@ -55,7 +55,7 @@ void appendUtf8(std::string &out, std::uint32_t code)
     out += static_cast<char>(0x80U | (code & 0x3FU));
 }
 
-constexpr std::size_t depthCeiling = 64;
+constexpr std::size_t DEPTH_CEILING = 64;
 
 } // namespace
 
@@ -92,7 +92,7 @@ private:
 
     [[nodiscard]] std::expected<Value, ParseError> readValue(std::size_t depth)
     {
-        if (depth >= depthCeiling) {
+        if (depth >= DEPTH_CEILING) {
             return fail("nesting ceiling reached");
         }
         skipWhitespace();
@@ -447,11 +447,11 @@ std::string quote(std::string_view text)
             break;
         default:
             if (static_cast<unsigned char>(value) < 0x20U) {
-                constexpr std::string_view digits = "0123456789abcdef";
+                constexpr std::string_view DIGITS = "0123456789abcdef";
                 const auto byte = static_cast<unsigned char>(value);
                 out += "\\u00";
-                out += digits[byte >> 4U];
-                out += digits[byte & 0x0FU];
+                out += DIGITS[byte >> 4U];
+                out += DIGITS[byte & 0x0FU];
                 break;
             }
             out += value;

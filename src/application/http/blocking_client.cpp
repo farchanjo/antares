@@ -35,6 +35,9 @@ BlockingClient::send(domain::http::Request request)
 
     std::unique_lock<std::mutex> lock{mutex};
     settled.wait(lock, [&ready] { return ready; });
+    if (!outcome.has_value()) {
+        return std::unexpected(domain::http::HttpError::closed);
+    }
     return std::move(*outcome);
 }
 
