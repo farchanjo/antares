@@ -760,6 +760,8 @@ void caseWebSocketUpgrades()
     antares::test::Await opened;
     antares::test::Await messaged;
     std::string received;
+    HttpError closedWith = HttpError::closed;
+    bool closedEarly = false;
 
     stack.client().openWebSocket(
         *antares::domain::http::Url::parse(server.url() + "/ws"), "chat",
@@ -768,12 +770,18 @@ void caseWebSocketUpgrades()
                 received = frame.payload;
                 messaged.signal();
             });
+            socket->onClose([&](HttpError error) {
+                closedWith = error;
+                closedEarly = true;
+                messaged.signal();
+            });
             opened.signal();
         },
         [&](HttpError) { opened.signal(); });
 
     check(opened.wait(), "upgrade opened");
-    check(messaged.wait(), "server frame delivered");
+    check(messaged.wait(std::chrono::seconds{5}), "server frame delivered");
+    check(!closedEarly, "the socket did not close before the frame");
     check(received == "hi", "payload decoded");
     check(server.lastRequest().find("Upgrade: websocket") != std::string::npos, "upgrade sent");
     check(server.lastRequest().find("Sec-WebSocket-Version: 13") != std::string::npos,
