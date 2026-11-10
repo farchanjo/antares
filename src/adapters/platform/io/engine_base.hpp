@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <expected>
 #include <thread>
 #include <cstdint>
 #include <condition_variable>
@@ -104,6 +105,10 @@ protected:
     virtual bool armWrite(PendingOp &op) = 0;
     virtual bool armAccept(PendingOp &op) = 0;
     virtual bool armConnect(PendingOp &op) = 0;
+
+    /// Drop any interest the backend still holds for `op`. Called before the op
+    /// is released, so a queued readiness event cannot land on freed memory.
+    virtual void forget(PendingOp &op);
 
     void countCompletion(const IoError *failure) noexcept;
 

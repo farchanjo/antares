@@ -1,5 +1,6 @@
 #include "domain/k8s/kubeconfig.hpp"
 
+#include <expected>
 #include <utility>
 
 #include "domain/yaml/node.hpp"

@@ -2,6 +2,8 @@
 
 #include <array>
 
+#include <expected>
+
 namespace antares::domain::http {
 namespace {
 

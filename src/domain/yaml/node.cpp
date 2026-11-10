@@ -1,6 +1,7 @@
 #include "domain/yaml/node.hpp"
 
 #include <cstdint>
+#include <expected>
 #include <utility>
 
 namespace antares::domain::yaml {

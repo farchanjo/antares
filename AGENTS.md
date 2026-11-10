@@ -191,6 +191,9 @@ The corpus is governed; use the binary for every loop step.
 - **An upgrade proves itself.** A WebSocket key is sixteen random bytes, and a
   101 is only trusted when its accept digests that key and its subprotocol is one
   we offered. A pointer-derived key passes a peer that never reads it.
+- **The linker is a build decision.** `mold` when present, `lld` otherwise, and
+  debug info stays `-g1 -fno-standalone-debug`. An incremental build here is
+  link-bound, so a full `-g` costs an order of magnitude more than it gives.
 - **Use the native types.** Durations are `std::chrono`, instants are
   `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
   standard library already provides is a defect, not a defence.

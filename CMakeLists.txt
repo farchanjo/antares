@@ -10,6 +10,21 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# libc++ on both targets, and it is not only a Darwin matter: libstdc++ 13 gates
+# `<expected>` behind `__cpp_concepts >= 202002`, which clang 18 reports as
+# 201907, so libstdc++ hides the header under the compiler this project uses.
+# The fastest available linker, in descending order. Link time dominates an
+# incremental build here, and on Linux mold is several times quicker than lld.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_program(ANTARES_FAST_LINKER NAMES mold)
+    if(ANTARES_FAST_LINKER)
+        add_link_options("-fuse-ld=mold")
+    endif()
+endif()
+
+add_compile_options(-stdlib=libc++)
+add_link_options(-stdlib=libc++)
+
 # FetchContent works outside the tree, so the corpus scanners never read
 # third-party files as project ones.
 set(FETCHCONTENT_BASE_DIR "$ENV{HOME}/.cache/antares/deps" CACHE PATH "")
@@ -83,6 +98,11 @@ else()
     pkg_check_modules(NGHTTP2 REQUIRED IMPORTED_TARGET libnghttp2>=1.55)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBURING REQUIRED IMPORTED_TARGET liburing>=2.5)
+endif()
+
 set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
     src/domain/http/url.cpp
@@ -104,6 +124,9 @@ set(ANTARES_HTTP_SOURCES
 
 add_library(antares_http STATIC ${ANTARES_HTTP_SOURCES})
 target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(antares_http PUBLIC PkgConfig::LIBURING)
+endif()
 set_target_properties(antares_http PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # The Kubernetes API client: a pure domain, a port and one adapter over
@@ -136,9 +159,16 @@ set(ANTARES_IO_SOURCES
     src/application/io/engine_pool.cpp
 )
 
+# The kernel engine is the platform's own: kqueue on Darwin, io_uring with an
+# epoll fallback on Linux. `poll` stays compiled everywhere as the last resort
+# (ADR 0009, ADR 0018).
 if(APPLE)
     list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/kqueue_engine.cpp
                                    src/platform/mac/thread_tuning.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND ANTARES_IO_SOURCES src/adapters/platform/io/io_uring_engine.cpp
+                                   src/adapters/platform/io/epoll_engine.cpp
+                                   src/platform/linux/thread_tuning.cpp)
 else()
     list(APPEND ANTARES_IO_SOURCES src/platform/linux/thread_tuning.cpp)
 endif()
@@ -229,6 +259,9 @@ endif()
 add_executable(antares_io_conformance tests/io/conformance.cpp)
 target_include_directories(antares_io_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_link_libraries(antares_io_conformance PRIVATE antares_io)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(antares_io_conformance PRIVATE PkgConfig::LIBURING)
+endif()
 
 if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
     if(APPLE)
@@ -383,5 +416,10 @@ foreach(case IN LISTS ANTARES_IO_CASES)
     if(APPLE)
         add_test(NAME "kqueue/${case}" COMMAND antares_io_conformance "${case}")
         set_tests_properties("kqueue/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=kqueue" TIMEOUT 30)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME "uring/${case}" COMMAND antares_io_conformance "${case}")
+        set_tests_properties("uring/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=io_uring" TIMEOUT 30)
+        add_test(NAME "epoll/${case}" COMMAND antares_io_conformance "${case}")
+        set_tests_properties("epoll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=epoll" TIMEOUT 30)
     endif()
 endforeach()

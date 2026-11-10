@@ -1,6 +1,7 @@
 #include "domain/k8s/api_path.hpp"
 
 #include <algorithm>
+#include <expected>
 #include <utility>
 
 namespace antares::domain::k8s {

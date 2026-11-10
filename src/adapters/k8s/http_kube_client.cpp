@@ -1,5 +1,6 @@
 #include "adapters/k8s/http_kube_client.hpp"
 
+#include <expected>
 #include <utility>
 
 #include "domain/json/value.hpp"

@@ -1,5 +1,6 @@
 #include "application/http/blocking_client.hpp"
 
+#include <expected>
 #include <utility>
 
 namespace antares::application::http {

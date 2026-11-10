@@ -1,6 +1,7 @@
 #include "domain/json/value.hpp"
 
 #include <charconv>
+#include <expected>
 #include <system_error>
 
 namespace antares::domain::json {

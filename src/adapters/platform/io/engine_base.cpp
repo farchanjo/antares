@@ -14,12 +14,15 @@ namespace tuning = antares::platform::linux;
 #endif
 
 #include <cerrno>
+#include <chrono>
 #include <fcntl.h>
 #include <sys/socket.h>
 
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
+
+#include <expected>
 
 namespace antares::adapters::platform::io {
 namespace {
@@ -306,6 +309,8 @@ void EngineBase::resolverLoop()
     }
 }
 
+void EngineBase::forget(PendingOp &) {}
+
 void EngineBase::cancelPending(const IoHandle &handle)
 {
     // Completed on the loop, like any other op, so a callback never runs from
@@ -333,6 +338,7 @@ void EngineBase::cancelPending(const IoHandle &handle)
                 completeAccept(*op, std::unexpected(IoError::cancelled));
                 break;
             }
+            forget(*op);
             release(op);
         }
     });

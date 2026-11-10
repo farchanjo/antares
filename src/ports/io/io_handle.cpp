@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <expected>
+
 namespace antares::ports::io {
 namespace {
 

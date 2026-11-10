@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cstring>
+#include <expected>
 #include <string_view>
 
 namespace antares::adapters::http {

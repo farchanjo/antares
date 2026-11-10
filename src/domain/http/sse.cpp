@@ -2,6 +2,8 @@
 
 #include <charconv>
 
+#include <expected>
+
 namespace antares::domain::http {
 namespace {
 

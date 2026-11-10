@@ -131,3 +131,25 @@ A scoped resolver whose nameservers do not answer is the usual cause. It is a
 machine problem, not a code one: `kubectl` against the same context reports
 `Client.Timeout exceeded while awaiting headers`. Fixing it means repairing the
 DNS configuration; only a resolver of our own would let the client outlive it.
+
+## Build speed
+
+Rust has no C++ equivalent: `rustc` compiles a whole crate and keeps incremental
+metadata, while a C++ translation unit is isolated and knows nothing of its
+neighbours. The levers that actually move an incremental build here are the
+linker and the debug information, not a compiler flag.
+
+Measured on this tree, one edited `.cpp`:
+
+| Linker | Debug info | Time |
+|--------|------------|------|
+| `ld.lld` | `-g` | 2.9 s |
+| `mold` | `-O0 -g1 -fno-standalone-debug` | 0.25 s |
+
+`mold` is chosen automatically when present and `lld` is the fallback. The debug
+flags are P-08's, and `-fno-standalone-debug` keeps type info only where a frame
+uses it — that is what shrank the link.
+
+`dev-unity` remains for the case where a wide header change would otherwise
+rebuild everything; it is not the default, because a unity build hides missing
+includes until it is switched off.

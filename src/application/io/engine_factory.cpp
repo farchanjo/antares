@@ -2,38 +2,60 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <expected>
+#include <string>
+#include <string_view>
 
 #if defined(__APPLE__)
 #include "adapters/platform/io/kqueue_engine.hpp"
+#elif defined(__linux__)
+#include "adapters/platform/io/epoll_engine.hpp"
+#include "adapters/platform/io/io_uring_engine.hpp"
 #endif
 #include "adapters/platform/io/poll_engine.hpp"
 
 namespace antares::application::io {
 namespace {
 
-bool overrideRequestsPoll() noexcept
+/// The backend the environment pins, or null. `ANTARES_IO_BACKEND` is the
+/// escape hatch, so a refused kernel engine never blocks a run.
+[[nodiscard]] const char *forcedBackend() noexcept
 {
-    const char *requested = std::getenv("ANTARES_IO_BACKEND");
-    return requested != nullptr && std::strcmp(requested, "poll") == 0;
+    return std::getenv("ANTARES_IO_BACKEND");
 }
 
-bool kqueueCompiledIn() noexcept
+[[nodiscard]] bool forcedIs(const char *name) noexcept
 {
-#if defined(__APPLE__)
-    return true;
-#else
-    return false;
-#endif
+    const char *requested = forcedBackend();
+    return requested != nullptr && std::strcmp(requested, name) == 0;
 }
+
+bool overrideRequestsPoll() noexcept
+{
+    return forcedIs("poll");
+}
+
+#if defined(__APPLE__) || defined(__linux__)
+constexpr bool kernelEngineCompiledIn = true;
+constexpr std::string_view kernelEngineName = 
+#if defined(__APPLE__)
+    "kqueue";
+#else
+    "epoll";
+#endif
+#else
+constexpr bool kernelEngineCompiledIn = false;
+constexpr std::string_view kernelEngineName = "poll";
+#endif
 
 } // namespace
 
-const char *selectedBackendName() noexcept
+std::string selectedBackendName()
 {
-    if (overrideRequestsPoll()) {
-        return "poll";
+    if (forcedBackend() != nullptr) {
+        return std::string{forcedBackend()};
     }
-    return kqueueCompiledIn() ? "kqueue" : "poll";
+    return std::string{kernelEngineName};
 }
 
 std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngine()
@@ -41,6 +63,22 @@ std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngi
 #if defined(__APPLE__)
     if (!overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::KqueueEngine>();
+        if (engine->ready()) {
+            return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
+        }
+    }
+#elif defined(__linux__)
+    // io_uring first, epoll as the fallback (ADR 0018). A kernel with the ring
+    // disabled or a seccomp profile that blocks it lands on epoll, not on a
+    // failed run.
+    if (!forcedIs("epoll") && !overrideRequestsPoll()) {
+        auto engine = std::make_unique<adapters::platform::io::IoUringEngine>();
+        if (engine->ready()) {
+            return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
+        }
+    }
+    if (!overrideRequestsPoll()) {
+        auto engine = std::make_unique<adapters::platform::io::EpollEngine>();
         if (engine->ready()) {
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }

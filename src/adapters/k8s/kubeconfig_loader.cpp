@@ -1,6 +1,7 @@
 #include "adapters/k8s/kubeconfig_loader.hpp"
 
 #include <cstdlib>
+#include <expected>
 #include <fstream>
 #include <sstream>
 #include <utility>

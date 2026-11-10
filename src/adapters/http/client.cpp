@@ -4,6 +4,7 @@
 #include <charconv>
 #include <chrono>
 #include <cstdio>
+#include <expected>
 #include <utility>
 
 namespace antares::adapters::http {

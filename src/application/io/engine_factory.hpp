@@ -1,5 +1,8 @@
 #pragma once
 
+#include <expected>
+#include <string>
+
 #include <memory>
 
 #include "ports/io/io_engine.hpp"
@@ -15,6 +18,6 @@ namespace antares::application::io {
 makeEngine();
 
 /// Name the backend a call to `makeEngine` would select, without building it.
-[[nodiscard]] const char *selectedBackendName() noexcept;
+[[nodiscard]] [[nodiscard]] std::string selectedBackendName();
 
 } // namespace antares::application::io

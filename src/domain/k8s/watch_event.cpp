@@ -1,5 +1,6 @@
 #include "domain/k8s/watch_event.hpp"
 
+#include <expected>
 #include <utility>
 
 #include "domain/k8s/status.hpp"

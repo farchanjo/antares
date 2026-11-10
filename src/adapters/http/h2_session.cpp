@@ -6,6 +6,8 @@
 
 #include "adapters/http/connection.hpp"
 
+#include <expected>
+
 namespace antares::adapters::http {
 namespace {
 

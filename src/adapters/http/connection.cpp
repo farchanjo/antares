@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <expected>
 #include <optional>
 #include <netinet/in.h>
 #include <openssl/err.h>

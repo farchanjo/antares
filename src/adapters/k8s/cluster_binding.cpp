@@ -2,6 +2,8 @@
 
 #include "domain/http/url.hpp"
 
+#include <expected>
+
 namespace antares::adapters::k8s {
 
 namespace {

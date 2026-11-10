@@ -1,6 +1,7 @@
 #include "domain/http/auth.hpp"
 
 #include <array>
+#include <expected>
 #include <utility>
 
 namespace antares::domain::http {

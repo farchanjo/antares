@@ -30,7 +30,9 @@ public:
         , offerH2_(h2)
     {
         context_ = SSL_CTX_new(TLS_server_method());
-        SSL_CTX_use_certificate_chain_file(context_, nullptr);
+        // The material is embedded, so it is read from memory. The file variant
+        // was being fed a null path, which Darwin tolerated and OpenSSL 3.0 on
+        // Linux does not.
         BIO *certBio = BIO_new_mem_buf(TEST_CERT, -1);
         X509 *certificate = PEM_read_bio_X509(certBio, nullptr, nullptr, nullptr);
         SSL_CTX_use_certificate(context_, certificate);
