@@ -14,7 +14,7 @@ spec-first: doc/arch is the source of truth — run `speckit status` then `speck
 
 - [001 kernel-io-engine-kqueue](doc/arch/sdd/001-kernel-io-engine-kqueue/spec.md)
 - [002 http-client-h2](doc/arch/sdd/002-http-client-h2/spec.md)
-- [005 kubernetes-api-client](doc/arch/sdd/005-kubernetes-api-client-over-the-http-client-port/spec.md)
+- [003 kubernetes-api-client](doc/arch/sdd/003-kubernetes-api-client-over-the-http-client-port/spec.md)
 
 ## Where things live
 
@@ -110,7 +110,7 @@ Grouped by command; run `speckit <verb> --help` first.
 - context: `speckit context` · `speckit context pack` · `speckit context score`
 - contract: `speckit contract` · `speckit contract approve` · `speckit contract check` · `speckit contract deprecate` · `speckit contract diff` · `speckit contract list` · `speckit contract new` · `speckit contract review` · `speckit contract show` · `speckit contract undeprecate` · `speckit contract withdraw`
 - crew: `speckit crew` · `speckit crew backfill` · `speckit crew review`
-- decision: `speckit decision` · `speckit decision eval` · `speckit decision probe` · `speckit decision probe-rule` · `speckit decision status`
+- decision: `speckit decision` · `speckit decision eval` · `speckit decision extract` · `speckit decision probe` · `speckit decision probe-rule` · `speckit decision status`
 - dedupe: `speckit dedupe`
 - diagram: `speckit diagram` · `speckit diagram render`
 - dismiss: `speckit dismiss`

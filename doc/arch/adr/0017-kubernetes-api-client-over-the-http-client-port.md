@@ -67,4 +67,4 @@ format, and loses streaming control.
 ## More Information
 
 Related: ADR-0013 (HTTP client), ADR-0006 (I/O port). Spec:
-`doc/arch/sdd/005-kubernetes-api-client-over-the-http-client-port/spec.md`.
+`doc/arch/sdd/003-kubernetes-api-client-over-the-http-client-port/spec.md`.
