@@ -299,8 +299,10 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                         socket->abort(domain::http::HttpError::protocol);
                         return;
                     }
-                    if (!WebSocket::verifyHandshake(std::string_view{pending->data(), end}, key,
-                                                    offered)) {
+                    // The terminator is part of what the check reads: without
+                    // it the last header has no boundary.
+                    if (!WebSocket::verifyHandshake(
+                            std::string_view{pending->data(), end + 4}, key, offered)) {
                         // A wrong accept means the peer never read our key, and
                         // a missing subprotocol means it will frame in a way we
                         // did not agree to. Either way, do not proceed.

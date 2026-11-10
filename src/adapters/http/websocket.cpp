@@ -44,10 +44,10 @@ constexpr std::string_view acceptGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         return {};
     }
     std::size_t start = at + needle.size();
-    const std::size_t stop = head.find("\r\n", start);
-    if (stop == std::string::npos) {
-        return {};
-    }
+    // The header being looked for is often the last one before the blank line,
+    // so an absent CRLF means "runs to the end of the head", not "no value".
+    const std::size_t found = head.find("\r\n", start);
+    const std::size_t stop = found == std::string_view::npos ? head.size() : found;
     while (start < stop && (head[start] == ' ' || head[start] == '\t')) {
         ++start;
     }
