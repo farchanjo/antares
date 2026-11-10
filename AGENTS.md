@@ -165,14 +165,14 @@ The corpus is governed; use the binary for every loop step.
 - **`speckit` runs locally only.** The host has no binary; run `status`, `next`,
   `validate`, `context score` and every phase here.
 - **The workstation edits, commits and publishes.** Build and test over SSH on
-  `farchanjo@192.168.202.241`; nothing reaches
-  `origin` until the host is green.
+  `farchanjo@192.168.202.241`; nothing reaches `origin` until the host is green.
 - **Darwin is the acceptance target (P-05).** A local build is a convenience.
   `kqueue` is Darwin-only; Linux runs `io_uring` or `epoll`.
 - Run the suite with `cmake --build --preset dev --target check`, every backend.
   `ctest --preset dev` alone is serial; `JOBS=n` caps the width at configure time.
-- **Clean old builds.** Delete a tree when it stops being used, and before a
-  release build. Disk exhaustion fails the loop silently.
+- **Clean old builds, watch the cache.** Delete a tree when it stops being used,
+  and check `df` and the `sccache --show-stats` size before a long run. Disk
+  exhaustion fails the loop silently.
 - **A port method is covered.** Every virtual has a case that reaches it, and a
   counter with no increment is a defect. Linking is not working.
 - **Never sleep in a test.** Wait on the completion; a `sleep_for` spin hides a
