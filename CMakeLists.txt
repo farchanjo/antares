@@ -140,6 +140,7 @@ set(ANTARES_K8S_SOURCES
     src/domain/k8s/api_path.cpp
     src/domain/k8s/options.cpp
     src/domain/k8s/discovery.cpp
+    src/domain/k8s/exec_channel.cpp
     src/domain/k8s/status.cpp
     src/domain/k8s/watch_event.cpp
     src/domain/k8s/kubeconfig.cpp
@@ -368,7 +369,12 @@ set(ANTARES_K8S_CASES
     discovery-parses-resources
     discovery-cluster-scoped
     discovery-core-versions
-    discovery-groups)
+    discovery-groups
+    exec-frame-round-trip
+    exec-empty-payload
+    exec-unknown-channel
+    exec-resize-payload
+    exec-error-frame)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")

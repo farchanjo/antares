@@ -652,3 +652,20 @@ void HttpClient::release(std::shared_ptr<Connection> connection)
 }
 
 } // namespace antares::adapters::http
+
+namespace antares::adapters::http {
+
+void HttpClient::openSocket(domain::http::Url url, std::string subprotocol,
+                            ports::http::Client::SocketReady ready,
+                            ports::http::Client::SocketFailed failed)
+{
+    // The concrete class already hands over a `WebSocket`; the port only sees
+    // the interface it declares, so the pointer is upcast here and nowhere else.
+    openWebSocket(std::move(url), std::move(subprotocol),
+                  [ready = std::move(ready)](std::shared_ptr<WebSocket> socket) {
+                      ready(std::move(socket));
+                  },
+                  std::move(failed));
+}
+
+} // namespace antares::adapters::http

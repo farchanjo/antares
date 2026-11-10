@@ -52,6 +52,12 @@ public:
     void openWebSocket(domain::http::Url url, std::string subprotocol, SocketReady ready,
                        SocketFailed failed);
 
+    /// The port's spelling of the same upgrade. One implementation, two names:
+    /// the concrete class keeps the one its own callers already use.
+    void openSocket(domain::http::Url url, std::string subprotocol,
+                    ports::http::Client::SocketReady ready,
+                    ports::http::Client::SocketFailed failed) override;
+
 private:
     class Attempt;
 

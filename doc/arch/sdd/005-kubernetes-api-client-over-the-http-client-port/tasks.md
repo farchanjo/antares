@@ -34,10 +34,10 @@ T008 and T009 landed the ports only. `exec` never reached the port, and
       subprotocol and its channel mapping before any code depends on it.
 - [x] T017 Domain and adapter: `Discovery` parsing, over the HTTP client, keeping
       resources with their namespaced flag and verb list.
-- [ ] T018 Port and adapter: `exec` session over the subprotocol T016 names —
+- [x] T018 Port and adapter: `exec` session over the subprotocol T016 names —
       stdin, stdout, stderr, resize and close, with the error channel kept apart.
 - [x] T019 Cases: discovery parsing
-- [ ] T020 Cases: scale read and write, log options, and the exec channel order
+- [x] T020 Cases: the exec channel order, empty payload, unknown channel, resize and error frame
       plus resize.
 
 ## Dependencies

@@ -12,6 +12,7 @@
 #include "domain/k8s/api_error.hpp"
 #include "domain/k8s/api_path.hpp"
 #include "domain/k8s/discovery.hpp"
+#include "domain/k8s/exec_channel.hpp"
 #include "domain/k8s/kubeconfig.hpp"
 #include "domain/k8s/options.hpp"
 #include "domain/k8s/status.hpp"
@@ -136,6 +137,35 @@ public:
     [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
 };
 
+/// What to run, and where (FR-009).
+struct ExecOptions {
+    std::string container;
+    std::vector<std::string> command;
+    /// Allocate a TTY. A TTY merges stderr into stdout on the server side, so a
+    /// caller that wants them apart must leave this off.
+    bool tty = false;
+};
+
+/// A live exec session. Cancelling closes it once.
+///
+/// Output arrives on the engine thread; writes and resizes may come from any
+/// thread and are queued by the implementation.
+class ExecSession : public Ticket {
+public:
+    using Output = std::function<void(domain::k8s::ExecChannel, std::string_view)>;
+    /// Runs once, when the session ends, whatever ended it.
+    using Finished = std::function<void(domain::k8s::ApiError)>;
+
+    ExecSession() = default;
+    ~ExecSession() override = default;
+
+    /// Send bytes to the process's stdin.
+    virtual void write(std::string_view bytes) = 0;
+
+    /// Resize the peer's terminal. Ignored without a TTY.
+    virtual void resize(std::uint16_t columns, std::uint16_t rows) = 0;
+};
+
 /// The client for one cluster (FR-003). Every method is asynchronous: it
 /// submits and returns, and the completion runs on the engine thread.
 ///
@@ -177,6 +207,12 @@ public:
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
     scale(const domain::k8s::ApiPath &path, std::optional<std::int32_t> replicas,
           std::function<void(ObjectResult)> done) = 0;
+
+    /// Open a shell in a container (FR-009). The session arrives once the
+    /// upgrade is accepted; a refused upgrade is the error.
+    [[nodiscard]] virtual std::expected<std::shared_ptr<ExecSession>, domain::k8s::ApiError>
+    exec(const domain::k8s::ApiPath &path, const ExecOptions &options, ExecSession::Output onOutput,
+         ExecSession::Finished onFinished) = 0;
 };
 
 /// Discovers the resources a cluster serves (FR-010). The answer changes on

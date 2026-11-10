@@ -89,6 +89,11 @@ public:
     serverResources(std::string_view group, std::string_view version,
                     std::function<void(ports::k8s::Discovery::ResourceResult)> done) override;
 
+    [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::ExecSession>, domain::k8s::ApiError>
+    exec(const domain::k8s::ApiPath &path, const ports::k8s::ExecOptions &options,
+         ports::k8s::ExecSession::Output onOutput,
+         ports::k8s::ExecSession::Finished onFinished) override;
+
 private:
     HttpKubeClient(Binding binding, std::shared_ptr<ports::http::Client> http);
 

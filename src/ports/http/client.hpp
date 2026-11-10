@@ -10,6 +10,8 @@
 #include "domain/http/http_error.hpp"
 #include "domain/http/request.hpp"
 #include "domain/http/response.hpp"
+#include "domain/http/url.hpp"
+#include "domain/http/websocket.hpp"
 #include "ports/io/io_engine.hpp"
 
 namespace antares::ports::http {
@@ -52,6 +54,31 @@ using Completion =
 
 /// Async HTTP client. Every call submits to the engine and returns; nothing here
 /// blocks the loop (FR-002). Configuration is taken once, at construction.
+/// A connection the client upgraded away from HTTP framing (FR-023).
+///
+/// The codec is not exposed: a caller sends payloads and receives frames. That
+/// keeps RFC 6455 masking and control-frame rules in one place instead of at
+/// every protocol built on top of a socket.
+class Socket {
+public:
+    using Message = std::function<void(const domain::http::WsFrame &)>;
+    using Closed = std::function<void(domain::http::HttpError)>;
+
+    Socket() = default;
+    Socket(const Socket &) = delete;
+    Socket &operator=(const Socket &) = delete;
+    Socket(Socket &&) = delete;
+    Socket &operator=(Socket &&) = delete;
+    virtual ~Socket() = default;
+
+    virtual void onMessage(Message handler) = 0;
+    virtual void onClose(Closed handler) = 0;
+    virtual void sendBinary(std::string_view payload) = 0;
+    /// Start the closing handshake. A second call is a no-op.
+    virtual void close(std::string_view reason) = 0;
+    [[nodiscard]] virtual bool isOpen() const noexcept = 0;
+};
+
 class Client {
 public:
     Client() = default;
@@ -71,6 +98,15 @@ public:
     /// being accumulated into the completion.
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::http::HttpError>
     submitStreaming(domain::http::Request request, StreamHandler handler, Completion done) = 0;
+
+    /// Upgrade to a WebSocket. `ready` runs once with the socket and never
+    /// with a failed one; `failed` runs instead. Offering a subprotocol the
+    /// peer does not echo is a failure, not a silent downgrade.
+    using SocketReady = std::function<void(std::shared_ptr<Socket>)>;
+    using SocketFailed = std::function<void(domain::http::HttpError)>;
+
+    virtual void openSocket(domain::http::Url url, std::string subprotocol, SocketReady ready,
+                            SocketFailed failed) = 0;
 
     [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
 };

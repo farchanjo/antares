@@ -11,6 +11,7 @@
 #include "domain/json/value.hpp"
 #include "domain/k8s/api_path.hpp"
 #include "domain/k8s/discovery.hpp"
+#include "domain/k8s/exec_channel.hpp"
 #include "domain/k8s/kubeconfig.hpp"
 #include "domain/k8s/options.hpp"
 #include "domain/k8s/status.hpp"
@@ -485,6 +486,62 @@ void caseDiscoveryGroups()
     checkEqual(out.back().group, "batch", "second group kept");
 }
 
+/// FR-009: a frame survives the round trip with its channel intact. Channels
+/// are what keeps stderr off stdout, so a lost byte here is a corrupted shell.
+void caseExecFrameRoundTrip()
+{
+    const std::string frame = encodeExecFrame(ExecChannel::stderr, "boom");
+    check(frame.size() == 5, "one channel byte plus the payload");
+
+    const auto decoded = decodeExecFrame(frame);
+    check(decoded.has_value(), "frame decoded");
+    if (!decoded) {
+        return;
+    }
+    check(decoded->channel == ExecChannel::stderr, "channel kept");
+    checkEqual(decoded->payload, "boom", "payload kept");
+}
+
+/// FR-009: an empty payload is still a frame; a zero-length frame is not.
+void caseExecEmptyPayload()
+{
+    const std::string frame = encodeExecFrame(ExecChannel::stdout, "");
+    check(frame.size() == 1, "channel byte only");
+
+    const auto decoded = decodeExecFrame(frame);
+    check(decoded.has_value(), "empty payload still decodes");
+    if (decoded) {
+        check(decoded->payload.empty(), "payload stays empty");
+    }
+
+    check(!decodeExecFrame("").has_value(), "no byte is not a frame");
+}
+
+/// FR-009: a peer inventing a channel must not be read as stdout.
+void caseExecUnknownChannel()
+{
+    const std::string frame = encodeExecFrame(static_cast<ExecChannel>(9), "x");
+    check(!decodeExecFrame(frame).has_value(), "channel nine refused");
+}
+
+/// FR-009: resize carries both numbers under the names the server reads.
+void caseExecResizePayload()
+{
+    checkEqual(resizePayload(120, 40), R"({"Width":120,"Height":40})", "resize shape");
+}
+
+/// FR-009: an error frame becomes an error, whether or not it is a Status.
+void caseExecErrorFrame()
+{
+    const ApiError parsed = execFailure(R"({"reason":"NotFound","message":"no such container"})");
+    check(parsed.reason == Reason::notFound, "reason mapped");
+    checkEqual(parsed.message, "no such container", "message kept");
+
+    const ApiError junk = execFailure("not a status");
+    check(junk.reason == Reason::unexpected, "junk is unexpected");
+    check(!junk.message.empty(), "junk keeps its text");
+}
+
 struct Case {
     std::string_view name;
     void (*run)();
@@ -516,6 +573,11 @@ constexpr Case cases[] = {
     {"discovery-cluster-scoped", caseDiscoveryClusterScoped},
     {"discovery-core-versions", caseDiscoveryCoreVersions},
     {"discovery-groups", caseDiscoveryGroups},
+    {"exec-frame-round-trip", caseExecFrameRoundTrip},
+    {"exec-empty-payload", caseExecEmptyPayload},
+    {"exec-unknown-channel", caseExecUnknownChannel},
+    {"exec-resize-payload", caseExecResizePayload},
+    {"exec-error-frame", caseExecErrorFrame},
 };
 
 } // namespace

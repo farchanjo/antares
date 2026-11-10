@@ -9,6 +9,7 @@
 #include "adapters/http/connection.hpp"
 #include "domain/http/http_error.hpp"
 #include "domain/http/websocket.hpp"
+#include "ports/http/client.hpp"
 
 namespace antares::adapters::http {
 
@@ -17,7 +18,8 @@ namespace antares::adapters::http {
 ///
 /// Frames are queued through the connection; pings are answered by the codec
 /// owner, not here.
-class WebSocket : public std::enable_shared_from_this<WebSocket> {
+class WebSocket final : public ports::http::Socket,
+                        public std::enable_shared_from_this<WebSocket> {
 public:
     using Message = std::function<void(const domain::http::WsFrame &)>;
     using Closed = std::function<void(domain::http::HttpError)>;

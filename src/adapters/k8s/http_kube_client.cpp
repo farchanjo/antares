@@ -669,3 +669,186 @@ std::expected<std::shared_ptr<ports::k8s::Ticket>, ApiError> HttpKubeClient::ser
 }
 
 } // namespace antares::adapters::k8s
+
+namespace antares::adapters::k8s {
+
+namespace {
+
+/// An exec session (FR-009), open or still opening.
+///
+/// Frames carry a channel byte (ADR-0019). The upgrade is asynchronous, so the
+/// session exists before the socket does: writes made in between are queued and
+/// flushed on attach. That keeps the port synchronous without ever dropping
+/// what the caller typed.
+class ExecConnection final : public ports::k8s::ExecSession,
+                             public std::enable_shared_from_this<ExecConnection> {
+public:
+    ExecConnection(ports::k8s::ExecSession::Output output,
+                   ports::k8s::ExecSession::Finished finished)
+        : output_(std::move(output))
+        , finished_(std::move(finished))
+    {
+    }
+
+    void write(std::string_view bytes) override
+    {
+        send(domain::k8s::ExecChannel::stdin, bytes);
+    }
+
+    void resize(std::uint16_t columns, std::uint16_t rows) override
+    {
+        send(domain::k8s::ExecChannel::resize, domain::k8s::resizePayload(columns, rows));
+    }
+
+    void cancel() override { closeOnce(); }
+
+    /// Take the socket and flush what was typed while it was opening.
+    void attach(std::shared_ptr<ports::http::Socket> socket)
+    {
+        socket_ = std::move(socket);
+        const auto weak = weak_from_this();
+
+        socket_->onMessage([weak](const domain::http::WsFrame &frame) {
+            const auto self = weak.lock();
+            if (!self) {
+                return;
+            }
+            const auto decoded = domain::k8s::decodeExecFrame(frame.payload);
+            if (!decoded) {
+                return;
+            }
+            switch (decoded->channel) {
+            case domain::k8s::ExecChannel::close:
+                self->closeOnce();
+                return;
+            case domain::k8s::ExecChannel::error:
+                self->fail(domain::k8s::execFailure(decoded->payload));
+                return;
+            default:
+                self->output_(decoded->channel, decoded->payload);
+                return;
+            }
+        });
+
+        socket_->onClose([weak](domain::http::HttpError error) {
+            if (const auto self = weak.lock()) {
+                self->fail(ApiError{.code = 0,
+                                    .message = std::string{domain::http::describe(error)}});
+            }
+        });
+
+        for (const auto &[channel, payload] : queued_) {
+            socket_->sendBinary(domain::k8s::encodeExecFrame(channel, payload));
+        }
+        queued_.clear();
+    }
+
+    /// The upgrade never happened.
+    void refuse(ApiError error) { fail(std::move(error)); }
+
+private:
+    void send(domain::k8s::ExecChannel channel, std::string_view payload)
+    {
+        if (done_) {
+            return;
+        }
+        if (!socket_) {
+            queued_.emplace_back(channel, std::string{payload});
+            return;
+        }
+        if (socket_->isOpen()) {
+            socket_->sendBinary(domain::k8s::encodeExecFrame(channel, payload));
+        }
+    }
+
+    /// One exit path. The socket closes first, so a late frame cannot arrive
+    /// after `onFinished` has run.
+    void fail(ApiError error)
+    {
+        if (done_) {
+            return;
+        }
+        done_ = true;
+        closeOnce();
+        finished_(std::move(error));
+    }
+
+    void closeOnce()
+    {
+        if (closed_) {
+            return;
+        }
+        closed_ = true;
+        if (socket_) {
+            socket_->close({});
+        }
+    }
+
+    std::shared_ptr<ports::http::Socket> socket_;
+    std::vector<std::pair<domain::k8s::ExecChannel, std::string>> queued_;
+    ports::k8s::ExecSession::Output output_;
+    ports::k8s::ExecSession::Finished finished_;
+    bool closed_ = false;
+    bool done_ = false;
+};
+
+/// The `container`, `command`, `stdin`, `stdout`, `stderr` and `tty` query the
+/// exec subresource expects.
+[[nodiscard]] std::string execQuery(const ports::k8s::ExecOptions &options)
+{
+    std::string query = "stdin=true&stdout=true&stderr=true";
+    if (options.tty) {
+        query += "&tty=true";
+    }
+    if (!options.container.empty()) {
+        query += "&container=";
+        query += domain::k8s::percentEncode(options.container);
+    }
+    for (const std::string &argument : options.command) {
+        query += "&command=";
+        query += domain::k8s::percentEncode(argument);
+    }
+    return query;
+}
+
+} // namespace
+
+std::expected<std::shared_ptr<ports::k8s::ExecSession>, ApiError> HttpKubeClient::exec(
+    const domain::k8s::ApiPath &path, const ports::k8s::ExecOptions &options, ports::k8s::ExecSession::Output onOutput,
+    ports::k8s::ExecSession::Finished onFinished)
+{
+    if (options.command.empty()) {
+        return std::unexpected(ApiError{.code = 400, .message = "exec needs a command"});
+    }
+
+    const std::string target =
+        binding_.base + path.with(domain::k8s::Subresource::exec).render() + '?' + execQuery(options);
+    auto parsed = domain::http::Url::parse(target);
+    if (!parsed) {
+        return std::unexpected(transportFailure(parsed.error()));
+    }
+
+    ++stats_.submitted;
+    auto session =
+        std::make_shared<ExecConnection>(std::move(onOutput), std::move(onFinished));
+    const auto weak = weak_from_this();
+
+    http_->openSocket(
+        std::move(*parsed), std::string{domain::k8s::execSubprotocol},
+        [weak, session](std::shared_ptr<ports::http::Socket> opened) {
+            if (const auto self = weak.lock()) {
+                ++self->stats_.succeeded;
+            }
+            session->attach(std::move(opened));
+        },
+        [weak, session](domain::http::HttpError error) {
+            if (const auto self = weak.lock()) {
+                ++self->stats_.failed;
+            }
+            session->refuse(transportFailure(error));
+        });
+
+    return std::shared_ptr<ports::k8s::ExecSession>{std::move(session)};
+}
+
+} // namespace antares::adapters::k8s
