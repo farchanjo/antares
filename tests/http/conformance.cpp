@@ -8,6 +8,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+#include <cctype>
 #include <cstring>
 #include <span>
 #include <string>
