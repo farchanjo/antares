@@ -84,10 +84,8 @@ logs/
 !.env.example
 
 # --- speckit control plane (ADR-0028, ADR-0029) ----------------------------
-# The born-local SQLite databases and their WAL/SHM sidecars are never
-# committed: `speckit-local.db` (durable lock/audit) and `speckit-index.db`
-# (the rebuildable derived cache). All speckit runtime/derived state lives
-# under doc/.specify; the committed control plane is the text in doc/arch.
-doc/.specify/speckit-*.db
-doc/.specify/speckit-*.db-wal
-doc/.specify/speckit-*.db-shm
+# Nothing under doc/.specify is source. It holds the born-local SQLite pair
+# (`speckit-local.db`, `speckit-index.db`), their WAL/SHM sidecars and the
+# reindex lock — all rebuilt from the corpus, which is the committed text under
+# doc/arch. Ignore the directory whole so a new runtime file needs no rule.
+doc/.specify/

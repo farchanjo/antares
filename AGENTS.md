@@ -173,33 +173,33 @@ The corpus is governed; use the binary for every loop step.
   before claiming a case passes. `ctest --preset dev` alone is serial; `JOBS=n`
   caps the width at configure time.
 - Nothing is published to `origin` until the host is green.
-- **Clean old builds.** Delete a tree as soon as it stops being used, and before
-  a release build. Disk exhaustion fails the loop silently.
+- **Clean old builds.** Delete a tree when it stops being used, and before a
+  release build. Disk exhaustion fails the loop silently.
 - **A port method is covered.** Every virtual has a case that reaches it, and a
   counter with no increment is a defect. Linking is not working.
-- **Never sleep in a test.** Wait on the completion. A spin with
-  `sleep_for` hides a missing signal and slows the suite; the waiter times out
-  instead.
-- **A shared queue is guarded.** A timer is armed from the caller thread while
-  the loop walks the same vector, so it takes a mutex: an unguarded push
-  reallocates under an open reference and reads freed memory.
-- **An upgrade proves itself.** A WebSocket key is sixteen random bytes, and a
-  101 is only trusted when its accept digests that key and its subprotocol is one
-  we offered. A pointer-derived key passes a peer that never reads it.
+- **Never sleep in a test.** Wait on the completion; a `sleep_for` spin hides a
+  missing signal, and the waiter times out instead.
+- **A shared queue is guarded.** A timer is armed from another thread, so the
+  vector takes a mutex: an unguarded push reallocates under an open reference.
+- **An upgrade proves itself.** A WebSocket key is sixteen random bytes and a
+  101 is trusted only when its accept digests that key and echoes an offered
+  subprotocol. A pointer-derived key passes a peer that never reads it.
 - **The linker is a build decision.** `mold` when present, `lld` otherwise;
-  debug info stays `-g1 -fno-standalone-debug`. An incremental build is
-  link-bound, so a full `-g` costs more than it gives.
-- **Use the native types.** Durations are `std::chrono`, instants are
-  `steady_clock::time_point`, byte counts are `Bytes`. A wrapper over what the
-  standard library already provides is a defect, not a defence.
-- **Commit no artifacts.** Binaries, objects, caches and generated reports stay
-  out of the tree; `.gitignore` already covers them, so a `git add -A` that
-  stages a `.o` means a rule is missing, not that the file belongs.
+  debug info stays `-g1 -fno-standalone-debug`. The build is link-bound, so a
+  full `-g` costs more than it gives.
+- **The PCH names no project header.** Only stdlib and the two third parties
+  live in `src/pch.hpp`; one project header there and every edit invalidates it,
+  slower than no PCH at all.
+- **Use the native types.** Durations are `std::chrono`, instants
+  `steady_clock::time_point`, byte counts `Bytes`; a wrapper over what the
+  standard library already gives is a defect, not a defence.
+- **Commit no artifacts.** Binaries, objects, caches, generated reports and the
+  `doc/.specify` runtime state stay out of the tree. A `git add -A` that stages
+  a `.o` means a rule is missing, not that the file belongs.
 
 ## Command surface
 
-Every verb the binary exposes, grouped by command. Run `speckit <verb> --help`
-before inventing a flag.
+Every verb the binary exposes; run `speckit <verb> --help` before inventing one.
 
 - agent: `speckit agent` · `speckit agent confirm` · `speckit agent index` · `speckit agent list` · `speckit agent propose` · `speckit agent regenerate` · `speckit agent reject` · `speckit agent remove` · `speckit agent score` · `speckit agent show` · `speckit agent source` · `speckit agent stats`
 - analyze: `speckit analyze`
