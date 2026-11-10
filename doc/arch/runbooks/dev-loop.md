@@ -94,3 +94,40 @@ If a step fails:
 4. Revert the commit when the cause is the change, or fix the host when the
    cause is the environment.
 5. Re-run the procedure from step 1; a run is only valid from a clean start.
+
+## The live read-only smoke
+
+`antares_k8s_live` exercises the Kubernetes client against a real API server
+through the project's own HTTP client. It never writes: the type it holds is
+`ports::k8s::Reader`.
+
+```
+cmake --build --preset dev --target antares_k8s_live
+./build/dev/antares_k8s_live --context hood
+```
+
+It lists the contexts of the kubeconfig, resolves one, then runs `GET /version`,
+`GET /api/v1/namespaces` and a five-second `WATCH` of a namespace. Redirect its
+output to a file and read the file: a stuck resolve is the failure that matters
+most here.
+
+`--kubeconfig PATH` may be repeated. Files merge with the first entry winning, so
+the one named first decides.
+
+### When a context hangs before any request
+
+The symptom is the binding line followed by nothing: the loop thread is inside
+`getaddrinfo`, and there is no timeout there to fire.
+
+Check the split-DNS view first. `dig` reads the plain resolver file and ignores
+per-domain routing, so it answers while the system resolver hangs:
+
+```
+scutil --dns | grep -B1 -A3 <domain>   # a scoped resolver with its nameservers
+dig +time=3 @<nameserver> <host> A     # empty or timed out means that server is dead
+```
+
+A scoped resolver whose nameservers do not answer is the usual cause. It is a
+machine problem, not a code one: `kubectl` against the same context reports
+`Client.Timeout exceeded while awaiting headers`. Fixing it means repairing the
+DNS configuration; only a resolver of our own would let the client outlive it.
