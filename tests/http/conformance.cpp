@@ -781,7 +781,11 @@ void caseWebSocketUpgrades()
 
     check(opened.wait(), "upgrade opened");
     check(messaged.wait(std::chrono::seconds{5}), "server frame delivered");
-    check(!closedEarly, "the socket did not close before the frame");
+    check(!closedEarly,
+          closedEarly ? ("the socket closed early: " +
+                         std::string{antares::domain::http::describe(closedWith)})
+                            .c_str()
+                      : "the socket did not close before the frame");
     check(received == "hi", "payload decoded");
     check(server.lastRequest().find("Upgrade: websocket") != std::string::npos, "upgrade sent");
     check(server.lastRequest().find("Sec-WebSocket-Version: 13") != std::string::npos,
