@@ -309,7 +309,6 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/commit.md`
 - `doc/arch/commands/commit/check.md`
 - `doc/arch/commands/commit/suggest.md`
-- `doc/arch/commands/completions.md`
 - `doc/arch/commands/config.md`
 - `doc/arch/commands/config/drift.md`
 - `doc/arch/commands/config/get.md`
@@ -342,7 +341,6 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/decision/status.md`
 - `doc/arch/commands/dedupe.md`
 - `doc/arch/commands/diagram.md`
-- `doc/arch/commands/diagram/render.md`
 - `doc/arch/commands/dismiss.md`
 - `doc/arch/commands/doctrine.md`
 - `doc/arch/commands/doctrine/list.md`
@@ -395,7 +393,6 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/license/show.md`
 - `doc/arch/commands/manual.md`
 - `doc/arch/commands/mermaid.md`
-- `doc/arch/commands/mermaid/render.md`
 - `doc/arch/commands/migrate.md`
 - `doc/arch/commands/missing.md`
 - `doc/arch/commands/model.md`
@@ -466,7 +463,6 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/version.md`
 - `doc/arch/commands/workflow.md`
 - `doc/arch/commands/workflow/render.md`
-- `doc/arch/domain/.gitkeep`
 - `doc/arch/domain/cli-surface.md`
 - `doc/arch/functional/product-overview.md`
 - `doc/arch/memory/constitution.md`
