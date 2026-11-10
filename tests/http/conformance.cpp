@@ -637,16 +637,78 @@ void caseWsCloseCloses()
     check(codec.isClosed(), "close frame closes the codec");
 }
 
+/// A 101 that answers a real handshake: the accept is a digest of the key the
+/// client sent, so a client that verifies it passes and a client that does not
+/// would never notice the difference.
+[[nodiscard]] std::string upgradeResponse(std::string_view request,
+                                          std::string_view subprotocol,
+                                          std::string_view after = {})
+{
+    const std::string head{request};
+    const std::size_t at = head.find("sec-websocket-key:");
+    std::string key;
+    if (at != std::string::npos) {
+        const std::size_t start = at + std::strlen("sec-websocket-key:");
+        const std::size_t stop = head.find("\r\n", start);
+        key = head.substr(start, stop - start);
+        while (!key.empty() && (key.front() == ' ' || key.front() == '\t')) {
+            key.erase(key.begin());
+        }
+    }
+
+    std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+                           "Connection: Upgrade\r\nSec-WebSocket-Accept: " +
+                           antares::adapters::http::WebSocket::acceptFor(key) + "\r\n";
+    if (!subprotocol.empty()) {
+        response += "Sec-WebSocket-Protocol: " + std::string{subprotocol} + "\r\n";
+    }
+    response += "\r\n";
+    response += after;
+    return response;
+}
+
+void caseWsRefusesBadAccept()
+{
+    // RFC 6455 §4.1: a server proves it read the key by echoing a digest of it.
+    // A peer that answers anything else never became a WebSocket, so the
+    // upgrade must fail instead of handing out a socket that speaks garbage.
+    antares::test::LoopbackServer server{std::string{
+        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+        "Connection: Upgrade\r\nSec-WebSocket-Accept: made-up\r\n\r\n"}};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await settled;
+    HttpError reported = HttpError::closed;
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onMessage([&](const auto &) { settled.signal(); });
+            socket->onClose([&](HttpError error) {
+                reported = error;
+                settled.signal();
+            });
+        },
+        [&](HttpError) { settled.signal(); });
+
+    check(settled.wait(std::chrono::seconds{5}), "the bad handshake settled");
+    check(reported == HttpError::protocol, "reported as a protocol failure");
+}
+
 void caseWebSocketUpgrades()
 {
     // 101 plus one unmasked text frame ("hi") from the server.
-    std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
-                           "Connection: Upgrade\r\nSec-WebSocket-Accept: x\r\n\r\n";
-    response.push_back(static_cast<char>(0x81));
-    response.push_back(static_cast<char>(0x02));
-    response += "hi";
+    std::string frame;
+    frame.push_back(static_cast<char>(0x81));
+    frame.push_back(static_cast<char>(0x02));
+    frame += "hi";
 
-    antares::test::LoopbackServer server{response};
+    antares::test::LoopbackServer server{[frame](std::string_view request) {
+        return upgradeResponse(request, "chat", frame);
+    }};
     Stack stack;
     if (!stack.ok()) {
         return;
@@ -777,13 +839,12 @@ void caseLoggerReceivesFailures()
 void caseWsCloseHandshake()
 {
     // The server closes; the client must echo the close and report it.
-    std::string response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
-                           "Connection: Upgrade\r\n\r\n";
     const std::string closeFrame = antares::domain::http::WsCodec::encode(
         antares::domain::http::WsOpcode::close, "", 0x01020304);
-    response += closeFrame;
 
-    antares::test::LoopbackServer server{response};
+    antares::test::LoopbackServer server{[closeFrame](std::string_view request) {
+        return upgradeResponse(request, "", closeFrame);
+    }};
     Stack stack;
     if (!stack.ok()) {
         return;
@@ -872,6 +933,7 @@ std::span<const Case> cases()
         {"ws-splits-across-reads", caseWsSplitsAcrossReads},
         {"ws-close-closes", caseWsCloseCloses},
         {"websocket-upgrades", caseWebSocketUpgrades},
+        {"ws-refuses-bad-accept", caseWsRefusesBadAccept},
         {"streaming-survives-redirect", caseStreamingSurvivesRedirect},
         {"streaming-survives-retry", caseStreamingSurvivesRetry},
         {"logger-receives-failures", caseLoggerReceivesFailures},

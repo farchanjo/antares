@@ -275,10 +275,16 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
 
                 // The 101 head shares the read with the first frame, so it is
                 // consumed here and only the remainder reaches the codec.
+                // RFC 6455 §4.1: the key is sixteen random bytes in base64, and
+                // the server proves it read the request by echoing a digest of
+                // it. A key we could predict would make that proof worthless.
+                const std::string key = WebSocket::newKey();
+
                 auto pending = std::make_shared<std::string>();
                 auto upgraded = std::make_shared<bool>(false);
-                connection->onData([socket, pending, upgraded](const std::byte *data,
-                                                               std::size_t length) {
+                connection->onData([socket, pending, upgraded, key,
+                                    offered = subprotocol](const std::byte *data,
+                                                           std::size_t length) {
                     if (*upgraded) {
                         socket->receive(data, length);
                         return;
@@ -290,7 +296,15 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                         return;
                     }
                     if (pending->rfind("HTTP/1.1 101", 0) != 0) {
-                        socket->close();
+                        socket->abort(domain::http::HttpError::protocol);
+                        return;
+                    }
+                    if (!WebSocket::verifyHandshake(std::string_view{pending->data(), end}, key,
+                                                    offered)) {
+                        // A wrong accept means the peer never read our key, and
+                        // a missing subprotocol means it will frame in a way we
+                        // did not agree to. Either way, do not proceed.
+                        socket->abort(domain::http::HttpError::protocol);
                         return;
                     }
 
@@ -304,8 +318,6 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
 
                 // RFC 6455 §4.1: an upgrade request is a normal GET with the
                 // handshake headers, and the response must be 101.
-                auto key = std::to_string(static_cast<std::uint32_t>(
-                    reinterpret_cast<std::uintptr_t>(socket.get())));
                 std::string request = "GET " + (url.target.empty() ? "/" : url.target) +
                                       " HTTP/1.1\r\nHost: " + url.authority +
                                       "\r\nUpgrade: websocket\r\nConnection: Upgrade"
@@ -322,7 +334,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                                           request.size()},
                     [socket](WriteOutcome wrote) {
                         if (!wrote.ok) {
-                            socket->close();
+                            socket->abort(domain::http::HttpError::closed);
                         }
                     });
                 ready(std::move(socket));

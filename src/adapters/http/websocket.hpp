@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "adapters/http/connection.hpp"
 #include "domain/http/http_error.hpp"
@@ -23,6 +24,22 @@ public:
 
     WebSocket(std::shared_ptr<Connection> connection, domain::Bytes ceiling);
 
+    /// A fresh `Sec-WebSocket-Key` (RFC 6455 §4.1): sixteen random bytes, base64.
+    /// The server echoes a digest of it, so a predictable key would defeat the
+    /// only proof that the peer actually spoke WebSocket.
+    [[nodiscard]] static std::string newKey();
+
+    /// The `Sec-WebSocket-Accept` value a correct server returns for `key`:
+    /// base64 of SHA-1 over the key concatenated with the RFC's GUID.
+    [[nodiscard]] static std::string acceptFor(std::string_view key);
+
+    /// Check a 101 response head against the key we sent. A missing or wrong
+    /// accept means the peer is not the server we think, so the upgrade is
+    /// refused rather than trusted. When `subprotocol` is not empty the server
+    /// must echo one, or the caller would speak a protocol nobody agreed to.
+    [[nodiscard]] static bool verifyHandshake(std::string_view head, std::string_view key,
+                                              std::string_view subprotocol);
+
     void onMessage(Message handler) { message_ = std::move(handler); }
     void onClose(Closed handler) { closed_ = std::move(handler); }
 
@@ -35,6 +52,11 @@ public:
     void close(std::string_view reason = {});
 
     [[nodiscard]] bool isOpen() const noexcept { return open_; }
+
+    /// Report a failure without sending anything. A failed upgrade is not a
+    /// closing handshake, so writing a close frame there would be noise on a
+    /// connection that never became a socket.
+    void abort(domain::http::HttpError error) { finish(error); }
 
     /// Feed decrypted bytes; called by the client's data handler.
     void receive(const std::byte *data, std::size_t length);

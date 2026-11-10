@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -29,6 +30,17 @@ public:
     /// Answer successive requests from `responses`, repeating the last one.
     explicit LoopbackServer(std::vector<std::string> responses)
         : responses_(std::move(responses))
+    {
+        start();
+    }
+
+    /// Answer from a function of the request. A WebSocket handshake needs this:
+    /// the accept is a digest of the key the client picked, so a canned response
+    /// cannot be correct.
+    using Responder = std::function<std::string(std::string_view request)>;
+
+    explicit LoopbackServer(Responder responder)
+        : responder_(std::move(responder))
     {
         start();
     }
@@ -109,9 +121,13 @@ private:
     void serve(int client)
     {
         while (!stopping_.load() && readRequest(client)) {
-            const std::size_t index = static_cast<std::size_t>(accepted_.fetch_add(1));
-            const std::string &response =
-                responses_[index < responses_.size() ? index : responses_.size() - 1];
+            std::string response;
+            if (responder_) {
+                response = responder_(lastRequest());
+            } else {
+                const std::size_t index = static_cast<std::size_t>(accepted_.fetch_add(1));
+                response = responses_[index < responses_.size() ? index : responses_.size() - 1];
+            }
             (void)::write(client, response.data(), response.size());
         }
         ::shutdown(client, SHUT_RDWR);
@@ -135,6 +151,7 @@ private:
     }
 
     std::vector<std::string> responses_;
+    Responder responder_;
     mutable std::mutex mutex_;
     std::string lastRequest_;
     int listener_ = -1;

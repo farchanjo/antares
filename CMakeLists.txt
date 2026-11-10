@@ -363,6 +363,7 @@ set(ANTARES_HTTP_CASES
     ws-splits-across-reads
     ws-close-closes
     websocket-upgrades
+    ws-refuses-bad-accept
     streaming-survives-redirect
     streaming-survives-retry
     logger-receives-failures
