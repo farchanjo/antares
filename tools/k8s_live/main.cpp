@@ -239,6 +239,10 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
 
 int main(int argc, char **argv)
 {
+    // A redirected stdout is block-buffered, which hides a hang behind an empty
+    // log. Line buffering keeps the trace honest while the client is tuned.
+    (void)std::setvbuf(stdout, nullptr, _IOLBF, 0);
+
     std::string context;
     std::vector<std::string> paths;
 
