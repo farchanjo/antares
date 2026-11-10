@@ -437,6 +437,54 @@ HttpKubeClient::scale(const domain::k8s::ApiPath &path, std::optional<std::int32
     return send(std::move(built), std::move(done));
 }
 
+std::expected<std::shared_ptr<ports::k8s::Ticket>, ApiError>
+HttpKubeClient::serverVersion(std::function<void(ports::k8s::VersionResult)> done)
+{
+    ++stats_.submitted;
+    const auto weak = weak_from_this();
+
+    auto completion = [weak, done = std::move(done)](
+                          std::expected<domain::http::Response, domain::http::HttpError> result) {
+        const auto self = weak.lock();
+        if (!result) {
+            if (self) {
+                ++self->stats_.failed;
+            }
+            done(ports::k8s::VersionResult{std::unexpected(transportFailure(result.error()))});
+            return;
+        }
+        if (result->status < 200 || result->status >= 300) {
+            if (self) {
+                ++self->stats_.failed;
+            }
+            done(ports::k8s::VersionResult{
+                std::unexpected(domain::k8s::mapFailure(result->status, toText(result->body)))});
+            return;
+        }
+        if (self) {
+            ++self->stats_.succeeded;
+        }
+
+        ports::k8s::ServerVersion version;
+        const auto document = domain::json::Value::parse(toText(result->body));
+        if (document) {
+            version.major = std::string{document->textAt("major")};
+            version.minor = std::string{document->textAt("minor")};
+            version.gitVersion = std::string{document->textAt("gitVersion")};
+            version.platform = std::string{document->textAt("platform")};
+        }
+        done(ports::k8s::VersionResult{std::move(version)});
+    };
+
+    auto ticket = http_->submit(request(domain::http::Method::get, "/version", {}),
+                                std::move(completion));
+    if (!ticket) {
+        --stats_.submitted;
+        return std::unexpected(transportFailure(ticket.error()));
+    }
+    return std::shared_ptr<ports::k8s::Ticket>{new TicketHandle(std::move(*ticket))};
+}
+
 ports::k8s::ClientStats HttpKubeClient::stats() const noexcept
 {
     return stats_;

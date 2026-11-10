@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 
+#include "adapters/k8s/cluster_binding.hpp"
 #include "domain/http/client_config.hpp"
 #include "domain/k8s/kubeconfig.hpp"
 #include "ports/http/client.hpp"
@@ -23,13 +24,7 @@ namespace antares::adapters::k8s {
 class HttpKubeClient final : public ports::k8s::KubeClient,
                              public std::enable_shared_from_this<HttpKubeClient> {
 public:
-    struct Binding {
-        domain::k8s::Cluster cluster;
-        domain::k8s::Context context;
-        domain::k8s::User user;
-        /// Scheme and authority of the API server, e.g. `https://host:6443`.
-        std::string base;
-    };
+    using Binding = ClusterBinding;
 
     /// Build a client from a resolved binding and an HTTP client already bound
     /// to the engine that carries the traffic.
@@ -79,6 +74,9 @@ public:
           std::function<void(ports::k8s::ObjectResult)> done) override;
 
     [[nodiscard]] ports::k8s::ClientStats stats() const noexcept override;
+
+    [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
+    serverVersion(std::function<void(ports::k8s::VersionResult)> done) override;
 
 private:
     HttpKubeClient(Binding binding, std::shared_ptr<ports::http::Client> http);

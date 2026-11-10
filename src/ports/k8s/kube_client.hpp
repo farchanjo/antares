@@ -52,6 +52,17 @@ struct WatchSummary {
     std::string lastResourceVersion;
 };
 
+/// What the API server reports about itself. Read once per connection, so the
+/// UI can name the cluster and the build can refuse a version it cannot speak.
+struct ServerVersion {
+    std::string major;
+    std::string minor;
+    std::string gitVersion;
+    std::string platform;
+};
+
+using VersionResult = std::expected<ServerVersion, domain::k8s::ApiError>;
+
 /// Receives frames as they arrive. `onEvent` runs on the engine thread.
 struct WatchHandler {
     std::function<void(const domain::k8s::WatchEvent &)> onEvent;
@@ -78,16 +89,19 @@ public:
     virtual void cancel() = 0;
 };
 
-/// The client for one cluster (FR-003). Every method is asynchronous: it
-/// submits and returns, and the completion runs on the engine thread.
-class KubeClient {
+/// Everything that only reads. A surface that takes a `Reader &` cannot mutate
+/// the cluster even by mistake: the write verbs are not on the type.
+///
+/// This is the mode the desktop app runs in first, so a bug in a view cannot
+/// delete a workload.
+class Reader {
 public:
-    KubeClient() = default;
-    KubeClient(const KubeClient &) = delete;
-    KubeClient &operator=(const KubeClient &) = delete;
-    KubeClient(KubeClient &&) = delete;
-    KubeClient &operator=(KubeClient &&) = delete;
-    virtual ~KubeClient() = default;
+    Reader() = default;
+    Reader(const Reader &) = delete;
+    Reader &operator=(const Reader &) = delete;
+    Reader(Reader &&) = delete;
+    Reader &operator=(Reader &&) = delete;
+    virtual ~Reader() = default;
 
     [[nodiscard]] virtual const domain::k8s::Cluster &cluster() const noexcept = 0;
     [[nodiscard]] virtual const domain::k8s::Context &context() const noexcept = 0;
@@ -100,6 +114,41 @@ public:
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
     list(const domain::k8s::ApiPath &path, const domain::k8s::ListOptions &options,
          std::function<void(ListResult)> done) = 0;
+
+    /// Open a watch (FR-004). The returned ticket closes the stream.
+    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
+    watch(const domain::k8s::ApiPath &path, const domain::k8s::ListOptions &options,
+          WatchHandler handler, std::function<void(StatusResult)> done) = 0;
+
+    /// Stream a container's log lines (FR-008). `onLine` runs per line that
+    /// arrives, without buffering the whole log.
+    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
+    logs(const domain::k8s::ApiPath &path, const domain::k8s::ListOptions &options,
+         std::function<void(std::string_view)> onLine,
+         std::function<void(StatusResult)> done) = 0;
+
+    /// Ask the server what it is. The cheapest request that proves the whole
+    /// chain worked: name resolution, TLS, trust anchors and the credential.
+    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
+    serverVersion(std::function<void(VersionResult)> done) = 0;
+
+    [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
+};
+
+/// The client for one cluster (FR-003). Every method is asynchronous: it
+/// submits and returns, and the completion runs on the engine thread.
+///
+/// Mutating verbs live here and nowhere else. A read-only surface takes a
+/// `Reader &` instead, so the compiler enforces what a running app should not
+/// do while the UI is being tuned.
+class KubeClient : public Reader {
+public:
+    KubeClient() = default;
+    KubeClient(const KubeClient &) = delete;
+    KubeClient &operator=(const KubeClient &) = delete;
+    KubeClient(KubeClient &&) = delete;
+    KubeClient &operator=(KubeClient &&) = delete;
+    ~KubeClient() override = default;
 
     /// Create the object described by `body`.
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
@@ -123,24 +172,10 @@ public:
     remove(const domain::k8s::ApiPath &path, const domain::k8s::DeleteOptions &options,
            std::function<void(StatusResult)> done) = 0;
 
-    /// Open a watch (FR-004). The returned ticket closes the stream.
-    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
-    watch(const domain::k8s::ApiPath &path, const domain::k8s::ListOptions &options,
-          WatchHandler handler, std::function<void(StatusResult)> done) = 0;
-
-    /// Stream a container's log lines (FR-008). `onLine` runs per line that
-    /// arrives, without buffering the whole log.
-    [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
-    logs(const domain::k8s::ApiPath &path, const domain::k8s::ListOptions &options,
-         std::function<void(std::string_view)> onLine,
-         std::function<void(StatusResult)> done) = 0;
-
     /// Read or write the `scale` subresource (FR-011).
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
     scale(const domain::k8s::ApiPath &path, std::optional<std::int32_t> replicas,
           std::function<void(ObjectResult)> done) = 0;
-
-    [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
 };
 
 /// Discovers the resources a cluster serves (FR-010). The answer changes on

@@ -118,6 +118,7 @@ set(ANTARES_K8S_SOURCES
     src/domain/k8s/watch_event.cpp
     src/domain/k8s/kubeconfig.cpp
     src/adapters/k8s/kubeconfig_loader.cpp
+    src/adapters/k8s/cluster_binding.cpp
     src/adapters/k8s/http_kube_client.cpp
 )
 
@@ -292,6 +293,18 @@ if(APPLE)
         COMMAND dsymutil $<TARGET_FILE:antares_k8s_conformance>
         COMMENT "dsymutil antares_k8s_conformance"
         VERBATIM)
+endif()
+
+# The live read-only smoke. Not a ctest entry: it needs a real cluster.
+add_executable(antares_k8s_live tools/k8s_live/main.cpp)
+target_link_libraries(antares_k8s_live PRIVATE antares_k8s)
+set_target_properties(antares_k8s_live PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    target_link_libraries(antares_k8s_live PRIVATE mimalloc-static)
+    if(APPLE)
+        target_link_options(antares_k8s_live PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    endif()
 endif()
 
 set(ANTARES_K8S_CASES
