@@ -8,7 +8,7 @@
 namespace antares::ports::io {
 
 /// Failure buckets, one per `IoError` case, so a counter never guesses.
-inline constexpr std::uint8_t FAILURE_FAMILIES = 6;
+inline constexpr std::uint8_t FAILURE_FAMILIES = 7;
 
 /// Engine counters (FR-001). Read on the engine thread; the snapshot is a copy.
 struct EngineStats {

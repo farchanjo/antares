@@ -524,6 +524,19 @@ void caseCancelCompletesOnce()
     check(seen == HttpError::cancelled, "reported as cancelled");
 }
 
+/// A name that cannot resolve must fail the request, not pend it. `.invalid` is
+/// reserved to never resolve (RFC 6761), so the answer is deterministic.
+void caseUnresolvableNameFails()
+{
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    auto result = stack.blocking().send(get("http://antares.invalid/"));
+    check(!result.has_value(), "an unresolvable name fails");
+}
+
 void caseResolvesNameWithoutBlocking()
 {
     // "localhost" is a name, so it takes the resolver path, not the literal one.
@@ -982,6 +995,7 @@ std::span<const Case> cases()
         {"rejects-untrusted-ca", caseRejectsUntrustedCa},
         {"cancel-completes-once", caseCancelCompletesOnce},
         {"resolves-name-off-loop", caseResolvesNameWithoutBlocking},
+        {"unresolvable-name-fails", caseUnresolvableNameFails},
         {"sse-parses-events", caseSseParsesEvents},
         {"sse-ceiling-holds", caseSseCeilingHolds},
         {"ws-round-trips-frames", caseWsRoundTripsFrames},

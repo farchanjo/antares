@@ -15,6 +15,10 @@ enum class IoError : std::uint8_t {
     closed,
     cancelled,
     tooManyDescriptors,
+    /// A name resolution outlived its budget. Distinct from `system` because
+    /// the caller can retry a resolver and a retry reads as pointless on a
+    /// plain failure.
+    timeout,
     system,
 };
 

@@ -161,11 +161,23 @@ private:
     /// vector, and a reallocation under an open reference is a use-after-free.
     std::vector<Timer> timers_;
     mutable std::mutex timerMutex_;
+    /// How long a name may take before the request is failed. `getaddrinfo`
+    /// blocks and has no timeout of its own, so a broken resolver would
+    /// otherwise pend the request for the life of the process.
+    static constexpr domain::Duration resolveTimeout = std::chrono::seconds{5};
+
     struct ResolveJob {
+        std::uint64_t serial = 0;
         std::string host;
         std::uint16_t port = 0;
-        ResolveDone done;
+        /// Shared: the resolver thread and its timer both may settle the job,
+        /// and whichever runs second must find the callback still alive.
+        std::shared_ptr<ResolveDone> done;
     };
+
+    /// Claim `serial` for settling. True exactly once per job, so a late
+    /// resolver answer cannot complete a job the timer already failed.
+    [[nodiscard]] bool claimResolve(std::uint64_t serial);
 
     void startResolver();
     void resolverLoop();
@@ -175,6 +187,8 @@ private:
     std::deque<ResolveJob> resolveQueue_;
     std::thread resolver_;
     bool resolveStop_ = false;
+    std::atomic<std::uint64_t> resolveSerial_{0};
+    std::atomic<std::uint64_t> resolveSettled_{0};
 
     std::deque<PostedTask> tasks_;
     std::mutex mutex_;

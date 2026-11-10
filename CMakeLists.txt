@@ -403,6 +403,7 @@ set(ANTARES_HTTP_CASES
     rejects-untrusted-ca
     cancel-completes-once
     resolves-name-off-loop
+    unresolvable-name-fails
     sse-parses-events
     sse-ceiling-holds
     ws-round-trips-frames
