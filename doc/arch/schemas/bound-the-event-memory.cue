@@ -34,14 +34,14 @@ import (
     kind:      #Text
 }
 
-// #Labels keeps labels in key order until either ceiling is reached (TM-17).
-// Keys are qualified label keys and values are label values, both inline.
-#Labels: {
-    items: [...{key:    string & strings.MaxRunes(317) & =~"^([a-z0-9]([-a-z0-9.]*[a-z0-9])?/)?[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$",
-                value: string & strings.MaxRunes(63) & =~"^([A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?)?$"}] & list.MaxItems(16)
-    truncated: bool | *false
-    _bytes:    list.Sum([for l in items {len(l.key) + len(l.value)}]) & <=256
+// #Label is one qualified key and its value.
+#Label: {
+    key:   string & strings.MaxRunes(317) & =~"^([a-z0-9]([-a-z0-9.]*[a-z0-9])?/)?[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$"
+    value: string & strings.MaxRunes(63) & =~"^([A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?)?$"
 }
+
+// #Labels keeps labels in key order until either ceiling is reached (TM-17).
+#Labels: [...#Label] & list.MaxItems(16) & list.Sum([for l in this {len(l.key) + len(l.value)}]) <= 256
 
 // #StatusSummary is the bounded part of status a view renders.
 #StatusSummary: {
@@ -58,5 +58,6 @@ import (
     generation:        uint64
     creationTimestamp: string & time.Time()
     labels:            #Labels
+    labelsTruncated:   bool | *false
     status:            #StatusSummary | *{}
 }

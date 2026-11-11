@@ -58,3 +58,12 @@ package schemas
     inserted: [...#RowRange]
     changed:  [...{row: uint32, fields: [...("resourceVersion" | "generation" | "labels" | "status")] & list.MinItems(1)}]
 }
+
+// #BoundTheEventMemory is the root: a budget, the scope state, and its rows.
+// It lives here so `bound-the-event-memory.cue` stays under the definition
+// ceiling; the reference to #Entry is the only cross-file edge.
+#BoundTheEventMemory: {
+    budget:  #StoreBudget
+    scope:   #ScopeState
+    entries: [#Entry, ...#Entry]
+}
