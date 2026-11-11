@@ -161,6 +161,21 @@ The corpus is governed; use the binary for every loop step.
 ## Notes
 
 <!-- notes:start -->
+## Features beyond the generated index
+
+The generator truncates the corpus list at `adr/0020` and `sdd/003`, so the
+following are in the tree and read by `validate` but absent from the index above.
+Read them directly:
+
+- `doc/arch/sdd/004-harden-the-engine-loop/` — engine defects, MPSC queue, drain deadline
+- `doc/arch/sdd/005-bound-the-event-memory/` — projection store, admission, ChangeSet
+- `doc/arch/sdd/006-relax-api-path-name/` — a name is a path segment
+- `doc/arch/sdd/007-prove-the-hosted-loop/` — the Darwin spike
+- `doc/arch/sdd/008-scan-the-projection/` — selective scan
+- `doc/arch/sdd/009-render-the-resource-list/` — model over the store
+- `doc/arch/sdd/010-open-the-window/` — entry point order
+- `doc/arch/adr/0021` … `0027` — their decisions
+
 ## Rules
 
 - **`speckit` runs locally only.** The host has no binary; run `status`, `next`,

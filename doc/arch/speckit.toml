@@ -40,7 +40,7 @@ adapters = ["domain", "application", "ports"]
 platform = ["domain", "application", "ports", "adapters"]
 
 [context]
-maxLines = 600
+maxLines = 900
 
 # D-13 — the domain stays free of I/O and of the network. The binary ships no
 # checker for "offline by default" on C++, so the project declares its own.
