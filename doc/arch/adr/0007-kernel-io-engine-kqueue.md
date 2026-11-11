@@ -1,7 +1,7 @@
 ---
 status: proposed
 date: 2026-11-09
-deciders: [your-org]
+deciders: [Fabricio Archanjo]
 consulted: []
 informed: []
 ---
@@ -68,9 +68,8 @@ filter fires, run the callback once, unregister.
 
 ## Superseded by ADR-0020
 
-ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
-main thread and stops owning a thread. Everything else in this record stands.
-
+ADR-0020 takes the loop away from the engine, so kqueue no longer owns a
+thread. Its primitives and its event shapes stand.
 
 ### Confirmation
 

@@ -84,5 +84,5 @@ resolution).
 
 ## Superseded by ADR-0020
 
-ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
-main thread and stops owning a thread. Everything else in this record stands.
+ADR-0020 moves the loop under the Qt main thread. The wire decisions here, from
+ALPN to the stream ceiling, stand.

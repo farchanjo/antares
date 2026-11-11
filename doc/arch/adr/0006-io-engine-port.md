@@ -80,8 +80,7 @@ socket. Qt keeps the window system, timers and the UI thread.
 ## Superseded by ADR-0020
 
 ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
-main thread and stops owning a thread. Everything else in this record stands.
-
+main thread. The port itself, its operations and its error cases stand.
 
 ### Confirmation
 
