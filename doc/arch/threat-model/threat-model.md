@@ -252,14 +252,16 @@ trusted for nothing until `tls` has verified it.
 
 **Category:** denial-of-service
 
-**Description:** A peer with many objects exhausts memory by count, not by one oversized body.
+**Description:** A peer with many objects, or with oversized labels and names, exhausts memory by count, not by one oversized body.
 
 **Boundary crossing:** list and watch response bodies.
 
 **Mitigations:**
-- a stored object is a projection keyed by uid, not a full document (FR-002).
-- a scope has an entry ceiling with least-recently-updated eviction (FR-004).
-- `Limits::maxBodyBytes` bounds one response; the store ceiling bounds the sum.
+- a stored object is a projection keyed by uid, not a full document; annotations and `managedFields` are never decoded (FR-002).
+- an admitted entry costs at most 1 024 bytes: labels truncate at 16 entries or 256 bytes, and an oversized name refuses the object (FR-003).
+- a scope admits at most 50 000 entries and the store at most 100 000 across at most 32 scopes; past a ceiling the object is refused and counted, so the store stays under 100 MiB (FR-004).
+- a relist is paginated and reconciles in place, so a 410 never holds two copies of a scope (FR-007).
+- `Limits::maxBodyBytes` bounds one response and `limit` bounds one relist page; the store ceilings bound what is retained.
 
 ## Residual Risks
 
