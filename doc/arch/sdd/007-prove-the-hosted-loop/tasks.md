@@ -26,5 +26,8 @@ T001 blocks everything. T002 is the load-bearing one: a failure there stops the
 run and switches the approach to `CFFileDescriptor` or `dispatch_source`. T011
 needs every measurement; a partial set does not move the ADR.
 
+The engine is one loop (FR-018 of 002); FR-008 is the case that falsifies it, so
+it runs last and a failure there stops the run.
+
 The spike needs the macOS host `farchanjo@192.168.202.241` and a Qt6 there; the
 workstation cannot run it.

@@ -77,6 +77,10 @@ change emits a move.
 
 ### Threading
 
+The engine is one loop (FR-018 of 002), so `onEvent` runs on that one thread and
+the store is confined to the model's thread by construction, not by discipline.
+
+
 While ADR-0020 is `proposed`, `WatchHandler::onEvent` runs on the engine thread
 (`kube_client.hpp:68-70`) and the model lives on the GUI thread. The store is
 therefore either locked or the delta is posted; the plan takes **post to the

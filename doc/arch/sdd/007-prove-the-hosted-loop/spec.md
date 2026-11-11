@@ -32,33 +32,46 @@ label and a counter, nothing else.
 built by hand on the host; it is not wired into `ctest` until it is repeated as a
 feature.
 
-## What Must Be Proved
+## Functional Requirements
 
-Each item is a way the design can be wrong, and each has a measurement.
+Each requirement is a way the design can be wrong, and each names its
+measurement. None is a capability the product keeps; they are the spike's exit
+criteria.
 
-- **FR-001 A `QSocketNotifier` fires on a kqueue fd.** A kqueue with one
-  registered read on a socket must wake the Qt loop when the peer writes, with no
-  timer involved. Measured: wakes observed, and the latency from write to wake.
-- **FR-002 The turn does not block the paint.** With the transport saturating, the
-  window must keep repainting. Measured: painted frames per second against an
-  idle baseline, over 30 s.
-- **FR-003 A modal does not deadlock.** A `QMessageBox` opened from a completion
-  must show and dismiss while the transport keeps running.
-- **FR-004 Live resize and menu tracking still deliver socket events.** Both are
-  nested Cocoa loops. Measured: events observed, none lost, during a 10 s drag
-  and a held menu.
-- **FR-005 `nextDeadline` drives a `QTimer`.** A timer submitted through the
-  engine must fire on the main thread within the timer's own tolerance.
-- **FR-006 The turn honours a deadline.** A completion that sleeps 50 ms must not
-  run past the turn budget in the next turn. Measured: p99 turn duration and
-  overrun count.
-- **FR-008 One loop carries thirty-two watches.** Thirty-two connections is the
-  open-scope ceiling. All of them deliver frames while the window repaints, and
-  the loop keeps up. This is the case that would falsify "one loop is enough",
-  so it is measured with the same p99 as FR-006 and a per-second frame count.
-- **FR-007 App Nap does not stall the loop.** With the window occluded for 60 s,
-  a timer must still fire within an order of magnitude of its period, and
-  `NSProcessInfo beginActivity` must be shown to change that.
+### FR-001 A `QSocketNotifier` fires on a kqueue fd
+
+A kqueue with one registered read on a socket must wake the Qt loop when the peer
+writes, with no timer involved. Measured: wakes observed, and the latency from write to
+wake.
+### FR-002 The turn does not block the paint
+
+With the transport saturating, the window must keep repainting. Measured: painted frames
+per second against an idle baseline, over 30 s.
+### FR-003 A modal does not deadlock
+
+A `QMessageBox` opened from a completion must show and dismiss while the transport keeps
+running.
+### FR-004 Live resize and menu tracking still deliver socket events
+
+Both are nested Cocoa loops. Measured: events observed, none lost, during a 10 s drag
+and a held menu.
+### FR-005 `nextDeadline` drives a `QTimer`
+
+A timer submitted through the engine must fire on the main thread within the timer's own
+tolerance.
+### FR-006 The turn honours a deadline
+
+A completion that sleeps 50 ms must not run past the turn budget in the next turn.
+Measured: p99 turn duration and overrun count.
+### FR-008 One loop carries thirty-two watches
+
+Thirty-two connections is the open-scope ceiling. All of them deliver frames while the
+window repaints, and the loop keeps up. This is the case that would falsify "one loop is
+enough", so it is measured with the same p99 as FR-006 and a per-second frame count.
+### FR-007 App Nap does not stall the loop
+
+With the window occluded for 60 s, a timer must still fire within an order of magnitude
+of its period, and `NSProcessInfo beginActivity` must be shown to change that.
 
 ## Security Requirements
 
