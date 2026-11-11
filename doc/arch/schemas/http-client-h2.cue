@@ -9,6 +9,9 @@ package schemas
 #HttpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS"
 
 // #HttpError is closed: every failure the client can report.
+// #ShutdownDrain is how long the drain pumps the loop at quit.
+#ShutdownDrain: string & =~"^[0-9]+s$" | *"5s"
+
 #HttpError: "connect" | "tls" | "alpn" | "timeout" | "cancelled" | "tooManyRedirects" | "headerCeiling" | "bodyCeiling" | "streamCeiling" | "protocol" | "closed"
 
 // #Url is an absolute http(s) target.

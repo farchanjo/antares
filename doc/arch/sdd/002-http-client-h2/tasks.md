@@ -69,8 +69,9 @@ Ordered so each task compiles on its own and proves one requirement.
       is refused rather than started (FR-027).
 - [ ] T904 Make the destructor assert nothing is pending instead of skipping the
       wait when it runs on the loop (FR-026).
-- [ ] T905 Add the case that `drain()` pumps to zero, and the case that a stuck
-      attempt returns at the deadline with a `warn` (FR-026).
+- [ ] T905 Add `Limits::shutdownDrain` defaulting to 5 s, the case that `drain()`
+      pumps to zero, and the case that a stuck attempt returns at the deadline
+      with a `warn` (FR-026).
 - [ ] T906 Remove `BlockingClient`, `HttpError::reentrant` and its `toString`
       case; move the twenty `blocking()` call sites to `Await` over `submit`
       (FR-008).

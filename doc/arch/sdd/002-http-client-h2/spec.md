@@ -92,8 +92,13 @@ and **runs the loop** until nothing is pending — it cannot merely wait, becaus
 once `app.exec()` has returned nothing else is processing the loop and a passive
 wait never ends.
 
-`drain()` takes a deadline. On expiry it logs `warn` with the count still
-pending, closes what it can and returns; a hung peer may not hang the quit.
+`drain()` takes a deadline, **5 seconds** by default — the same bound the test
+`Await` uses, so a hang shows up in a test before it shows up at quit. On expiry
+it logs `warn` with the count still pending, closes what it can and returns; a
+hung peer may not hang the quit.
+
+The bound is a `Limits` field (`shutdownDrain`), not a literal, so a slow profile
+can raise it in one place.
 
 The destructor asserts nothing is pending instead of guessing.
 
