@@ -104,6 +104,9 @@ thread.
 - Bad: until ADR-0020 is accepted, every batch crosses threads once.
 - Bad: the entry shape moves additively (D-16), so the field set is expensive to
   change once shipped.
+- Bad: a truncated label set makes a selector over a cut label report a false "no
+  match"; the view shows `labelsTruncated` rather than implying the set is
+  whole.
 
 ## Pros and Cons of the Options
 

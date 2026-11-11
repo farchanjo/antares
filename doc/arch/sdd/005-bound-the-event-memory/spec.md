@@ -210,7 +210,11 @@ than labelled, because a per-object label would be unbounded (D-15).
   annotation can carry a token — and a key-only set renders nothing.
 - **Why not `as=Table`?** Cheaper still, but it needs one negotiated shape per
   kind and the CRD path is untested. The ADR records it as the next lever.
-- **Why store labels whole?** Truncation breaks selectors: `Service→Pods` and
-  `pod-template-hash` report a false "no match" when the key or value is cut.
+- **Why truncate labels, and what breaks?** A single label can legally reach 380
+  bytes, so a byte ceiling is the only way FR-003 holds. Labels are kept in key
+  order and cut at 16 entries or 256 bytes; `labelsTruncated` says so. The price
+  is accepted and recorded: a selector over a label past the cut reports a false
+  "no match" — `Service→Pods` and `pod-template-hash` are the ones that bite —
+  and the view shows the truncation instead of implying the set is whole.
 - **Why is the touch tick not in the contract?** It is store bookkeeping, and a
   view never reads it.
