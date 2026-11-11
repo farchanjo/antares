@@ -48,11 +48,16 @@ must not reach a freed `PendingOp`.
 host inside the watchdog window each settle their own connection, and neither
 can complete the other's.
 
-### FR-003 The task queue has one lock
+### FR-003 The task queue is lock-free and multi-producer
 
-`fireDueTimers` appends to `tasks_` under the same mutex `post` takes, and
-`nextWaitMilliseconds` reads it under that mutex too. A resolver thread posting
-while the loop fires a timer cannot corrupt the deque.
+`post` is safe from any thread and admits several producers: the resolver, a
+connection, and the loop itself. The queue is an intrusive singly linked list
+whose head is a single atomic; a push is a compare-exchange loop and a drain is
+one exchange, so neither `post` nor `nextWaitMilliseconds` takes a mutex.
+
+`fireDueTimers` pushes through the same `post` path, so the two mutexes that
+guard one deque today collapse to none. `nextWaitMilliseconds` reads the head
+with acquire and takes no lock.
 
 ### FR-004 The op store is read under its lock
 
@@ -74,6 +79,16 @@ contract in `engine_base.hpp` says "until `run()`" and must be true.
 
 `selectedBackendName` reports `io_uring` when the ring is the engine in use, and
 `epoll` only when it is. The name feeds the log and the conformance report.
+
+### FR-009 A drain stops at the turn deadline
+
+`drainTasks` takes the deadline of the turn, runs tasks until it is reached, and
+returns the rest to the head in their original order. A burst of 5 000 tasks
+therefore does not run inside one turn.
+
+The remaining tasks keep FIFO order: the drain reverses the list it exchanged out
+and prepends what it did not run with one compare-exchange, so no task overtakes
+another and none is dropped.
 
 ### FR-008 Counters move once per event
 

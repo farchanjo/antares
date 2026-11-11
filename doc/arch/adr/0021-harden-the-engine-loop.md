@@ -26,6 +26,10 @@ than `post`, `cancelPending` walks `ops_` unlocked, `stop()` drops pending ops
 without completing them, `stopped_` never returns to false, and the backend name
 reports "epoll" when the ring is what runs.
 
+The queue itself is the weakest part: two mutexes guard one deque, one read takes
+none, and a drain runs the whole thing with no bound, so a burst of 5 000 tasks
+is 60 ms inside one turn.
+
 ## Decision Drivers
 
 - The hosted loop multiplies every one of these: same thread, more completions,
@@ -39,6 +43,8 @@ reports "epoll" when the ring is what runs.
 
 - **Fix them inside ADR-0020's feature.** One initiative, but it mixes a mode
   change with hygiene and makes the ADR reviews unreviewable together.
+- **Keep the mutex and only make it consistent.** Cheap, and leaves the drain
+  unbounded, which is the part a burst notices.
 - **Fix them first, as their own feature.** The hosted loop then lands on a
   base the suite can hold.
 - **Leave them and rely on the hosted loop to expose them.** Cheaper now, but
@@ -50,6 +56,12 @@ Chosen option: **fix them first, as feature 004.**
 
 Each defect becomes one `FR-NNN` with one scenario. The mode of operation does
 not change; `run()` stays the driver and the hosted loop comes after.
+
+The queue becomes multi-producer and lock-free rather than consistently locked:
+one atomic head, push by compare-exchange, drain by one exchange. That deletes
+the two-mutex split and the unlocked read as a class instead of patching each.
+The drain also takes the turn deadline and prepends what it did not run, so no
+task is lost and none overtakes another.
 
 ### Consequences
 

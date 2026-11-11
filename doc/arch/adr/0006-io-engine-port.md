@@ -52,7 +52,8 @@ value and returns it in the callback. Readiness backends cannot know when a
 buffer is free, so ownership costs a copy and removes the lifetime bug class.
 
 The engine owns exactly one thread. Callbacks run on it. Results cross into the
-UI through a queued signal, never by direct call.
+UI through a queued signal, never by direct call. Work crosses the other way
+through `post`, which is multi-producer and lock-free (ADR-0021, FR-003).
 
 **Scope now: macOS.** The only production backend is `kqueue`. `poll` ships as
 the portable reference and the conformance oracle; every backend must pass the

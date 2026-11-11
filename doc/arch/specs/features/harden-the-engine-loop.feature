@@ -17,10 +17,10 @@ Feature: Harden The Engine Loop
     When the implementation satisfies: two lookups of the same host resolve inside the watchdog window
     Then the observable contract holds: each connection settles exactly once
 
-  Scenario: FR-003 the task queue has one lock
-    Given the feature specification mandates "FR-003 the task queue has one lock"
-    When the implementation satisfies: the resolver posts while the loop fires a due timer
-    Then the observable contract holds: no task is lost and the deque is not corrupted
+  Scenario: FR-003 the task queue is lock-free and multi-producer
+    Given the feature specification mandates "FR-003 the task queue is lock-free and multi-producer"
+    When the implementation satisfies: four producers post while the loop drains and fires a due timer
+    Then the observable contract holds: every task runs once and no mutex is taken on the post or drain path
 
   Scenario: FR-004 the op store is read under its lock
     Given the feature specification mandates "FR-004 the op store is read under its lock"
@@ -46,3 +46,8 @@ Feature: Harden The Engine Loop
     Given the feature specification mandates "FR-008 counters move once per event"
     When the implementation satisfies: an op completes, whether by success, failure or cancellation
     Then the observable contract holds: each counter moved exactly once for that op
+
+  Scenario: FR-009 a drain stops at the turn deadline
+    Given the feature specification mandates "FR-009 a drain stops at the turn deadline"
+    When the implementation satisfies: 5000 tasks are queued and the deadline passes mid-drain
+    Then the observable contract holds: the drain returns and the rest keep their order
