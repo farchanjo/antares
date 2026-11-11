@@ -66,6 +66,12 @@ filter fires, run the callback once, unregister.
   limit; `poll` never reaches it, so the suite needs an injected fault.
 - Bad: five cases are a closed set that a real failure may not fit.
 
+## Superseded by ADR-0020
+
+ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
+main thread and stops owning a thread. Everything else in this record stands.
+
+
 ### Confirmation
 
 `src/ports/io/` declares exactly those seven operations and five error cases;

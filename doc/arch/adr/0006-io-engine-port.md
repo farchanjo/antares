@@ -77,6 +77,12 @@ socket. Qt keeps the window system, timers and the UI thread.
   — so the handoff must be disciplined.
 - Bad: `QNetworkAccessManager` is unavailable for ad-hoc requests.
 
+## Superseded by ADR-0020
+
+ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
+main thread and stops owning a thread. Everything else in this record stands.
+
+
 ### Confirmation
 
 `src/ports/io/` declares the port, `src/adapters/platform/io/` holds `kqueue`

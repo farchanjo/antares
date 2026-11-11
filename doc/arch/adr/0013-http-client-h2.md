@@ -81,3 +81,8 @@ and TM-04 (the record layer and the size ceilings), TM-06 and TM-07 (the call
 and the resume stay provable), TM-08, TM-09 and TM-10 (the credential, the pooled identity and the error
 text), TM-11, TM-12 and TM-13 (idle sockets, stream concurrency and name
 resolution).
+
+## Superseded by ADR-0020
+
+ADR-0020 removes the one-thread-per-engine rule: the engine is hosted in the Qt
+main thread and stops owning a thread. Everything else in this record stands.
