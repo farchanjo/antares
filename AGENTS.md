@@ -14,6 +14,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 
 - Run `speckit status`, then `speckit next`; execute exactly the phase it names.
 - `speckit validate` must be green before every commit.
+- Keep `.agents/skills/speckit/SKILL.md` current as the project evolves; update it in the change that moves the behavior it documents.
 - Angular commit headers `<type>(<scope>): <subject>`; no AI attribution (ADR-0026).
 
 ## Constitution
@@ -337,7 +338,6 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/commands/decision.md`
 - `doc/arch/commands/decision/eval.md`
 - `doc/arch/commands/decision/extract.md`
-- `doc/arch/commands/decision/probe-rule.md`
 - `doc/arch/commands/decision/probe.md`
 - `doc/arch/commands/decision/status.md`
 - `doc/arch/commands/dedupe.md`
