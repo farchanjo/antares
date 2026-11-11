@@ -41,3 +41,10 @@ platform = ["domain", "application", "ports", "adapters"]
 
 [context]
 maxLines = 600
+
+# D-13 — the domain stays free of I/O and of the network. The binary ships no
+# checker for "offline by default" on C++, so the project declares its own.
+[[validate.external]]
+id = "domain-purity"
+command = "tools/check-domain-purity.sh"
+severity = "error"
