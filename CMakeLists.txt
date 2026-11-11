@@ -46,8 +46,14 @@ endif()
 add_library(antares_core INTERFACE)
 target_include_directories(antares_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
+# The toolkit is not the core. Linking Qt into `antares_core` would let a domain
+# header include `<QObject>` and still build, so D-03 would hold on paper only.
+# Everything below `adapters/ui` links the core; only that adapter links this.
+add_library(antares_ui INTERFACE)
+target_link_libraries(antares_ui INTERFACE antares_core)
+
 if(Qt6_FOUND)
-    target_link_libraries(antares_core INTERFACE Qt6::Core Qt6::Widgets)
+    target_link_libraries(antares_ui INTERFACE Qt6::Core Qt6::Widgets)
 endif()
 
 # Stable-header precompiled header, propagated to every consumer through the
