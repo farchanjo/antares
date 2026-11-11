@@ -96,6 +96,11 @@ awaits on its own condition variable, so the client needs no sync facade.
 Hosting one loop is what makes the single-thread contract of ADR-0006 literal:
 there is no second loop to share `sessions_`, `idle_` or `stats_` with.
 
+It also moves the shutdown. Once the loop is the event loop, nothing processes it
+after `app.exec()` returns, so `drain()` runs the loop instead of waiting on it
+(FR-026 of 002). `SIGTERM` and a window close both reach it through `quit()`, and
+`aboutToQuit` only marks the client closed, because it runs inside the loop.
+
 The hosted mode is proved without Qt: a `poll()`-based host in `tests/io/`
 drives `runOnce()` over `waitHandle()` and `nextDeadline()` on all four
 backends, so the Linux suite gates it. The `QSocketNotifier` glue is Darwin

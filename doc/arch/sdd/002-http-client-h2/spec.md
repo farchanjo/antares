@@ -84,16 +84,35 @@ that is a property of the caller's own helper, not of the client.
 The `BlockingClient` facade and `HttpError::reentrant` are removed. Tests use the
 `Await` helper, which already waits on its own mutex.
 
-### FR-026 Shutdown drains before the client dies
+### FR-026 Shutdown drains, and the drain pumps the loop
 
 A completion captures the client, so the client may not die with an attempt in
-flight. `drain()` waits until nothing is pending and hands every idle connection
-back to the loop; it must be called off the loop, because on the loop it would
-wait for work only the loop can finish.
+flight. `drain()` refuses new work, hands every idle connection back to the loop,
+and **runs the loop** until nothing is pending — it cannot merely wait, because
+once `app.exec()` has returned nothing else is processing the loop and a passive
+wait never ends.
 
-The destructor asserts nothing is pending instead of guessing. Once ADR-0020
-hosts the loop on the main thread the destructor runs on the loop, so the skip
-the old code did there stops being an edge case and becomes the normal path.
+`drain()` takes a deadline. On expiry it logs `warn` with the count still
+pending, closes what it can and returns; a hung peer may not hang the quit.
+
+The destructor asserts nothing is pending instead of guessing.
+
+### FR-027 Two shutdown sources, one path
+
+The process stops on a window close and on `SIGTERM`, and both reach the same
+`drain()`.
+
+A signal handler may only run async-signal-safe code, so it does one thing:
+`write()` a byte to a self-pipe. A `QSocketNotifier` on that pipe, on the main
+thread, calls `QCoreApplication::quit()`.
+
+`QCoreApplication::aboutToQuit` runs **inside** the event loop and therefore
+cannot wait either; it only marks the client closed, so a request submitted by a
+closing widget is refused rather than started. `drain()` runs after `exec()`
+returns.
+
+The order is fixed: signal or close → `quit()` → `exec()` returns → `drain()` →
+destruction.
 
 ### FR-009 TLS verification
 

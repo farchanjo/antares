@@ -60,12 +60,18 @@ Ordered so each task compiles on its own and proves one requirement.
 
 ## Shutdown and facade removal
 
-- [ ] T901 Add `drain()`: wait until nothing is pending, then hand every idle
-      connection back to the loop; assert it is called off the loop (FR-026).
-- [ ] T902 Make the destructor assert nothing is pending instead of skipping the
+- [ ] T901 Add `drain()`: refuse new work, hand every idle connection back, and
+      run the loop until nothing is pending or the deadline expires (FR-026).
+- [ ] T902 Add the self-pipe, its `QSocketNotifier` and the `SIGTERM` handler
+      that only writes a byte; both it and the window close call `quit()`
+      (FR-027).
+- [ ] T903 Mark the client closed in `aboutToQuit`, so a closing widget's request
+      is refused rather than started (FR-027).
+- [ ] T904 Make the destructor assert nothing is pending instead of skipping the
       wait when it runs on the loop (FR-026).
-- [ ] T903 Remove `BlockingClient`, `HttpError::reentrant` and its `toString`
+- [ ] T905 Add the case that `drain()` pumps to zero, and the case that a stuck
+      attempt returns at the deadline with a `warn` (FR-026).
+- [ ] T906 Remove `BlockingClient`, `HttpError::reentrant` and its `toString`
       case; move the twenty `blocking()` call sites to `Await` over `submit`
       (FR-008).
-- [ ] T904 Add the case that `drain()` with an attempt in flight waits and closes
-      the idle bucket (FR-026).
+

@@ -161,7 +161,12 @@ Feature: Http Client H2
     Then the observable contract holds: the mask bit is set
 
   @planned
-  Scenario: FR-026 shutdown drains before the client dies
-    Given the feature specification mandates "FR-026 shutdown drains before the client dies"
-    When the implementation satisfies: drain is called with an attempt in flight
-    Then the observable contract holds: it waits for nothing pending and hands every idle connection back
+  Scenario: FR-026 shutdown drains, and the drain pumps the loop
+    Given the feature specification mandates "FR-026 shutdown drains, and the drain pumps the loop"
+    When the implementation satisfies: drain is called with an attempt in flight and the loop no longer running
+    Then the observable contract holds: it runs the loop until nothing is pending and returns by the deadline
+
+  Scenario: FR-027 two shutdown sources, one path
+    Given the feature specification mandates "FR-027 two shutdown sources, one path"
+    When the implementation satisfies: SIGTERM arrives and a window close arrives
+    Then the observable contract holds: both reach the same drain in the fixed order

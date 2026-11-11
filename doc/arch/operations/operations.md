@@ -12,6 +12,9 @@ a debugger.
   as the escape hatch) and is read once at startup.
 - `ANTARES_ALLOCATOR=system` swaps mimalloc for the system allocator when a
   profile disagrees with the build.
+- `SIGTERM` and a window close both call `quit()`. The drain runs after
+  `app.exec()` returns, pumping the loop with a deadline; a stuck peer logs
+  `warn` and does not hang the quit.
 - Nothing binds a port. The client dials out; the app never listens.
 
 ## Health
