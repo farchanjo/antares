@@ -20,7 +20,7 @@ tooling-obligation: use speckit for every loop step; the file-level path is firs
 ## Constitution
 
 precedence: root > sub-constitution > artifact
-digest: 2a1d0891e4ffff8a3483d5bcfe8c7922698dded6cb64dfc41296c25a4e2a73ef
+digest: b2ab46dc9a152255e80c8973b9ff3d208775a26bab647348480218a5c1726207
 
 - D-01 (block): A feature is specified, planned and tasked before any production code is written, and the corpus is the source of truth over code and assumption. Run the… [llm-context.spec-first.missing, constitution.doctrines.missing, verify]
 - D-02 (block): The project validates itself with its own commands and keeps the dogfood gate green; first rule that is right for consumers is right for the project. Run… [arch_boundaries, validate, constitution.principle.duplicate]

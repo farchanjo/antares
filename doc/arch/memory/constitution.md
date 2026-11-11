@@ -1,5 +1,5 @@
 ---
-revision: 10
+revision: 11
 last_reviewed: 2026-11-09
 inheritance: strict
 catalog: 2
@@ -24,6 +24,8 @@ amendments:
     date: "2026-11-09"
   - adr: "0014"
     date: "2026-11-09"
+  - adr: "0026"
+    date: "2026-11-11"
 ---
 # antares Constitution
 
@@ -151,7 +153,7 @@ MANDATE: The project compiles as C++26 and prefers the language to C: `std::expe
 Enforced by: config:project, verify
 ## P-12 — Ownership over pointers
 Severity: block
-MANDATE: A raw pointer is non-owning or `nullptr`; ownership is `unique_ptr`, and `shared_ptr` only where a lifetime is truly shared. A non-owning reference outlives its use or is not taken.
+MANDATE: A raw pointer is non-owning or `nullptr`; ownership is `unique_ptr`, and `shared_ptr` only where a lifetime is truly shared. A non-owning reference outlives its use or is not taken. Under `QObject` the tree owns: a child is `new`-ed with its parent and the pointer stays observing; a weak reference to a `QObject` is `QPointer`, and destruction from inside a slot is `deleteLater()`. A view never owns its model, and a model never owns the stored data.
 Enforced by: config:architecture, verify
 ## P-13 — Leak gate always on
 Severity: block
