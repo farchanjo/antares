@@ -96,7 +96,7 @@ thread.
   fixture, about 39×.
 - Good: two views share one entry, so the second view is free.
 - Good: the relist path, which is the common one, stops resetting the model.
-- Bad: a scope past its ceiling goes partial; the store publishes `truncated`
+- Bad: a scope past its ceiling goes truncated; the store publishes the flag
   and the refused count, and the view has to show them.
 - Bad: the on-demand `get` cannot address a name with `:` yet, because
   `ApiPath::named` requires a DNS-1123 subdomain (`api_path.cpp:131-135`). That

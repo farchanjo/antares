@@ -17,25 +17,29 @@ service; nothing here opens a socket.
 **FR-001, FR-006 — identity.** `#ObjectKey` is `(scope, uid)` with `scope` a
 `(cluster, gvr, namespace)` triple hoisted out of the entry. The store owns
 `std::unordered_map<#ObjectKey, #Entry>` per scope and a monotonic touch tick
-that is **not** in `#Entry`, so D-16 does not freeze eviction state. `upsert`
+that is **not** in `#Entry`, so D-16 does not freeze store bookkeeping. `upsert`
 replaces in place; `erase` removes; a bookmark touches nothing. An unknown uid on
-`MODIFIED`/`DELETED` is counted, not an error — it is what an eviction looks
-like from the stream.
+`MODIFIED`/`DELETED` is counted, not an error — it is what a refusal looks like
+from the stream.
 
 **FR-002, FR-003 — the projection.** `decodeEntry` reads only its members and
 returns `#Entry`; the document is consumed and dropped inside the function. The
 uid is stored once, `gvr` and `namespace` live in the scope, labels are interned
-per scope. `managedFields` is never read. The annotation allowlist excludes
-`last-applied-configuration`.
+per scope. `managedFields` and `annotations` are never read — no allowlist, so a
+`Secret`'s `data` never reaches the projection.
 
 `json::Value::member` returns a `const &` (`value.hpp:49`), so the decoder takes
 `const json::Value &` and copies only the small fields; no moving accessor is
 needed, which removes a risk from the earlier draft.
 
-**FR-004, FR-009, FR-010 — retention.** Per-scope ceiling, eviction by
-least-recently-touched, a refcount pin for the selected row and the rendered
-window, a `partial` mark on a displayed scope above its ceiling, and a global
-ceiling on open scopes with LRU close-and-reopen.
+**FR-004 — retention by admission.** A scope admits up to `maxEntries` and the
+store up to `maxTotalEntries` across `maxScopes` scopes. Past a ceiling the
+object is refused and counted, the scope is published `truncated`, and nothing
+stored leaves — so `rowCount` never shrinks under the scrollbar and no pin is
+needed. An entry leaves only on `DELETED` or the reconciliation sweep.
+
+The budget proof is the two inequations in `#StoreBudget`; with the defaults it
+resolves to 104 497 152 bytes inside the 104 857 600 declared.
 
 **FR-005 — one parse per frame.** `takeFrames` becomes a cursor over the
 accumulator reporting consumed bytes; the accumulator compacts once per chunk
@@ -47,7 +51,8 @@ under three per frame, compactions at most one per chunk.
 **FR-007 — reconciliation.** A 410 marks the scope stale. The relist accumulates
 a seen-set over the pages and reconciles at the end: absent uids removed, seen
 ones inserted or updated. The model keeps identity, so selection and scroll
-survive. `stale` and `partial` are scope state, carried in the CUE `#Scope`.
+survive. `stale`, `truncated` and `refused` are scope state, carried by the
+CUE `#ScopeState`; `#Scope` is the key triple and stays separate.
 
 **FR-008 — the delta.** The store publishes `{key, op, changedFieldMask}`; the
 mask maps to model roles. An unrendered change emits nothing; an ordering-key
@@ -67,7 +72,7 @@ an implementation detail.
 One conformance case per FR. The memory bound counts map node, key, bucket array
 and index — not `sizeof(Entry)` — from a counting allocator, so it is
 deterministic (P-03). Parse and allocation counts use integer counters, never a
-clock. FR-009 and FR-010 are asserted on the eviction order directly.
+clock. FR-004 is asserted on the refusal path and FR-009 on the hop.
 
 ### Risks
 
@@ -90,8 +95,8 @@ clock. FR-009 and FR-010 are asserted on the eviction order directly.
   stay under the definition ceiling.
 - **D-15 — bounded labels.** Three metrics, two of them with a two-value label;
   per-object bytes are asserted, never labelled.
-- **D-16 — versioned contract.** `#Entry` moves additively; the eviction tick
-  stays out so it is not frozen.
+- **D-16 — versioned contract.** `#Entry` moves additively; the touch tick stays
+  out so it is not frozen.
 - **D-11 — additive surface.** `get` keeps `Object`; only the store holds
   projections.
 - **P-03 — determinism.** The budget is counted, not measured by RSS.

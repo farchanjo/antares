@@ -212,5 +212,5 @@ than labelled, because a per-object label would be unbounded (D-15).
   kind and the CRD path is untested. The ADR records it as the next lever.
 - **Why store labels whole?** Truncation breaks selectors: `Service→Pods` and
   `pod-template-hash` report a false "no match" when the key or value is cut.
-- **Why is the tick not in the contract?** `updatedAtTick` is store bookkeeping;
-  a view never reads it.
+- **Why is the touch tick not in the contract?** It is store bookkeeping, and a
+  view never reads it.
