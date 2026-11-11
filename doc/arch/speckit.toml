@@ -3,10 +3,11 @@
 
 [project]
 name = "antares"
+org = "archanjo.com"
 license = "GPL-3.0-only"
 
-# [git]
-# email = "you@example.com"
+[git]
+email = "farchanjo@gmail.com"
 
 # The ACTIVE spec scope is the UNION of the static globs below (operator-managed)
 # and derived globs computed at startup: doc/arch/sdd/NNN-slug/** for the active
