@@ -248,6 +248,19 @@ trusted for nothing until `tls` has verified it.
 - a write retries only when marked idempotent.
 - a read retries only on a retryable status.
 
+### TM-17 denial-of-service — the object count exhausts memory
+
+**Category:** denial-of-service
+
+**Description:** A peer with many objects exhausts memory by count, not by one oversized body.
+
+**Boundary crossing:** list and watch response bodies.
+
+**Mitigations:**
+- a stored object is a projection keyed by uid, not a full document (FR-002).
+- a scope has an entry ceiling with least-recently-updated eviction (FR-004).
+- `Limits::maxBodyBytes` bounds one response; the store ceiling bounds the sum.
+
 ## Residual Risks
 
 A hostile API server is trusted to describe itself: discovery, `Status` reasons

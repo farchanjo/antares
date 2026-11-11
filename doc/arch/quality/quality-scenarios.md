@@ -21,6 +21,7 @@ The `Attribute` column uses the ISO/IEC 25010:2023 names exactly.
 | QS-07 | maintainability | a port gains a method | the suite runs | a case reaches it | no virtual is left uncalled |
 | QS-08 | flexibility | the backend is switched | `ANTARES_IO_BACKEND` set | the same suite passes | both backends green from one build |
 | QS-09 | safety | a peer sends an oversized header block | engine ceiling set | the read is refused | `headerCeiling` is reported, not a crash |
+| QS-10 | performance-efficiency | a scope holds 5 000 objects | the store keeps them | memory stays bounded | under 2.5 MB for the scope, 512 bytes per entry |
 
 ## Non-functional gates
 
