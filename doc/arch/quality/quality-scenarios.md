@@ -22,6 +22,7 @@ The `Attribute` column uses the ISO/IEC 25010:2023 names exactly.
 | QS-08 | flexibility | the backend is switched | `ANTARES_IO_BACKEND` set | the same suite passes | both backends green from one build |
 | QS-09 | safety | a peer sends an oversized header block | engine ceiling set | the read is refused | `headerCeiling` is reported, not a crash |
 | QS-10 | performance-efficiency | a scope holds 5 000 fixture pods | the store keeps them | memory stays bounded | at most 2 560 000 bytes allocated for the scope, no admitted entry above 1 024 bytes, the store at most 104 857 600 bytes at its ceilings |
+| QS-11 | performance-efficiency | a watch delivers a burst of frames | one engine turn | the turn returns before the paint starves | no completion exceeds the read chunk, and the turn yields between completions |
 
 ## Non-functional gates
 

@@ -60,8 +60,9 @@ uid)`. Two views resolving the same key receive the **same stored entry** — th
 same object, not an equal copy. When a cluster-scoped view and a namespaced view
 of the same resource are both open, the namespaced one is a filter over the
 cluster scope and does not open a second store; a namespaced view opened alone
-opens its own. `get` continues to return the full document; only the store holds
-projections.
+opens its own. **There is one watch per scope**: a detail view reads from the
+store instead of opening a watch of its own. `get` continues to return the full
+document; only the store holds projections.
 
 ### FR-002 The stored shape is a projection
 
@@ -69,7 +70,8 @@ The store keeps the fields a view reads and nothing else: `uid`, `name`,
 `namespace`, `resourceVersion`, `generation`, `creationTimestamp`, the kind, a
 truncated label set, and a bounded summary of status. The full document is not
 retained. `managedFields`, `annotations`, and a `Secret`'s `data` and
-`stringData` are never decoded into the stored shape.
+`stringData` are never retained in the stored shape — they are decoded and
+dropped.
 
 ### FR-003 The per-object cost is bounded
 
@@ -101,12 +103,17 @@ At the defaults the store retains at most
 `100 000 × 1 024 + 32 × 65 536 = 104 497 152` bytes, inside the declared budget
 of 104 857 600 bytes (100 MiB).
 
-### FR-005 A watch frame is parsed once
+### FR-005 Nothing is copied out of a decoded document
 
-Each non-blank frame is parsed exactly once, from a view into the accumulator,
-and the projection is read from the parsed document without copying the `object`
-subtree; the overload returns the projection, never a `json::Value`. The
-accumulator compacts at most once per received chunk.
+Each non-blank frame and each list item is parsed exactly once, and its
+projection is read from the parsed document without copying the payload subtree;
+the overloads return the projection, never a `json::Value`. A frame is not copied
+out of the accumulator either, which compacts at most once per received chunk.
+
+This removes the copy and its later destruction — measured at about 20% of the
+per-event cost. It does **not** remove the parse: `Value::parse` still builds the
+whole document, `managedFields` included, at 193 allocations per 4 431 byte
+frame.
 
 `KubeStats` gains `framesParsed` and `bufferCompactions`; over 5 000 frames
 delivered in C chunks the test asserts `framesParsed == 5 000` and
@@ -121,8 +128,12 @@ for a known uid is treated as an update.
 
 ### FR-007 A relist reconciles the scope
 
+**Every list is paginated, the initial load as much as a relist** — an
+unpaginated 64 MiB response is a single completion of roughly 240 ms and the turn
+budget cannot interrupt a completion. `limit` is 500.
+
 An expired watch (410) marks the scope stale and its rows stay visible. The
-relist is paginated with `limit` 500 and opens a new epoch: every object of
+relist opens a new epoch: every object of
 every page is upserted and marked with it, so an unchanged row emits nothing and
 a changed one emits a change (FR-008).
 
@@ -159,10 +170,10 @@ loop, it is applied in the same turn.
 
 - **Data sensitivity/classification.** The store holds object metadata: uid,
   name, namespace, resource version, generation, creation time, a truncated
-  label set and a status summary. Annotations are never decoded into the
+  label set and a status summary. Annotations are never retained in the
   projection: `kubectl.kubernetes.io/last-applied-configuration` on a `Secret`
   carries its `data`, and any annotation may carry a token. A `Secret`'s `data`
-  and `stringData` are never decoded into the projection; the parsed frame holds
+  and `stringData` are never retained in the projection; the parsed frame holds
   them for one decode and is released, not wiped — a residual risk, recorded.
 - **Authentication/authorization.** No new surface. The store holds what the
   credential was already allowed to list.
@@ -208,8 +219,11 @@ than labelled, because a per-object label would be unbounded (D-15).
   stable: it grows until a ceiling and then says so.
 - **Why no annotations at all?** A deny-list of one key is fragile — any
   annotation can carry a token — and a key-only set renders nothing.
-- **Why not `as=Table`?** Cheaper still, but it needs one negotiated shape per
-  kind and the CRD path is untested. The ADR records it as the next lever.
+- **Why not `as=Table`?** Cheaper, but only 1.7× measured, because
+  `includeObject=Metadata` keeps `managedFields` in the row and `None` drops the
+  `uid` that FR-001 keys on. It also needs one negotiated shape per kind and the
+  CRD path is untested. The order-of-magnitude lever is a local selective scan
+  (8× measured), which is a separate feature.
 - **Why truncate labels, and what breaks?** A single label can legally reach 380
   bytes, so a byte ceiling is the only way FR-003 holds. Labels are kept in key
   order and cut at 16 entries or 256 bytes; `labelsTruncated` says so. The price

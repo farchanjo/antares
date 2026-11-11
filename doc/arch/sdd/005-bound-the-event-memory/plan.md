@@ -9,6 +9,21 @@ relist reconcile instead of reset.
 
 Target: 20 217 bytes per object today, under 512 typical after.
 
+### Measured, on a 4 431 byte pod frame (39% `managedFields`)
+
+| Path | Time | Allocations |
+|---|---|---|
+| `Value::parse` alone | 15.8 µs | 193 |
+| Parse + subtree copy | 19.6 µs | +86 |
+| Full cycle, copy and free | — | — |
+| `as=Table`, `includeObject=Metadata` | 9.4 µs | — |
+| Selective scan | 1.97 µs | — |
+
+The copy costs about 20%. `as=Table` is 1.7×, not an order of magnitude, because
+`managedFields` stays in the metadata row. The order of magnitude is the local
+scan, at 8×, and it is feature 008. A `-O0` build is 13× slower, so only the
+optimized build is meaningful.
+
 ## Technical Approach
 
 **Layers.** Projection and store are `domain` values plus an `application`
@@ -45,8 +60,10 @@ resolves to 104 497 152 bytes inside the 104 857 600 declared.
 accumulator reporting consumed bytes; the accumulator compacts once per chunk
 instead of once per call (`watch_event.cpp:128`). `decodeWatchEvent` gains a `string_view` overload
 returning the projection directly, so neither the `substr` nor the subtree copy
-happens. Asserted with integer counters: parses equal frames, allocations at or
-under three per frame, compactions at most one per chunk.
+happens. Asserted with integer counters: parses equal frames and compactions stay
+at most one per chunk. Allocations are **not** bounded here — `Value::parse` takes
+193 per 4 431 byte frame, and no counter fixes that. Only a selective scan does,
+and it is a separate feature.
 
 **FR-007 — reconciliation.** A 410 marks the scope stale. The relist accumulates
 a seen-set over the pages and reconciles at the end: absent uids removed, seen

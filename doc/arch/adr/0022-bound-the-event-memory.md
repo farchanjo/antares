@@ -43,8 +43,9 @@ An identity already exists to key on: `uid`.
 
 - The window must open on a large cluster on a laptop.
 - Two views of one resource must not be two copies.
-- The parse lands on the main thread once the loop is hosted (ADR-0020), so CPU
-  per event is user-visible.
+- The parse lands on the main thread once the loop is hosted (ADR-0020). This
+  record bounds the copy and the memory; the parse itself is bounded by slicing,
+  not here.
 - A laptop waking after five minutes gets a 410 on every scope, so the relist
   path is the common path.
 - D-15 forbids an unbounded label set, so the budget is asserted by a test.
@@ -55,10 +56,12 @@ An identity already exists to key on: `uid`.
   50 000-object scope needs 964 MiB.
 - **Store a projection keyed by uid.** Cheapest per row; the UI loses fields it
   does not render.
-- **Store raw wire bytes and decode on demand.** Memory matches the wire, but a
-  scroll becomes thousands of parses inside the turn budget.
-- **`Accept: as=Table;g=meta.k8s.io;v=v1`.** The server renders the columns and
-  the client decodes no body — cheaper than every option above.
+- **Store raw wire bytes and decode on demand.** Memory matches the wire. A scroll
+  is only about fifty visible rows, roughly 0.5 ms, so the rejection rests on
+  memory — about 5× the projection — not on time.
+- **`Accept: as=Table;g=meta.k8s.io;v=v1`.** The server renders the columns. It
+  is cheaper, but only 1.7× measured, because `includeObject=Metadata` — the
+  default — still carries `managedFields`.
 - **Stream pages without a store.** No identity, so a second view is a second
   copy: the defect this record exists to avoid.
 
@@ -69,8 +72,10 @@ Chosen option: **a projection keyed by uid, in one store per scope.**
 One entry per uid inside one scope `(cluster, group-version-resource, namespace)`.
 The entry holds `uid`, `name`, `namespace`, `resourceVersion`, `generation`,
 `creationTimestamp`, a label set truncated at 16 entries or 256 bytes, and a
-bounded status summary. Annotations and `managedFields` are never decoded,
-because an annotation can carry a `Secret`'s data.
+bounded status summary. Annotations and `managedFields` are never retained,
+because an annotation can carry a `Secret`'s data. They are still decoded: the
+parser builds every member, 193 allocations per 4 431 byte frame, which is why
+this record bounds memory and the copy, not the parse.
 
 The fixture pod costs at most 512 bytes and any admitted entry at most 1 024,
 counted through the allocator. A scope admits 50 000 entries and the store
@@ -117,16 +122,21 @@ below what a real cluster holds.
 
 ### Raw bytes with decode on demand
 
-Memory matches the wire and every access pays a parse. With the loop on the main
-thread a scroll through 5 000 rows is thousands of parses inside the turn budget.
+Memory matches the wire and every access pays a parse. The parse is cheap enough
+that time is not the argument: fifty visible rows cost about 0.5 ms. The
+rejection is that raw bytes are roughly 5× the projection in memory.
 
 ### `as=Table`
 
-Cheaper than the chosen option and the next lever: the server computes the
-columns per kind, including CRD `additionalPrinterColumns`, and the client
-decodes no body. Deferred, not rejected — it needs one negotiated shape per kind
-and the CRD path is untested. It also gives no identity or sharing by itself,
-which the store still has to provide.
+Cheaper, and measured at 9.4 µs against 15.8 for the full document on a 4 431
+byte frame — 1.7×, not an order of magnitude. With `includeObject=Metadata` the
+default keeps `managedFields` in the row, and with `includeObject=None` the `uid`
+disappears, which FR-001 needs as its key. Deferred: it needs one negotiated
+shape per kind and the CRD path is untested, and it gives no identity or sharing
+by itself.
+
+The order-of-magnitude lever is a local selective scan, not this: 1.97 µs on the
+same frame, 8×, for any kind including a CRD, with no shape negotiated.
 
 ### Stream pages without a store
 
