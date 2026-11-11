@@ -15,7 +15,7 @@ The `Attribute` column uses the ISO/IEC 25010:2023 names exactly.
 | QS-01 | functional-suitability | a request is submitted | any supported backend | it reaches the peer and the response returns | every conformance case passes on kqueue and poll |
 | QS-02 | performance-efficiency | nothing is pending | idle engine | the loop blocks in the kernel | zero wakeups per second while idle |
 | QS-03 | compatibility | a peer offers only HTTP/1.1 | TLS with ALPN | the connection still serves | the h1 fallback case passes |
-| QS-04 | interaction-capability | a caller blocks on the sync facade | the caller is not the loop | the call returns instead of deadlocking | `reentrant` is reported from the loop thread |
+| QS-04 | interaction-capability | a caller awaits a completion | the caller is not the loop | the wait returns instead of deadlocking | the wait is on the caller's mutex, never on engine state |
 | QS-05 | reliability | a peer answers 503 twice | retry configured | the third attempt succeeds | the retry count is exactly two |
 | QS-06 | security | an unknown CA signs the peer | `verifyPeer` on | the handshake fails | the failure is reported as `tls` |
 | QS-07 | maintainability | a port gains a method | the suite runs | a case reaches it | no virtual is left uncalled |

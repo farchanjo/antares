@@ -90,8 +90,8 @@ a modal re-enters the turn with the outer `events[]` array alive, and an inner
 `HttpClient` takes `IoEngine&` instead of `EnginePool&`; its destructor decides
 with `engine_.isEngineThread()`. With one loop there is nothing for a pool to
 choose, so `EnginePool` drops to a convenience wrapper for the tools
-(`tools/k8s_live`, `tools/bench_io`) and `BlockingClient` stays for the threaded
-mode.
+(`tools/k8s_live`, `tools/bench_io`). `BlockingClient` is removed: a caller
+awaits on its own condition variable, so the client needs no sync facade.
 
 Hosting one loop is what makes the single-thread contract of ADR-0006 literal:
 there is no second loop to share `sessions_`, `idle_` or `stats_` with.

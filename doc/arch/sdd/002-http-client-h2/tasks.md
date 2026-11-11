@@ -58,3 +58,14 @@ Ordered so each task compiles on its own and proves one requirement.
 - T007 is independent of T006 and can land in parallel.
 - T012 runs only after T011 exists to drive it.
 
+## Shutdown and facade removal
+
+- [ ] T901 Add `drain()`: wait until nothing is pending, then hand every idle
+      connection back to the loop; assert it is called off the loop (FR-026).
+- [ ] T902 Make the destructor assert nothing is pending instead of skipping the
+      wait when it runs on the loop (FR-026).
+- [ ] T903 Remove `BlockingClient`, `HttpError::reentrant` and its `toString`
+      case; move the twenty `blocking()` call sites to `Await` over `submit`
+      (FR-008).
+- [ ] T904 Add the case that `drain()` with an attempt in flight waits and closes
+      the idle bucket (FR-026).

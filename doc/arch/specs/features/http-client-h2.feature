@@ -44,10 +44,10 @@ Feature: Http Client H2
     Then the observable contract holds: the completion fires once with cancelled
 
   @planned
-  Scenario: FR-008 sync api
-    Given the feature specification mandates "FR-008 sync api"
-    When the implementation satisfies: a sync call made from inside a completion callback; it waits
-    Then the observable contract holds: it returns reentrant instead of deadlocking
+  Scenario: FR-008 no sync facade, callers await
+    Given the feature specification mandates "FR-008 no sync facade, callers await"
+    When the implementation satisfies: a caller awaits off the loop and once from inside a completion
+    Then the observable contract holds: the wait is on the caller's mutex and the reentrant call returns
 
   @planned
   Scenario: FR-009 tls verification
@@ -159,3 +159,9 @@ Feature: Http Client H2
     Given the feature specification mandates "FR-023 a client frame is masked"
     When the implementation satisfies: a text frame from the client; the codec encodes it
     Then the observable contract holds: the mask bit is set
+
+  @planned
+  Scenario: FR-026 shutdown drains before the client dies
+    Given the feature specification mandates "FR-026 shutdown drains before the client dies"
+    When the implementation satisfies: drain is called with an attempt in flight
+    Then the observable contract holds: it waits for nothing pending and hands every idle connection back

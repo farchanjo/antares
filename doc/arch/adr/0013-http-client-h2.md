@@ -42,7 +42,7 @@ Chosen option: **OpenSSL 3 for TLS, nghttp2 for framing and HPACK, our client on
 top through the engine.**
 
 We write the parts that make it a client: connection lifecycle, pool, ALPN
-selection, redirect policy, the sync and async facades, cancellation and
+selection, redirect policy, the async facade and the shutdown drain, cancellation and
 accounting. We do not write the record layer or the header codec.
 
 **The engine thread never blocks.** The rules, in order of how easy they are to

@@ -74,12 +74,26 @@ A request returns a handle immediately. Its completion runs on the engine thread
 with a result or a typed error, exactly once. A cancelled request completes with
 `cancelled` and never again.
 
-### FR-008 Sync API
+### FR-008 No sync facade; callers await
 
-A blocking call exists for one-shot requests. It waits on the request's own
-condition variable, never on engine state, so it is safe off the engine thread.
-Called from inside a completion callback it detects reentrancy and returns an
-error instead of deadlocking.
+There is no blocking request call. A caller submits and waits on its own
+condition variable, never on engine state, so the wait is safe off the loop. A
+call made from inside a completion returns `reentrant` instead of deadlocking —
+that is a property of the caller's own helper, not of the client.
+
+The `BlockingClient` facade and `HttpError::reentrant` are removed. Tests use the
+`Await` helper, which already waits on its own mutex.
+
+### FR-026 Shutdown drains before the client dies
+
+A completion captures the client, so the client may not die with an attempt in
+flight. `drain()` waits until nothing is pending and hands every idle connection
+back to the loop; it must be called off the loop, because on the loop it would
+wait for work only the loop can finish.
+
+The destructor asserts nothing is pending instead of guessing. Once ADR-0020
+hosts the loop on the main thread the destructor runs on the loop, so the skip
+the old code did there stops being an edge case and becomes the normal path.
 
 ### FR-009 TLS verification
 

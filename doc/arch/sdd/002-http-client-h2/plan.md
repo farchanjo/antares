@@ -8,12 +8,12 @@ ADR: `doc/arch/adr/0013-http-client-h2.md`
 
 Two layers, one direction. Value types and the client port sit inward; the
 OpenSSL and nghttp2 adapters sit outward and reach the network only through
-`IoEngine`. The sync facade is application code over the async port, so it never
+`IoEngine`. The wait is the caller's, over the async port, so it never
 touches a socket.
 
 The rule that shapes everything: **the engine thread never waits.** Protocol
 state belongs to the connection and only the engine thread touches it, so no
-mutex guards it. The sync facade waits on a per-request condition variable and
+mutex guards it. A caller waits on its own condition variable and
 detects reentrancy by comparing thread ids with the engine thread.
 
 ## Layers and files
@@ -25,7 +25,7 @@ detects reentrancy by comparing thread ids with the engine thread.
 - `src/domain/http/url.hpp` — parse into scheme, authority, target; the only
   place a URL is taken apart.
 - `src/ports/http/client.hpp` — `submit`, `cancel`, `stats`; async only.
-- `src/application/http/blocking_client.hpp` — sync facade over the port.
+- the caller's own `Await` — no facade type; `drain()` is the shutdown hook.
 - `src/adapters/http/tls_context.*` — OpenSSL context, trust store, SNI.
 - `src/adapters/http/connection.*` — one connection: TCP, TLS, ALPN, then h2 or
   h1 framing.
