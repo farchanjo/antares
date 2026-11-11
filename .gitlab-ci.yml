@@ -32,7 +32,7 @@ lint:
 test:
   stage: test
   script:
-    - make test
+    - make check
 
 validate:
   stage: validate

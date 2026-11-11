@@ -236,8 +236,10 @@ add_custom_target(check
     COMMENT "antares: test suite"
     VERBATIM
     USES_TERMINAL)
+# The lint target is not a dependency: the CI runs it as its own job, and
+# running it twice per pipeline buys nothing.
 add_dependencies(check antares_io_conformance antares_http_conformance
-                 antares_k8s_conformance lint)
+                 antares_k8s_conformance)
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
