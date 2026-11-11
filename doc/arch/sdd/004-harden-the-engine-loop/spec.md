@@ -51,7 +51,9 @@ can complete the other's.
 ### FR-003 The task queue is lock-free and multi-producer
 
 `post` is safe from any thread and admits several producers: the resolver, a
-connection, and the loop itself. The queue is an intrusive singly linked list
+parse worker returning a batch, a connection, and the loop itself. The engine is
+one loop (FR-018 of 002), so the queue is the only thing several threads touch
+and it is the only thing that needs to be atomic. The queue is an intrusive singly linked list
 whose head is a single atomic; a push is a compare-exchange loop and a drain is
 one exchange, so neither `post` nor `nextWaitMilliseconds` takes a mutex.
 

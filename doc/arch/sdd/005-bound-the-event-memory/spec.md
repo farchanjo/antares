@@ -162,9 +162,10 @@ the mask. The store does not depend on Qt.
 ### FR-009 The store lives on one thread
 
 The store and every `ChangeSet` it emits are confined to the thread the list
-model runs on. While the engine runs on its own thread, a decoded batch crosses
-to the main thread as a value and is applied there; once ADR-0020 hosts the
-loop, it is applied in the same turn.
+model runs on. The engine is one loop (FR-018 of 002), so there is no second
+loop to reconcile against: a batch decoded by a parse worker crosses as a value
+and is applied on the model's thread, which under ADR-0020 is the same loop that
+produced it.
 
 ## Security Requirements
 

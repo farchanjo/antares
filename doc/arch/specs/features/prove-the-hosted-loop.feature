@@ -40,3 +40,8 @@ Feature: Prove The Hosted Loop
     Given the feature specification mandates "FR-007 App Nap does not stall the loop"
     When the implementation satisfies: the window is occluded for 60 seconds
     Then the observable contract holds: a timer still fires within an order of magnitude of its period
+
+  Scenario: FR-008 one loop carries thirty-two watches
+    Given the feature specification mandates "FR-008 one loop carries thirty-two watches"
+    When the implementation satisfies: thirty-two connections deliver frames while the window repaints
+    Then the observable contract holds: the loop keeps up and the frame rate stays at or above 80 percent of idle

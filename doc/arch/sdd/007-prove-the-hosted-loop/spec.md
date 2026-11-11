@@ -52,6 +52,10 @@ Each item is a way the design can be wrong, and each has a measurement.
 - **FR-006 The turn honours a deadline.** A completion that sleeps 50 ms must not
   run past the turn budget in the next turn. Measured: p99 turn duration and
   overrun count.
+- **FR-008 One loop carries thirty-two watches.** Thirty-two connections is the
+  open-scope ceiling. All of them deliver frames while the window repaints, and
+  the loop keeps up. This is the case that would falsify "one loop is enough",
+  so it is measured with the same p99 as FR-006 and a per-second frame count.
 - **FR-007 App Nap does not stall the loop.** With the window occluded for 60 s,
   a timer must still fire within an order of magnitude of its period, and
   `NSProcessInfo beginActivity` must be shown to change that.

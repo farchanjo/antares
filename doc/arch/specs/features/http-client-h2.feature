@@ -104,10 +104,10 @@ Feature: Http Client H2
     Then the observable contract holds: it blocks on the waiter
 
   @planned
-  Scenario: FR-018 a dedicated pool of loops
-    Given the feature specification mandates "FR-018 a dedicated pool of loops"
-    When the implementation satisfies: a pool of two loops; two requests are in flight at once
-    Then the observable contract holds: each runs on its own loop
+  Scenario: FR-018 one loop, and the parallelism is elsewhere
+    Given the feature specification mandates "FR-018 one loop, and the parallelism is elsewhere"
+    When the implementation satisfies: two requests are in flight at once
+    Then the observable contract holds: both run on the one loop and connection state takes no mutex
 
   @planned
   Scenario: FR-019 ALPN decides, h1 is the floor

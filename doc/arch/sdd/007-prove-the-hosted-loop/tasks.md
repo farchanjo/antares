@@ -15,13 +15,15 @@
 - [ ] T008 Measure FR-007: timer latency occluded, with and without an activity
       assertion.
 - [ ] T009 Run once under `leaks` and record the result.
-- [ ] T010 Paste the numbers into ADR-0020 and move it from `proposed`, or record
+- [ ] T010 Measure FR-008: thirty-two connections delivering while the window
+      repaints, with p99 turn and frame rate.
+- [ ] T011 Paste the numbers into ADR-0020 and move it from `proposed`, or record
       the failure and the fallback taken.
 
 ## Dependencies
 
 T001 blocks everything. T002 is the load-bearing one: a failure there stops the
-run and switches the approach to `CFFileDescriptor` or `dispatch_source`. T010
+run and switches the approach to `CFFileDescriptor` or `dispatch_source`. T011
 needs every measurement; a partial set does not move the ADR.
 
 The spike needs the macOS host `farchanjo@192.168.202.241` and a Qt6 there; the

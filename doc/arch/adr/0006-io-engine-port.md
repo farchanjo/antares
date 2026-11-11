@@ -51,9 +51,14 @@ The interface owns the buffer: `submitRead` takes a `std::vector<std::byte>` by
 value and returns it in the callback. Readiness backends cannot know when a
 buffer is free, so ownership costs a copy and removes the lifetime bug class.
 
-The engine owns exactly one thread. Callbacks run on it. Results cross into the
-UI through a queued signal, never by direct call. Work crosses the other way
-through `post`, which is multi-producer and lock-free (ADR-0021, FR-003).
+The engine owns exactly one thread, and that is the contract rather than an
+implementation detail: with one loop the connection state needs no lock.
+Callbacks run on it. Results cross into the UI through a queued signal, never by
+direct call. Work crosses the other way through `post`, which is multi-producer
+and lock-free (ADR-0021, FR-003).
+
+Parallelism lives outside the engine: a pool of parse workers takes the chunks
+the loop hands out. The engine never learns the pool exists.
 
 **Scope now: macOS.** The only production backend is `kqueue`. `poll` ships as
 the portable reference and the conformance oracle; every backend must pass the

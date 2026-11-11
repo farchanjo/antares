@@ -88,8 +88,13 @@ a modal re-enters the turn with the outer `events[]` array alive, and an inner
 `cancelPending` frees ops that array points at.
 
 `HttpClient` takes `IoEngine&` instead of `EnginePool&`; its destructor decides
-with `engine_.isEngineThread()`. `EnginePool` and `BlockingClient` stay for the
-tools (`tools/k8s_live`, `tools/bench_io`) and for the threaded mode.
+with `engine_.isEngineThread()`. With one loop there is nothing for a pool to
+choose, so `EnginePool` drops to a convenience wrapper for the tools
+(`tools/k8s_live`, `tools/bench_io`) and `BlockingClient` stays for the threaded
+mode.
+
+Hosting one loop is what makes the single-thread contract of ADR-0006 literal:
+there is no second loop to share `sessions_`, `idle_` or `stats_` with.
 
 The hosted mode is proved without Qt: a `poll()`-based host in `tests/io/`
 drives `runOnce()` over `waitHandle()` and `nextDeadline()` on all four

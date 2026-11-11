@@ -39,6 +39,9 @@ No call on the engine thread may wait on a mutex the engine itself needs, sleep,
 or perform a synchronous syscall. Concretely: a completion callback may call
 `submit*` and may start another request, and both return without waiting.
 
+Decoding is the one operation heavy enough to break this, so it does not run on
+the loop: a chunk is handed to a parse worker and the loop moves on (FR-018).
+
 ### FR-003 Connection establishment
 
 TCP connect, TLS handshake and protocol selection are three engine operations
@@ -167,15 +170,18 @@ A socket is opened by sending the handshake GET and requiring a 101; the head is
 consumed before any frame reaches the codec, because it shares a read with the
 first frame. h1 only — over h2 this needs RFC 8441 extended CONNECT.
 
-### FR-018 A dedicated pool of loops
+### FR-018 One loop, and the parallelism is elsewhere
 
-The engine owns a fixed set of loops and their threads; a caller takes one and
-keeps it for the life of the work. Nothing is shared between loops, so no lock
-guards connection state and the pool never touches an operation.
+The engine runs one loop on one thread. Connection state, the idle pool and the
+counters are therefore single-threaded by construction and take no mutex. A
+caller may submit from any thread; the work is posted onto the loop and every
+step after that runs there.
 
-The pool is per loop as well: a pooled connection may only be reused from the
-loop that owns it, or the attempt would run on one loop and its socket on
-another.
+The parallelism is not in the engine. It is a pool of parse workers outside it:
+a loop takes a chunk, hands it out, and applies the result when it comes back
+(FR-002 keeps the loop from waiting on it). This supersedes the earlier "fixed
+set of loops": with one loop the three shared members that were not protected —
+`sessions_`, `idle_` and `stats_` — stop being shared at all.
 
 ### FR-016 Resolution stays off the hot path
 

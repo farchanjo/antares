@@ -6,8 +6,9 @@ a debugger.
 
 ## Runtime surface
 
-- The engine owns a fixed pool of loops, one thread each, plus one resolver
-  thread. `ANTARES_IO_BACKEND` picks the backend (`kqueue` by default, `poll`
+- The engine owns one loop on one thread, plus one resolver thread, plus a pool
+  of parse workers. The loop is single-threaded by contract, so connection state
+  takes no lock. `ANTARES_IO_BACKEND` picks the backend (`kqueue` by default, `poll`
   as the escape hatch) and is read once at startup.
 - `ANTARES_ALLOCATOR=system` swaps mimalloc for the system allocator when a
   profile disagrees with the build.
