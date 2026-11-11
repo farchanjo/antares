@@ -286,6 +286,7 @@ Source roots: `src/platform`, `src/domain`, `src/application`, `src/ports`,
 - `doc/arch/adr/0017-kubernetes-api-client-over-the-http-client-port.md`
 - `doc/arch/adr/0018-linux-io-uring-epoll-poll.md`
 - `doc/arch/adr/0019-exec-over-websocket-channels.md`
+- `doc/arch/adr/0020-host-the-engine-loop-in-the-qt-main-thread.md`
 - `doc/arch/agents/implement-lead.md`
 - `doc/arch/agents/review-lead.md`
 - `doc/arch/commands/README.md`
