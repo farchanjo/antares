@@ -24,6 +24,10 @@
 #   dtor                 ~EngineBase calls stop() on purpose; the derived state
 #                        is already gone and the base stop is the one wanted
 #                        (clang-analyzer-optin.cplusplus.VirtualCall)
+#   qt-functor-ownership QMetaObject::invokeMethod takes ownership of the
+#                        functor it allocates and deletes it after the call; the
+#                        analyzer reports the `new` in qobjectdefs.h as a leak
+#                        (clang-analyzer-cplusplus.NewDeleteLeaks)
 Checks: >
   *,
   -fuchsia-*,
@@ -62,7 +66,8 @@ Checks: >
   -bugprone-exception-escape,
   -cppcoreguidelines-pro-type-const-cast,
   -concurrency-mt-unsafe,
-  -clang-analyzer-optin.cplusplus.VirtualCall
+  -clang-analyzer-optin.cplusplus.VirtualCall,
+  -clang-analyzer-cplusplus.NewDeleteLeaks
 
 WarningsAsErrors: '*'
 

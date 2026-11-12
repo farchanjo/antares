@@ -28,6 +28,7 @@
 #include "domain/k8s/status.hpp"
 #include "domain/k8s/store_budget.hpp"
 #include "domain/k8s/watch_event.hpp"
+#include "ports/k8s/kube_client.hpp"
 #include "support/counting_allocator.hpp"
 
 namespace {
@@ -940,6 +941,17 @@ void caseStoreBounds5000Pods()
     std::printf("  5000 pods: %zu bytes (%zu per entry)\n", used, used / 5000);
 }
 
+// Observability — a page that lands is counted, and it is its own counter.
+void casePagesFetched()
+{
+    antares::ports::k8s::KubeStats stats;
+    check(stats.pagesFetched == 0, "no page before a fetch");
+    ++stats.pagesFetched;
+    check(stats.pagesFetched == 1, "a completed page is counted");
+    check(stats.succeeded == 0, "pages are not successes");
+    check(stats.submitted == 0, "pages are not submissions");
+}
+
 // FR-001 — two readers of the same key get the same entry.
 void caseStoreSharesEntry()
 {
@@ -1311,6 +1323,7 @@ constexpr Case cases[] = {
     {"store-relist-abandoned", caseStoreRelistAbandoned},
     {"store-routes-events", caseStoreRoutesEvents},
     {"store-metrics-bounded", caseStoreMetricsBounded},
+    {"pages-fetched-counts", casePagesFetched},
 };
 
 } // namespace

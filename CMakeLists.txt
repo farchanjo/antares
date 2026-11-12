@@ -49,11 +49,30 @@ target_include_directories(antares_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/s
 # The toolkit is not the core. Linking Qt into `antares_core` would let a domain
 # header include `<QObject>` and still build, so D-03 would hold on paper only.
 # Everything below `adapters/ui` links the core; only that adapter links this.
-add_library(antares_ui INTERFACE)
-target_link_libraries(antares_ui INTERFACE antares_core)
+# The list model and its view configuration. Plain C++ on purpose: the suite
+# runs without a widget, and `Qt6Core` on the CI host is built against libstdc++
+# while this tree links libc++, so nothing here may hold a Qt type. Only
+# `qt_list_model.cpp` includes Qt, and only behind `ANTARES_HAS_QT`.
+set(ANTARES_UI_SOURCES
+    src/adapters/ui/change_queue.cpp
+    src/adapters/ui/page_error.cpp
+    src/adapters/ui/resource_list_model.cpp
+    src/adapters/ui/row_role.cpp
+    src/adapters/ui/row_text.cpp
+    src/adapters/ui/view_config.cpp
+    src/adapters/ui/qt_list_model.cpp
+)
+
+add_library(antares_ui STATIC ${ANTARES_UI_SOURCES})
+set_target_properties(antares_ui PROPERTIES AUTOUIC OFF AUTORCC OFF)
+target_link_libraries(antares_ui PUBLIC antares_core antares_k8s)
 
 if(Qt6_FOUND)
-    target_link_libraries(antares_ui INTERFACE Qt6::Core Qt6::Widgets)
+    target_link_libraries(antares_ui PUBLIC Qt6::Core Qt6::Widgets)
+    target_compile_definitions(antares_ui PUBLIC ANTARES_HAS_QT=1)
+    set_target_properties(antares_ui PROPERTIES AUTOMOC ON)
+else()
+    set_target_properties(antares_ui PROPERTIES AUTOMOC OFF)
 endif()
 
 # Stable-header precompiled header, propagated to every consumer through the
@@ -266,7 +285,7 @@ add_custom_target(check
 # The lint target is not a dependency: the CI runs it as its own job, and
 # running it twice per pipeline buys nothing.
 add_dependencies(check antares_io_conformance antares_http_conformance
-                 antares_k8s_conformance)
+                 antares_k8s_conformance antares_ui_conformance)
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
@@ -392,6 +411,39 @@ if(APPLE)
         VERBATIM)
 endif()
 
+add_executable(antares_ui_conformance tests/ui/conformance.cpp)
+target_link_libraries(antares_ui_conformance PRIVATE antares_ui)
+target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests
+                                                          ${CMAKE_SOURCE_DIR}/tests/ui)
+set_target_properties(antares_ui_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
+set(ANTARES_UI_CASES
+    model-footprint-under-4k
+    multi-data-fills-span
+    status-text-falls-back
+    fetch-inserts-one-range
+    fetch-asks-the-limit
+    can-fetch-more-needs-a-token
+    change-set-applies-in-order
+    empty-mask-repaints-nothing
+    status-change-repaints-status
+    reorder-is-a-move
+    move-of-last-row-is-silent
+    view-config-batched-and-fixed
+    view-config-takes-saved-layout
+    uniform-flag-flips-on-varied-row
+    cross-thread-change-set-queues
+    fetch-failure-shows-retry-row
+    retry-does-not-loop
+    truncation-is-reported
+    role-index-matches-cue
+    roles-for-mask)
+
+foreach(case IN LISTS ANTARES_UI_CASES)
+    add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
+    set_tests_properties("ui/${case}" PROPERTIES TIMEOUT 30)
+endforeach()
+
 # The live read-only smoke. Not a ctest entry: it needs a real cluster.
 add_executable(antares_k8s_live tools/k8s_live/main.cpp)
 target_link_libraries(antares_k8s_live PRIVATE antares_k8s)
@@ -451,7 +503,8 @@ set(ANTARES_K8S_CASES
     store-relist-reconciles
     store-relist-abandoned
     store-routes-events
-    store-metrics-bounded)
+    store-metrics-bounded
+    pages-fetched-counts)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")
