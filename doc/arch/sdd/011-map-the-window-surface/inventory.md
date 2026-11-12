@@ -509,3 +509,17 @@ Columns: `☐` · `Name` · `Namespace` · `Completions` · `Age` · `Conditions
 
 `Completions` is a bare count. `Conditions` is the pill stack again; `ArgoCD` is
 the sync column and is empty without an Argo application.
+
+## Table view (Cron Jobs)
+
+Columns: `☐` · `Name` · `Namespace` · `Schedule` · `Suspend` · `Active` ·
+`Last schedule` · `Next execution` · `ArgoCD` · `Time zone` · `Age` · `⋮`.
+`0 items` here.
+
+The widest column set seen: a cron job is the most structured workload. `Schedule`
+is the raw cron expression, `Time zone` its zone, `Suspend` a boolean word.
+
+## Workloads family, complete
+
+`Overview`, `Pods`, `Deployments`, `Daemon Sets`, `Stateful Sets`, `Replica Sets`,
+`Replication Controllers`, `Jobs`, `Cron Jobs`.
