@@ -326,6 +326,8 @@ QWidget *MainWindow::buildTablePage()
     // The trailing column opens the row menu; every other click keeps the
     // selection behaviour the view already has.
     QObject::connect(view_, &QTreeView::clicked, this, [this](const QModelIndex &index) {
+        std::fprintf(stderr, "  [clique] col=%d valido=%d\n", index.column(),
+                     index.isValid() ? 1 : 0);
         const std::span<const RowRole> columns = familyColumns(model_.family());
         if (!index.isValid() || index.column() < 0 ||
             index.column() >= static_cast<int>(columns.size())) {
