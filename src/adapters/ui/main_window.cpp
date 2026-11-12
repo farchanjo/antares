@@ -186,6 +186,9 @@ QWidget *MainWindow::buildTable()
     view_->setRootIsDecorated(false);
     view_->setItemsExpandable(false);
     view_->setAllColumnsShowFocus(true);
+    // Uniform heights spare the view a size hint per row; the config already
+    // says the rows are uniform.
+    view_->setUniformRowHeights(true);
     view_->setModel(&model_);
     const ViewConfig config;
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
