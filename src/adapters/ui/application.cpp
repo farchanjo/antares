@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <QApplication>
+#include <QTreeView>
 #include <QString>
 
 #include "adapters/k8s/kubeconfig_loader.hpp"
