@@ -634,3 +634,22 @@ A tab of its own, titled `Preferences`. A left rail of sub-pages in the order
 
 `INSTALLED` carries a green tick. A row is a radio group: choosing one sets the
 launcher.
+
+### App
+
+A settings page is a stack of sections, not a form:
+
+- Section title in small caps.
+- A grey one-line description under it.
+- The control either right-aligned on the title row (a toggle) or full width
+  below (a dropdown).
+
+Sections, in order: `THEME` (dropdown, `Sync with computer`), `LENS CLI` (toggle
+off; `Install 'lens' command to /usr/local/bin on macOS/Linux. On Windows 'lens'
+command is automatically available.`), `COLORIZED CLUSTERS` (toggle **on**;
+`Differentiate Kubernetes clusters by color`, `A specific color can be set in the
+cluster settings.`), `START-UP` (toggle off; `Automatically start Lens on login`),
+`UPDATE CHANNEL` (dropdown, `Stable`), `LOCALE TIMEZONE` (dropdown,
+`America/Sao_Paulo`).
+
+A toggle is a pill switch, green when on. A dropdown fills the content width.
