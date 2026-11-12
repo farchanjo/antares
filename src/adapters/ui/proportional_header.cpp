@@ -2,6 +2,8 @@
 
 #include <QResizeEvent>
 
+#include <cstdio>
+
 namespace antares::adapters::ui {
 
 namespace {
@@ -73,6 +75,7 @@ void ProportionalHeader::share(int room)
         return;
     }
     const int spare = room > floorTotal ? room - floorTotal : 0;
+    std::fprintf(stderr, "  [room] %d pisos %d\n", room, floorTotal);
 
 
     int used = 0;
