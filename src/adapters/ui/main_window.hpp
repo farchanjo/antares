@@ -56,9 +56,11 @@ private:
     QWidget *buildDetail();
     void buildTree();
     void openFamily(QTreeWidgetItem *item);
+    void applyColumnWidths();
     void buildEmptyState();
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);
+    void showEvent(QShowEvent *event) override;
 
     QtListModel &model_;
     QToolBar *bar_ = nullptr;

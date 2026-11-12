@@ -265,23 +265,12 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
-    const ViewConfig config;
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
     view_->setAlternatingRowColors(true);
     view_->header()->setStretchLastSection(true);
     view_->header()->setSectionResizeMode(QHeaderView::Interactive);
     view_->header()->setDefaultSectionSize(160);
-    // A role is a stable id, not a position: the width is looked up by role and
-    // applied at the column index the family gives it.
-    const std::span<const RowRole> shown = familyColumns(model_.family());
-    for (std::size_t at = 0; at < shown.size(); ++at) {
-        const auto wanted = std::find_if(
-            config.columns().begin(), config.columns().end(),
-            [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
-        if (wanted != config.columns().end()) {
-            view_->setColumnWidth(static_cast<int>(at), static_cast<int>(wanted->width));
-        }
-    }
+    applyColumnWidths();
     view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     emptyState_ = new QLabel{tr("No objects in this scope."), stack};
@@ -428,6 +417,29 @@ void MainWindow::buildStatus(const QString &message)
     auto *support = new QLabel{tr("Support"), this};
     statusBar()->addPermanentWidget(support);
     statusBar()->setSizeGripEnabled(true);
+}
+
+void MainWindow::applyColumnWidths()
+{
+    // A role is a stable id, not a position: the width is looked up by role and
+    // applied at the column index the family gives it. Applied again on show,
+    // because a model reset recreates the sections at the default width.
+    const ViewConfig config;
+    const std::span<const RowRole> shown = familyColumns(model_.family());
+    for (std::size_t at = 0; at < shown.size(); ++at) {
+        const auto wanted = std::find_if(
+            config.columns().begin(), config.columns().end(),
+            [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
+        if (wanted != config.columns().end()) {
+            view_->setColumnWidth(static_cast<int>(at), static_cast<int>(wanted->width));
+        }
+    }
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    applyColumnWidths();
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }
