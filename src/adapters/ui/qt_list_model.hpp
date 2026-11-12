@@ -53,6 +53,13 @@ public:
 
     /// Narrow the rows to those whose name contains `needle`.
     void setFilter(const std::string &needle);
+
+    /// Point the list at another scope and reload it.
+    void setScope(domain::k8s::Scope scope);
+    [[nodiscard]] const domain::k8s::Scope &scope() const noexcept;
+
+    /// Drop the rows and ask for the first page again.
+    void refresh();
     [[nodiscard]] Family family() const noexcept { return family_; }
 
     // No default arguments here: the base declares them and re-specifying a

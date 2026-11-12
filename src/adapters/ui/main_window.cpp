@@ -69,6 +69,15 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     }
     namespaceBox_->addItem(tr("All namespaces"), QString{});
     namespaceBox_->addItems(namespaces);
+    // Choosing a namespace re-scopes the list; the empty data is "all".
+    QObject::connect(namespaceBox_, &QComboBox::currentIndexChanged, this, [this](int) {
+        domain::k8s::Scope scope = model_.scope();
+        const std::string chosen = namespaceBox_->currentData().toString().toUtf8().constData();
+        if (auto parsed = domain::k8s::NamespaceName::of(chosen); parsed) {
+            scope.namespaceName = *parsed;
+        }
+        model_.setScope(std::move(scope));
+    });
     layout->addWidget(bar_);
 
     splitter_ = new QSplitter{Qt::Horizontal, central};
@@ -100,8 +109,11 @@ void MainWindow::buildToolBar()
     back->setEnabled(false);
     auto *forward = iconButton(bar_, QStyle::SP_ArrowForward, tr("Forward"));
     forward->setEnabled(false);
+    auto *reload = iconButton(bar_, QStyle::SP_BrowserReload, tr("Reload"));
+    QObject::connect(reload, &QToolButton::clicked, this, [this] { model_.refresh(); });
     bar_->addWidget(back);
     bar_->addWidget(forward);
+    bar_->addWidget(reload);
 
     auto *scope = new QWidget{bar_};
     auto *scopeLayout = new QHBoxLayout{scope};

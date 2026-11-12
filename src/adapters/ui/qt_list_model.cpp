@@ -134,6 +134,12 @@ int QtListModel::columnCount(const QModelIndex &parent) const
     return parent.isValid() ? 0 : static_cast<int>(familyColumns(family_).size());
 }
 
+void QtListModel::refresh() { model_->refresh(); }
+
+void QtListModel::setScope(domain::k8s::Scope scope) { model_->setScope(std::move(scope)); }
+
+const domain::k8s::Scope &QtListModel::scope() const noexcept { return model_->scope(); }
+
 void QtListModel::setFilter(const std::string &needle)
 {
     model_->setFilter(needle);
