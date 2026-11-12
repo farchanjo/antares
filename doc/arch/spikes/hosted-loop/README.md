@@ -35,14 +35,17 @@ macOS 27.0.1, arm64, `-O2`, 2026-11-12.
 
 | Ref | Number |
 |---|---|
-| FR-001 | 5 wakes, 240 µs |
-| FR-002 | 64.6 idle fps against 62.6 saturated — ratio 0.969 |
+| FR-001 | 5 wakes, 226 µs |
+| FR-002 | 63.3 idle fps against 62.5 saturated — ratio 0.987 |
 | FR-003 | modal opens; 99.3 MB delivered underneath it |
-| FR-004 | 99.4 MB through a live resize, 116.2 MB through a held menu, 1 509 frames |
-| FR-005 | 254.8 ms against a 200 ms request, fired on the main thread |
-| FR-006 | p99 1 007 µs, 40 overruns in 20 765 turns |
-| FR-007 | occluded p99 255.9 ms, with activity 253.3 ms |
-| FR-008 | 32 watches at 62 fps, 643.1 MB |
+| FR-004 | 331.2 MB through a live resize, 331.7 MB through a held menu, 5 924 frames |
+| FR-005 | 248.6 ms against a 200 ms request, fired on the main thread |
+| FR-006 | p99 1 006 µs, 40 overruns in 82 882 turns |
+| FR-007 | occluded p99 255.3 ms, with activity 253.6 ms |
+| FR-008 | 32 watches at 62.5 fps, 2 703 MB |
+
+`VERDICT pass`. An earlier table came from 5 s windows; these are the windows the
+spec names (30 s, 10 s per nested loop, 60 s occluded).
 
 FR-005 and FR-007 both land near 255 ms rather than 200/33: the offscreen platform
 plugin clamps the timer to its own quantum. The ratio between the occluded and

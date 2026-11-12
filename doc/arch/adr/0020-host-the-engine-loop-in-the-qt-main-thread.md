@@ -167,23 +167,24 @@ it bites on the first Linux UI build.
 
 ## Measurements
 
-`doc/arch/spikes/hosted-loop/` on macOS 27.0.1 arm64, `-O2`, 2026-11-12. Every
-threshold in the spec held.
+`doc/arch/spikes/hosted-loop/` on macOS 27.0.1 arm64, `-O2`, 2026-11-12, with the
+phase windows the spec names (30 s idle and saturated, 10 s per nested loop, 60 s
+occluded). `VERDICT pass`: every threshold held.
 
 | Ref | What it proves | Number |
 |---|---|---|
-| FR-001 | the notifier wakes on the backend descriptor | 5 wakes, 240 µs |
-| FR-002 | a turn does not block the paint | 64.6 idle fps against 62.6 saturated, ratio 0.969 |
+| FR-001 | the notifier wakes on the backend descriptor | 5 wakes, 226 µs |
+| FR-002 | a turn does not block the paint | 63.3 idle fps against 62.5 saturated, ratio 0.987 over 58 340 turns and 954 MB |
 | FR-003 | a modal opened from a completion does not deadlock | opens; 99.3 MB delivered under it |
-| FR-004 | nested Cocoa loops still deliver socket events | 99.4 MB through a resize, 116.2 MB through a held menu |
-| FR-005 | `nextDeadline` drives a host timer | 254.8 ms against a 200 ms request, on the main thread |
-| FR-006 | a turn honours its deadline | p99 1 007 µs, 40 overruns in 20 765 turns |
-| FR-007 | App Nap does not stall the loop | occluded p99 255.9 ms against 253.3 ms with activity |
-| FR-008 | one loop carries thirty-two watches | 62 fps, 643.1 MB |
+| FR-004 | nested Cocoa loops still deliver socket events | 331.2 MB through a resize, 331.7 MB through a held menu, 5 924 frames |
+| FR-005 | `nextDeadline` drives a host timer | 248.6 ms against a 200 ms request, on the main thread |
+| FR-006 | a turn honours its deadline | p99 1 006 µs, 40 overruns in 82 882 turns |
+| FR-007 | App Nap does not stall the loop | occluded p99 255.3 ms against 253.6 ms with activity |
+| FR-008 | one loop carries thirty-two watches | 62.5 fps, 2 703 MB, every watch served |
 
 FR-005 and FR-007 sit near 255 ms rather than 200 ms and 33 ms: the offscreen
 platform plugin clamps the timer to its own quantum. What the record reads is the
-ratio between the occluded and the active run, which is 1.01.
+ratio between the occluded and the active run, which is 1.007.
 
 ## Consequences
 
