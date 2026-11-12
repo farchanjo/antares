@@ -80,6 +80,12 @@ void QtListModel::multiData(const QModelIndex &index, QModelRoleDataSpan span) c
     if (!index.isValid()) {
         return;
     }
+    static int hits = 0;
+    if (hits < 4) {
+        std::fprintf(stderr, "  [multiData] row=%d col=%d span=%zu\n", index.row(), index.column(),
+                     static_cast<std::size_t>(span.size()));
+        ++hits;
+    }
     std::array<RowRole, ROW_ROLE_COUNT> roles{};
     std::array<std::uint32_t, ROW_ROLE_COUNT> positions{};
     std::size_t count = 0;
