@@ -625,7 +625,7 @@ void MainWindow::applyColumnWidths()
         const int weight = wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
         header->setWeight(static_cast<int>(at), weight, role == RowRole::actions ? 28 : 48);
     }
-    header->shareNow(view_->viewport()->width());
+    header->shareNow(view_->width());
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
