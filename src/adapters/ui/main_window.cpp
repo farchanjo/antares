@@ -440,7 +440,7 @@ void MainWindow::applyColumnWidths()
         }
     }
     std::fprintf(stderr, "  [larg] modelo_cols=%d view_cols=%d c0=%d c1=%d c9=%d\n",
-                 model_.columnCount(), view_->header()->count(), view_->columnWidth(0),
+                 model_.columnCount(QModelIndex{}), view_->header()->count(), view_->columnWidth(0),
                  view_->columnWidth(1), view_->columnWidth(9));
 }
 
