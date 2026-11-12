@@ -210,3 +210,32 @@ version. Right: `Support` with a lifebuoy icon.
 - The columns are per family, not the four of the first capture. Twelve for pods.
 - The status bar names the cluster and its version, not a row count.
 - A row carries a **selection checkbox** and a hover action cluster.
+
+## Table view (Nodes)
+
+Tab `Nodes - hood`, count `16 items`, search `Search Nodes…`.
+
+Columns: `☐` · `Name` · `CPU` · `Memory` · `Disk` · `Taints` · `Roles` ·
+`Version` · `Age` · `Conditions` · `⋮`
+
+Differences from the pods table, and they matter:
+
+- **CPU, Memory and Disk are bars**, not numbers. Each is a thin horizontal
+  meter with its own colour (CPU blue, memory magenta, disk amber), drawn in the
+  cell with the value on hover.
+- **`Conditions` is a stack of coloured pills**. `Ready docs.kube` reads green;
+  `SchedulingDisab` reads amber. Two conditions show as two pills.
+- **`Taints` is a count**, `0` when none.
+- **`Roles` is empty** for a worker; the control-plane node would carry one.
+- The last column is a `⋮` row menu, always present.
+- There is no namespace column: a node is cluster-scoped.
+
+## Family column sets, as observed
+
+| Family | Columns |
+|---|---|
+| Pods | `☐`, Name, Namespace, CPU, Memory, Container, Restarts, Controlled By, Node, QoS, Status, Age |
+| Nodes | `☐`, Name, CPU, Memory, Disk, Taints, Roles, Version, Age, Conditions, `⋮` |
+
+The two share only `Name` and `Age`. A single fixed column set will not do: the
+table is described per family.
