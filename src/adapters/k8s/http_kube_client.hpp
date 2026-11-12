@@ -74,7 +74,7 @@ public:
     scale(const domain::k8s::ApiPath &path, std::optional<std::int32_t> replicas,
           std::function<void(ports::k8s::ObjectResult)> done) override;
 
-    [[nodiscard]] ports::k8s::ClientStats stats() const noexcept override;
+    [[nodiscard]] ports::k8s::KubeStats stats() const noexcept override;
 
     [[nodiscard]] std::expected<std::shared_ptr<ports::k8s::Ticket>, domain::k8s::ApiError>
     serverVersion(std::function<void(ports::k8s::VersionResult)> done) override;
@@ -108,7 +108,7 @@ private:
 
     Binding binding_;
     std::shared_ptr<ports::http::Client> http_;
-    mutable ports::k8s::ClientStats stats_;
+    mutable ports::k8s::KubeStats stats_;
 };
 
 } // namespace antares::adapters::k8s

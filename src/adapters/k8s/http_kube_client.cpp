@@ -1,9 +1,12 @@
 #include "adapters/k8s/http_kube_client.hpp"
 
 #include <expected>
+#include <optional>
+#include <string_view>
 #include <utility>
 
 #include "domain/json/value.hpp"
+#include "domain/k8s/entry_decoder.hpp"
 
 namespace antares::adapters::k8s {
 
@@ -186,11 +189,13 @@ HttpKubeClient::list(const domain::k8s::ApiPath &path, const domain::k8s::ListOp
             page.continueToken = std::string{document->member("metadata").textAt("continue")};
             page.resourceVersion =
                 std::string{document->member("metadata").textAt("resourceVersion")};
+            // The document dies with this completion; only the projection
+            // survives, so the page is not a second tree (FR-005).
             for (const domain::json::Value &item : document->member("items").items()) {
-                ports::k8s::Object object;
-                object.meta = domain::k8s::ObjectMeta::fromJson(item);
-                object.body = item;
-                page.items.push_back(std::move(object));
+                auto entry = domain::k8s::decodeEntry(item);
+                if (entry) {
+                    page.items.push_back(std::move(*entry));
+                }
             }
         }
         done(ports::k8s::ListResult{std::move(page)});
@@ -298,7 +303,9 @@ HttpKubeClient::watch(const domain::k8s::ApiPath &path,
     watching.watch = true;
 
     // Frames arrive as body chunks that do not align to lines, so the tail is
-    // carried between chunks (FR-004).
+    // carried between chunks (FR-004). The cursor reads frames in place and
+    // compacts once per chunk, so nothing is copied out of the accumulator
+    // (FR-005).
     auto buffer = std::make_shared<std::string>();
     auto sharedHandler = std::make_shared<ports::k8s::WatchHandler>(std::move(handler));
     const auto weak = weak_from_this();
@@ -306,25 +313,33 @@ HttpKubeClient::watch(const domain::k8s::ApiPath &path,
     ports::http::StreamHandler streaming;
     streaming.onChunk = [buffer, sharedHandler, weak](std::span<const std::byte> chunk) {
         buffer->append(reinterpret_cast<const char *>(chunk.data()), chunk.size());
-        for (std::string const& frame : domain::k8s::takeFrames(*buffer)) {
-            auto event = domain::k8s::decodeWatchEvent(frame);
-            if (!event) {
-                continue;
-            }
-            if (!*event) {
-                continue;
-            }
-            const auto self = weak.lock();
-            if (self) {
-                if ((**event).type == domain::k8s::EventType::bookmark) {
-                    ++self->stats_.bookmarks;
-                } else {
-                    ++self->stats_.watchEvents;
+
+        std::size_t compacted = 0;
+        {
+            domain::k8s::FrameCursor cursor{*buffer};
+            while (const std::optional<std::string_view> frame = cursor.next()) {
+                auto event = domain::k8s::decodeWatchEvent(*frame);
+                if (!event || !*event) {
+                    continue;
+                }
+                const auto self = weak.lock();
+                if (self) {
+                    ++self->stats_.framesParsed;
+                    if ((**event).type == domain::k8s::EventType::bookmark) {
+                        ++self->stats_.bookmarks;
+                    } else {
+                        ++self->stats_.watchEvents;
+                    }
+                }
+                if (sharedHandler->onEvent) {
+                    sharedHandler->onEvent(**event);
                 }
             }
-            if (sharedHandler->onEvent) {
-                sharedHandler->onEvent(**event);
-            }
+            compacted = cursor.compact();
+        }
+        const auto self = weak.lock();
+        if (self && compacted > 0) {
+            ++self->stats_.bufferCompactions;
         }
     };
 
@@ -385,8 +400,11 @@ HttpKubeClient::logs(const domain::k8s::ApiPath &path,
     ports::http::StreamHandler streaming;
     streaming.onChunk = [buffer, sink](std::span<const std::byte> chunk) {
         buffer->append(reinterpret_cast<const char *>(chunk.data()), chunk.size());
-        for (std::string const& line : domain::k8s::takeFrames(*buffer)) {
-            (*sink)(line);
+        // The cursor views the accumulator and compacts on destruction, once
+        // per chunk (FR-005).
+        domain::k8s::FrameCursor cursor{*buffer};
+        while (const std::optional<std::string_view> line = cursor.next()) {
+            (*sink)(*line);
         }
     };
 
@@ -488,7 +506,7 @@ HttpKubeClient::serverVersion(std::function<void(ports::k8s::VersionResult)> don
     return std::shared_ptr<ports::k8s::Ticket>{new TicketHandle(std::move(*ticket))};
 }
 
-ports::k8s::ClientStats HttpKubeClient::stats() const noexcept
+ports::k8s::KubeStats HttpKubeClient::stats() const noexcept
 {
     return stats_;
 }

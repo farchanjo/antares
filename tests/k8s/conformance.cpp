@@ -2,23 +2,36 @@
 // requirement: the shape of a request, the mapping of a failure, and the
 // framing of a stream, proven without a cluster.
 
+#include <array>
 #include <cstddef>
 #include <cstdio>
+#include <fstream>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "application/k8s/object_store.hpp"
 #include "domain/json/value.hpp"
 #include "domain/k8s/api_path.hpp"
 #include "domain/k8s/discovery.hpp"
+#include "domain/k8s/entry_decoder.hpp"
 #include "domain/k8s/exec_channel.hpp"
 #include "domain/k8s/kubeconfig.hpp"
+#include "domain/k8s/namespace_name.hpp"
+#include "domain/k8s/object_key.hpp"
+#include "domain/k8s/object_name.hpp"
 #include "domain/k8s/options.hpp"
+#include "domain/k8s/scope.hpp"
 #include "domain/k8s/status.hpp"
+#include "domain/k8s/store_budget.hpp"
 #include "domain/k8s/watch_event.hpp"
+#include "support/counting_allocator.hpp"
 
 namespace {
 
+using namespace antares::application::k8s;
 using namespace antares::domain;
 using namespace antares::domain::k8s;
 
@@ -244,21 +257,75 @@ void caseFramesSplitAcrossChunks()
 {
     std::string buffer;
     buffer += R"({"type":"ADDED","object":{"metadata":)";
-    check(takeFrames(buffer).empty(), "a partial frame yields nothing");
+    {
+        FrameCursor partial{buffer};
+        check(!partial.next().has_value(), "a partial frame yields nothing");
+    }
+    checkEqual(buffer, R"({"type":"ADDED","object":{"metadata":)", "an incomplete tail is kept");
 
-    buffer += R"({"resourceVersion":"7"}}})";
+    buffer += R"({"resourceVersion":"7","uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+              R"("name":"web-0"},"kind":"Pod"}})";
     buffer += '\n';
-    buffer += R"({"type":"MODIFIED","object":{"metadata":{"resourceVersion":"8"}}})";
+    buffer += R"({"type":"MODIFIED","object":{"metadata":{"resourceVersion":"8",)"
+              R"("uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40","name":"web-0"},)"
+              R"("kind":"Pod"}})";
     buffer += '\n';
     buffer += R"({"type":"ADDED")";
 
-    const std::vector<std::string> frames = takeFrames(buffer);
+    std::vector<std::string> frames;
+    {
+        FrameCursor cursor{buffer};
+        while (const std::optional<std::string_view> frame = cursor.next()) {
+            frames.emplace_back(*frame);
+        }
+    }
     check(frames.size() == 2, "two complete frames found");
     checkEqual(buffer, R"({"type":"ADDED")", "the incomplete tail is kept");
 
     auto first = decodeWatchEvent(frames.front());
     check(first && *first && (**first).type == EventType::added, "first frame decodes");
     check(first && *first && (**first).produces(), "an ADDED produces an object");
+    check(first && *first && (**first).entry.has_value(), "the frame carries a projection");
+}
+
+// FR-005 — the cursor views the accumulator and compacts at most once per
+// chunk, so no frame is copied out of it.
+void caseFrameCursorCompactsOnce()
+{
+    const std::vector<std::string> chunks{
+        R"({"type":"ADDED","object":{"kind":"Pod","metadata":)"
+        R"({"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40","name":"web-0",)"
+        R"("resourceVersion":"7"}}})"
+        "\n",
+        R"({"type":"BOOKMARK","object":{"metadata":{"resourceVersion":"8"}}})"
+        "\n"
+        "\n",
+    };
+
+    std::string buffer;
+    std::size_t parses = 0;
+    std::size_t compactions = 0;
+
+    for (const std::string &chunk : chunks) {
+        buffer += chunk;
+        std::size_t erased = 0;
+        {
+            FrameCursor cursor{buffer};
+            while (const std::optional<std::string_view> frame = cursor.next()) {
+                ++parses;
+                const auto event = decodeWatchEvent(*frame);
+                check(event.has_value(), "every complete frame decodes");
+            }
+            erased = cursor.compact();
+        }
+        if (erased > 0) {
+            ++compactions;
+        }
+    }
+
+    check(parses == 3, "every frame is parsed exactly once");
+    check(compactions <= chunks.size(), "the accumulator compacts at most once per chunk");
+    check(buffer.empty(), "nothing is left behind");
 }
 
 // FR-004 — a blank line is a keep-alive, not a failure.
@@ -542,6 +609,536 @@ void caseExecErrorFrame()
     check(!junk.message.empty(), "junk keeps its text");
 }
 
+// --- the projection and the store --------------------------------------
+
+[[nodiscard]] std::string readFixture(std::string_view name)
+{
+    const std::string path = std::string{ANTARES_FIXTURE_DIR} + "/" + std::string{name};
+    std::ifstream file{path, std::ios::binary};
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+[[nodiscard]] std::optional<json::Value> parseFixture(std::string_view name)
+{
+    auto document = json::Value::parse(readFixture(name));
+    if (!document) {
+        return std::nullopt;
+    }
+    return std::move(*document);
+}
+
+[[nodiscard]] std::optional<Entry> decodeFixture(std::string_view name)
+{
+    const auto document = parseFixture(name);
+    if (!document) {
+        return std::nullopt;
+    }
+    auto entry = decodeEntry(*document);
+    if (!entry) {
+        return std::nullopt;
+    }
+    return std::move(*entry);
+}
+
+[[nodiscard]] Scope scopeFor(std::string_view namespaceName = "shop")
+{
+    Scope scope;
+    scope.cluster = ClusterName::of("dev").value_or(ClusterName{});
+    scope.type = corePods();
+    scope.kind = "Pod";
+    scope.namespaceName = NamespaceName::of(namespaceName).value_or(NamespaceName{});
+    return scope;
+}
+
+[[nodiscard]] std::string uidText(std::size_t index)
+{
+    char buffer[40] = {};
+    std::snprintf(buffer, sizeof(buffer), "00000000-0000-4000-8000-%012zx", index);
+    return std::string{buffer};
+}
+
+[[nodiscard]] std::optional<Entry> entryFor(std::size_t index)
+{
+    auto entry = decodeFixture("pod.json");
+    if (!entry) {
+        return std::nullopt;
+    }
+    auto uid = Uid::parse(uidText(index));
+    if (!uid) {
+        return std::nullopt;
+    }
+    entry->identity.uid = *uid;
+    return entry;
+}
+
+/// One delta, as the watch adapter would hand it over.
+[[nodiscard]] WatchEvent eventOf(EventType type, const Entry &entry)
+{
+    WatchEvent event;
+    event.type = type;
+    event.resourceVersion = entry.resourceVersion;
+    event.entry = entry;
+    return event;
+}
+
+// FR-002 — the stored shape is the projection and nothing else.
+void caseEntryProjection()
+{
+    const auto document = parseFixture("pod.json");
+    check(document.has_value(), "fixture parses");
+    if (!document) {
+        return;
+    }
+
+    const auto entry = decodeEntry(*document);
+    check(entry.has_value(), "fixture decodes");
+    if (!entry) {
+        return;
+    }
+
+    checkEqual(entry->identity.name, "checkout-api-6f8d7c9b54-abcdefghi", "name kept");
+    checkEqual(entry->resourceVersion, "184223", "resource version kept");
+    check(entry->generation == 1, "generation kept");
+    checkEqual(entry->creationTimestamp, "2026-11-11T19:05:00Z", "creation time kept");
+    check(entry->labels.size() == 3, "every label kept");
+    check(!entry->labelsTruncated(), "a small label set is not truncated");
+    checkEqual(entry->status.reason, "Running", "status reason kept");
+
+    // `managedFields` and `annotations` never reach the entry.
+    checkEqual(entry->labels.valueOf("app"), "checkout", "label read by key");
+
+    // A Secret keeps neither `data` nor `stringData`, however large they are.
+    const std::string payload(1024 * 1024, 'A');
+    json::Value secret;
+    const std::string text = R"({"kind":"Secret","metadata":{"uid":)"
+                             R"("5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40","name":"tls",)"
+                             R"("resourceVersion":"9"},"data":{"tls.crt":")" +
+                             payload + R"("},"stringData":{"token":")" + payload + R"("}})";
+    auto parsed = json::Value::parse(text);
+    check(parsed.has_value(), "secret parses");
+    if (parsed) {
+        const auto decoded = decodeEntry(*parsed);
+        check(decoded.has_value(), "secret decodes");
+        check(decoded && decoded->labels.empty(), "a secret keeps no data as a label");
+    }
+}
+
+// FR-003 — an object outside the name, uid and kind rules is refused.
+void caseEntryRefusesHostile()
+{
+    const auto base = parseFixture("pod.json");
+    check(base.has_value(), "fixture parses");
+    if (!base) {
+        return;
+    }
+
+    check(!ObjectName::of(std::string(254, 'n')).has_value(), "254-byte name refused");
+    check(ObjectName::of(std::string(253, 'n')).has_value(), "253-byte name admitted");
+    check(!ObjectName::of(".").has_value(), "dot refused");
+    check(!ObjectName::of("a/b").has_value(), "slash refused");
+    check(!Uid::parse("not-a-uid").has_value(), "non-UUID uid refused");
+    check(!NamespaceName::of("Kube-System").has_value(), "uppercase namespace refused");
+    check(NamespaceName::of("").has_value(), "empty namespace is cluster scope");
+}
+
+// FR-003 — labels cut at sixteen entries and at 256 bytes, and say so.
+void caseEntryLabelsTruncated()
+{
+    Labels labels;
+    for (std::size_t index = 0; index < 20; ++index) {
+        labels.append("k" + std::to_string(index), "v");
+    }
+    check(labels.size() == 16, "sixteen entries kept");
+    check(labels.truncated(), "the cut is recorded");
+
+    Labels bytes;
+    for (std::size_t index = 0; index < 8; ++index) {
+        bytes.append("key" + std::to_string(index), std::string(40, 'x'));
+    }
+    check(bytes.truncated(), "a byte ceiling cuts even under sixteen entries");
+    check(bytes.size() < 8, "some pairs were dropped");
+}
+
+// FR-003 — one worst-case admitted entry stays inside 1024 bytes.
+void caseEntryWorstCaseBound()
+{
+    const auto document = parseFixture("worst-entry.json");
+    check(document.has_value(), "worst-case fixture parses");
+    if (!document) {
+        return;
+    }
+
+    const antares::test::CountingScope counting;
+    const std::size_t before = antares::test::live();
+    const auto entry = decodeEntry(*document);
+    const std::size_t used = antares::test::live() - before;
+
+    check(entry.has_value(), "worst-case object decodes");
+    check(used <= 1024, "an admitted entry costs at most 1024 bytes");
+    check(entry && entry->labels.size() == 16, "the label ceiling is what stopped it");
+    check(entry && entry->labelsTruncated(), "the truncation is recorded");
+    std::printf("  worst-case entry: %zu bytes\n", used);
+}
+
+// FR-003 — five thousand fixture pods stay inside 2 560 000 bytes.
+void caseStoreBounds5000Pods()
+{
+    const auto base = decodeFixture("pod.json");
+    check(base.has_value(), "fixture decodes");
+    if (!base) {
+        return;
+    }
+
+    const Scope scope = scopeFor();
+    std::size_t used = 0;
+    {
+        const antares::test::CountingScope counting;
+        const std::size_t before = antares::test::live();
+
+        ObjectStore store;
+        const auto opened = store.open(scope);
+        check(opened.has_value(), "scope opens");
+        if (!opened) {
+            return;
+        }
+
+        for (std::size_t index = 0; index < 5000; ++index) {
+            Entry copy = *base;
+            auto uid = Uid::parse(uidText(index));
+            if (!uid) {
+                continue;
+            }
+            copy.identity.uid = *uid;
+            const std::array<WatchEvent, 1> batch{eventOf(EventType::added, copy)};
+            static_cast<void>(store.apply(scope, batch));
+        }
+        used = antares::test::live() - before;
+        check(store.totalEntries() == 5000, "every pod is stored");
+    }
+    check(used <= 2'560'000, "five thousand pods cost at most 2 560 000 bytes");
+    std::printf("  5000 pods: %zu bytes (%zu per entry)\n", used, used / 5000);
+}
+
+// FR-001 — two readers of the same key get the same entry.
+void caseStoreSharesEntry()
+{
+    const auto entry = decodeFixture("pod.json");
+    check(entry.has_value(), "fixture decodes");
+    if (!entry) {
+        return;
+    }
+
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+    static_cast<void>(store.apply(scope, batch));
+
+    const ObjectKey key{scope, entry->identity.uid};
+    const Entry *first = store.resolve(key);
+    const Entry *second = store.resolve(key);
+    check(first != nullptr, "the key resolves");
+    check(first == second, "both readers receive the same stored entry");
+    check(store.resolve(ObjectKey{scope, Uid{}}) == nullptr, "an absent uid resolves to nothing");
+}
+
+// FR-006 — a MODIFIED updates in place, a DELETED removes, an unknown uid is
+// counted rather than failed, and a bookmark touches nothing.
+void caseStoreUpsertInPlace()
+{
+    const auto entry = decodeFixture("pod.json");
+    check(entry.has_value(), "fixture decodes");
+    if (!entry) {
+        return;
+    }
+
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    const std::array<WatchEvent, 1> added{eventOf(EventType::added, *entry)};
+    static_cast<void>(store.apply(scope, added));
+
+    Entry modified = *entry;
+    modified.resourceVersion = "184224";
+    const std::array<WatchEvent, 1> update{eventOf(EventType::modified, modified)};
+    const ChangeSet changes = store.apply(scope, update);
+
+    const StoreScope *opened = store.find(scope);
+    check(opened != nullptr, "the scope is open");
+    check(opened != nullptr && opened->size() == 1, "a modification keeps the count");
+    check(changes.changed.size() == 1, "exactly one row is announced as changed");
+    check(changes.changed.size() == 1 && changes.changed.front().row == 0, "the row is named");
+    check(!changes.changed.empty() &&
+              changes.changed.front().fields == std::vector<EntryField>{EntryField::resourceVersion},
+          "the mask names only the field that moved");
+
+    // A field a view does not render repaints nothing.
+    Entry unrendered = modified;
+    unrendered.creationTimestamp = "2026-11-11T19:06:00Z";
+    const std::array<WatchEvent, 1> quiet{eventOf(EventType::modified, unrendered)};
+    check(store.apply(scope, quiet).empty(), "an unrendered change emits nothing");
+
+    // An unknown uid on MODIFIED is counted, not failed.
+    Entry stranger = *entry;
+    stranger.identity.uid = *Uid::parse(uidText(999));
+    const std::array<WatchEvent, 1> ghost{eventOf(EventType::modified, stranger)};
+    check(store.apply(scope, ghost).empty(), "an unknown modification emits nothing");
+    check(opened != nullptr && opened->state().unknown == 1, "the unknown uid is counted");
+
+    // A bookmark touches no entry.
+    WatchEvent bookmark;
+    bookmark.type = EventType::bookmark;
+    bookmark.resourceVersion = "184225";
+    const std::array<WatchEvent, 1> touched{bookmark};
+    check(store.apply(scope, touched).empty(), "a bookmark emits nothing");
+    check(opened != nullptr && opened->size() == 1, "a bookmark keeps the count");
+
+    const std::array<WatchEvent, 1> removed{eventOf(EventType::deleted, modified)};
+    static_cast<void>(store.apply(scope, removed));
+    check(opened != nullptr && opened->size() == 0, "a deletion removes the row");
+    check(store.resolve(ObjectKey{scope, entry->identity.uid}) == nullptr, "the uid is gone");
+}
+
+// FR-008 — replaying a change set onto a mirror reproduces the rows exactly.
+void caseStoreChangeSetReplays()
+{
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    std::vector<std::string> mirror;
+    for (std::size_t index = 0; index < 3; ++index) {
+        const auto entry = entryFor(index);
+        if (!entry) {
+            continue;
+        }
+        const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+        static_cast<void>(store.apply(scope, batch));
+        mirror.push_back(uidText(index));
+    }
+    check(mirror.size() == 3, "three rows are stored");
+
+    // One batch: modify the middle row, drop the first and append a fourth.
+    auto middle = entryFor(1);
+    auto appended = entryFor(3);
+    auto first = entryFor(0);
+    check(middle && appended && first, "the batch entries decode");
+    if (!middle || !appended || !first) {
+        return;
+    }
+    middle->resourceVersion = "900001";
+    std::vector<WatchEvent> batch{eventOf(EventType::modified, *middle),
+                                  eventOf(EventType::deleted, *first),
+                                  eventOf(EventType::added, *appended)};
+    const ChangeSet changes = store.apply(scope, batch);
+
+    check(changes.removed.size() == 1, "one removal range");
+    check(changes.removed.size() == 1 && changes.removed.front().first == 0, "the removal is row 0");
+    check(changes.inserted.size() == 1, "one insertion range");
+    check(changes.changed.size() == 1, "one changed row");
+    check(!changes.changed.empty() && changes.changed.front().row == 0, "the changed row is 0");
+
+    // Replay: removals descend, insertions ascend, placeholders take the row
+    // the store now holds at that position.
+    for (const RowRange &range : changes.removed) {
+        mirror.erase(mirror.begin() + range.first, mirror.begin() + range.last);
+    }
+    for (const RowRange &range : changes.inserted) {
+        mirror.insert(mirror.begin() + range.first, range.last - range.first, std::string{});
+    }
+
+    std::vector<std::string> actual;
+    if (const StoreScope *opened = store.find(scope); opened != nullptr) {
+        for (const auto &row : opened->rows()) {
+            if (row) {
+                actual.push_back(row->uid().text());
+            }
+        }
+    }
+
+    check(mirror.size() == actual.size(), "the replay keeps the row count");
+    for (std::size_t index = 0; index < mirror.size() && index < actual.size(); ++index) {
+        if (mirror[index].empty()) {
+            mirror[index] = actual[index];
+        }
+    }
+    check(mirror == actual, "the mirror reproduces the store's rows exactly");
+}
+
+// FR-004 — past a ceiling an object is refused and counted, and nothing stored
+// leaves to make room.
+void caseStoreAdmitsUntilCeiling()
+{
+    StoreBudget budget;
+    budget.maxEntries = 3;
+    budget.maxTotalEntries = 6;
+    budget.maxScopes = 1;
+
+    const Scope scope = scopeFor();
+    ObjectStore store{budget};
+    check(store.open(scope).has_value(), "scope opens");
+
+    for (std::size_t index = 0; index < 3; ++index) {
+        const auto entry = entryFor(index);
+        check(entry.has_value(), "entry decodes");
+        if (!entry) {
+            return;
+        }
+        const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+        static_cast<void>(store.apply(scope, batch));
+    }
+
+    const auto overflow = entryFor(3);
+    check(overflow.has_value(), "overflow entry decodes");
+    if (!overflow) {
+        return;
+    }
+    const std::array<WatchEvent, 1> refused{eventOf(EventType::added, *overflow)};
+    static_cast<void>(store.apply(scope, refused));
+
+    const StoreScope *opened = store.find(scope);
+    check(opened != nullptr, "the scope is open");
+    check(opened != nullptr && opened->size() == 3, "no stored entry leaves");
+    check(opened != nullptr && opened->state().truncated, "the scope is published truncated");
+    check(opened != nullptr && opened->state().refused == 1, "the refusal is counted");
+    check(store.resolve(ObjectKey{scope, overflow->identity.uid}) == nullptr,
+          "the refused object is not stored");
+
+    // A second scope is refused outright: one scope is the budget here.
+    check(!store.open(scopeFor("other")).has_value(), "a scope past maxScopes is refused");
+    check(store.open(scope).has_value(), "reopening an open scope is free");
+}
+
+// FR-007 — a relist reconciles by epoch; the count is the relist.
+void caseStoreRelistReconciles()
+{
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    for (std::size_t index = 0; index < 3; ++index) {
+        const auto entry = entryFor(index);
+        check(entry.has_value(), "entry decodes");
+        if (!entry) {
+            return;
+        }
+        const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+        static_cast<void>(store.apply(scope, batch));
+    }
+
+    store.markStale(scope);
+    const StoreScope *opened = store.find(scope);
+    check(opened != nullptr && opened->state().stale, "the scope is stale");
+
+    const auto epoch = store.beginRelist(scope);
+    check(epoch.has_value(), "the relist opens an epoch");
+    if (!epoch) {
+        return;
+    }
+
+    auto replacement = entryFor(3);
+    check(replacement.has_value(), "replacement decodes");
+    if (!replacement) {
+        return;
+    }
+    const std::vector<Entry> page{*entryFor(0), *entryFor(2), *replacement};
+    const auto pageChanges = store.relistPage(scope, *epoch, page);
+    check(pageChanges.has_value(), "the page applies");
+
+    const auto swept = store.endRelist(scope, *epoch);
+    check(swept.has_value(), "the final page sweeps");
+    check(opened != nullptr && opened->size() == 3, "the count is the relist, not the sum");
+    check(opened != nullptr && !opened->state().stale, "the relist clears the staleness");
+    check(store.resolve(ObjectKey{scope, *Uid::parse(uidText(1))}) == nullptr,
+          "the absent uid is swept");
+}
+
+// FR-007 — a relist that never reaches its final page sweeps nothing.
+void caseStoreRelistAbandoned()
+{
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    const auto entry = entryFor(0);
+    check(entry.has_value(), "entry decodes");
+    if (!entry) {
+        return;
+    }
+    const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+    static_cast<void>(store.apply(scope, batch));
+
+    store.markStale(scope);
+    const auto epoch = store.beginRelist(scope);
+    check(epoch.has_value(), "the relist opens an epoch");
+    if (!epoch) {
+        return;
+    }
+    const std::vector<Entry> page{*entryFor(1)};
+    check(store.relistPage(scope, *epoch, page).has_value(), "the first page applies");
+    store.abandonRelist(scope);
+
+    const StoreScope *opened = store.find(scope);
+    check(opened != nullptr && opened->size() == 2, "an abandoned relist sweeps nothing");
+    check(opened != nullptr && opened->state().stale, "the scope stays stale");
+    check(!store.relistPage(scope, *epoch, page).has_value(), "a page after the epoch is refused");
+}
+
+// FR-006, FR-008 — every event type is routed and counted.
+void caseStoreRoutesEvents()
+{
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    const auto entry = entryFor(0);
+    check(entry.has_value(), "entry decodes");
+    if (!entry) {
+        return;
+    }
+
+    Entry modified = *entry;
+    modified.resourceVersion = "500001";
+    std::vector<WatchEvent> batch{eventOf(EventType::added, *entry),
+                                  eventOf(EventType::modified, modified),
+                                  eventOf(EventType::deleted, modified)};
+    const ChangeSet changes = store.apply(scope, batch);
+    const StoreScope *opened = store.find(scope);
+    check(opened != nullptr && opened->size() == 0, "add, modify and delete net out");
+    check(changes.changed.size() == 1, "the modification is one changed row");
+    check(changes.removed.empty() && changes.inserted.empty(),
+          "a row born and dropped in one batch is neither inserted nor removed");
+}
+
+// D-15 — two metrics, one two-value label, and nothing unbounded.
+void caseStoreMetricsBounded()
+{
+    const Scope scope = scopeFor();
+    ObjectStore store;
+    check(store.open(scope).has_value(), "scope opens");
+
+    const auto entry = entryFor(0);
+    check(entry.has_value(), "entry decodes");
+    if (!entry) {
+        return;
+    }
+    const std::array<WatchEvent, 1> batch{eventOf(EventType::added, *entry)};
+    static_cast<void>(store.apply(scope, batch));
+
+    const auto &samples = store.metrics().samples();
+    check(samples.size() == 4, "two metrics with two label values each");
+    checkEqual(samples[0].name, "store.entries", "entries metric named");
+    checkEqual(samples[0].scopeKind, "cluster", "cluster label value");
+    checkEqual(samples[1].scopeKind, "namespace", "namespace label value");
+    checkEqual(samples[2].name, "store.refused", "refused metric named");
+    check(store.metrics().entries(ScopeKind::namespaced) == 1, "the entry gauge counts");
+    check(store.metrics().entries(ScopeKind::cluster) == 0, "the cluster gauge stays put");
+}
+
 struct Case {
     std::string_view name;
     void (*run)();
@@ -578,6 +1175,20 @@ constexpr Case cases[] = {
     {"exec-unknown-channel", caseExecUnknownChannel},
     {"exec-resize-payload", caseExecResizePayload},
     {"exec-error-frame", caseExecErrorFrame},
+    {"frame-cursor-compacts-once", caseFrameCursorCompactsOnce},
+    {"entry-projection", caseEntryProjection},
+    {"entry-refuses-hostile", caseEntryRefusesHostile},
+    {"entry-labels-truncated", caseEntryLabelsTruncated},
+    {"entry-worst-case-bound", caseEntryWorstCaseBound},
+    {"store-bounds-5000-pods", caseStoreBounds5000Pods},
+    {"store-shares-entry", caseStoreSharesEntry},
+    {"store-upsert-in-place", caseStoreUpsertInPlace},
+    {"store-change-set-replays", caseStoreChangeSetReplays},
+    {"store-admits-until-ceiling", caseStoreAdmitsUntilCeiling},
+    {"store-relist-reconciles", caseStoreRelistReconciles},
+    {"store-relist-abandoned", caseStoreRelistAbandoned},
+    {"store-routes-events", caseStoreRoutesEvents},
+    {"store-metrics-bounded", caseStoreMetricsBounded},
 };
 
 } // namespace

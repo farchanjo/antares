@@ -353,7 +353,7 @@ int smoke(const std::string &contextName, const std::string &namespaceOverride,
         stalled = true;
     }
 
-    const ports::k8s::ClientStats stats = reader.stats();
+    const ports::k8s::KubeStats stats = reader.stats();
     std::printf("\nstats: submitted=%llu ok=%llu failed=%llu events=%llu bookmarks=%llu\n",
                 static_cast<unsigned long long>(stats.submitted),
                 static_cast<unsigned long long>(stats.succeeded),

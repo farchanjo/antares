@@ -23,7 +23,7 @@ namespace antares::ports::k8s {
 
 /// Live counters, one row per client. Bounded by construction: no namespace
 /// name, no resource name, no identifier ever becomes a counter.
-struct ClientStats {
+struct KubeStats {
     std::uint64_t submitted = 0;
     std::uint64_t succeeded = 0;
     std::uint64_t failed = 0;
@@ -31,6 +31,11 @@ struct ClientStats {
     std::uint64_t watchEvents = 0;
     std::uint64_t bookmarks = 0;
     std::uint64_t expiredStreams = 0;
+    /// Non-blank frames parsed. With `framesParsed` and `bufferCompactions`
+    /// the suite proves a frame is parsed once and the accumulator compacts at
+    /// most once per chunk (FR-005).
+    std::uint64_t framesParsed = 0;
+    std::uint64_t bufferCompactions = 0;
 };
 
 /// A value that arrived from the server. `body` is the raw JSON so the caller
@@ -41,8 +46,11 @@ struct Object {
 };
 
 /// One page of a list, plus the token that reaches the next one (FR-002).
+///
+/// Items are projections, not documents: the store holds what a view reads and
+/// the page is dropped (FR-002). `get` still returns the whole document.
 struct ListPage {
-    std::vector<Object> items;
+    std::vector<domain::k8s::Entry> items;
     std::string continueToken;
     std::string resourceVersion;
 };
@@ -134,7 +142,7 @@ public:
     [[nodiscard]] virtual std::expected<std::shared_ptr<Ticket>, domain::k8s::ApiError>
     serverVersion(std::function<void(VersionResult)> done) = 0;
 
-    [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
+    [[nodiscard]] virtual KubeStats stats() const noexcept = 0;
 };
 
 /// What to run, and where (FR-009).
