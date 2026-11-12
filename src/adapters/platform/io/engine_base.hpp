@@ -190,6 +190,7 @@ private:
     /// blocks and has no timeout of its own, so a broken resolver would
     /// otherwise pend the request for the life of the process.
     static constexpr domain::Duration resolveTimeout = std::chrono::seconds{5};
+    static constexpr domain::Duration stopWait = std::chrono::seconds{2};
 
     /// Per-job claim, shared by the resolver thread and the watchdog. A single
     /// engine-wide slot let a late answer settle a job the timer had already

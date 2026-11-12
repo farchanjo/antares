@@ -642,6 +642,43 @@ void caseResolveTwoJobsOneWindow()
     check(second.load() == 1, "the second job settled exactly once");
 }
 
+/// A cancelled op moves the counters once, like any other completion (FR-008).
+void caseStatsCancelCounts()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    const auto before = engine.stats();
+    std::atomic<bool> settled{false};
+    (void)engine.submitRead(*handle, std::nullopt, Bytes{8},
+                            [&](std::expected<Buffer, IoError> result) {
+                                settled.store(!result &&
+                                              result.error() == IoError::cancelled);
+                            });
+    engine.cancelPending(*handle);
+
+    antares::test::Await done;
+    engine.post([&] { done.signal(); });
+    check(done.wait(), "the loop kept running");
+    check(settled.load(), "the read was cancelled");
+
+    const auto after = engine.stats();
+    check(after.completed == before.completed + 1, "the cancellation counted one completion");
+    check(after.failures() == before.failures() + 1, "and one failure");
+
+    ::close(pair[1]);
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -665,6 +702,7 @@ std::span<const Case> cases()
         {"stop-settles-pending", caseStopSettlesPending},
         {"stop-is-reversible", caseStopIsReversible},
         {"resolve-two-jobs-one-window", caseResolveTwoJobsOneWindow},
+        {"stats-cancel-counts", caseStatsCancelCounts},
     };
     return table;
 }

@@ -492,6 +492,19 @@ void EngineBase::stop()
     // No loop to drain it: settle the queue here, on the caller.
     if (!loopRunning_.load(std::memory_order_acquire)) {
         drainUntil(std::chrono::steady_clock::time_point::max());
+        return;
+    }
+
+    // A loop is running and will drain on its way out. Waiting for it is what
+    // makes `stop()` a boundary: afterwards nothing the loop owns can still run,
+    // so a task posted later is known to be orphaned rather than racing.
+    if (isEngineThread()) {
+        return;
+    }
+    const auto limit = std::chrono::steady_clock::now() + stopWait;
+    while (loopRunning_.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < limit) {
+        std::this_thread::yield();
     }
 }
 

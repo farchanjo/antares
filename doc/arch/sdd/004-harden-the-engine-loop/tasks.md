@@ -28,7 +28,7 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       releases an op (FR-004).
 - [x] T011 Make `stop()` complete every pending op with `IoError::cancelled`
       before the resolver join, reusing the `cancelPending` switch (FR-005).
-- [ ] T012 Map `IoError::cancelled` to `HttpError::cancelled` in `HttpClient`
+- [x] T012 Map `IoError::cancelled` to `HttpError::cancelled` in `HttpClient`
       so the completion is terminal (FR-005).
 - [x] T013 Add the case `stop/settles-pending`: an op in flight at `stop()`
       completes once with `cancelled` (FR-005).
@@ -36,13 +36,13 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       to a one-shot (FR-006).
 - [x] T015 Add the case `stop/reversible`: `run()` after `stop()` serves work
       again (FR-006).
-- [ ] T016 Follow the factory branch in `selectedBackendName` so io_uring
+- [x] T016 Follow the factory branch in `selectedBackendName` so io_uring
       reports itself (FR-007).
-- [ ] T017 Add the case `factory/backend-name`: the forced backend and the
+- [x] T017 Add the case `factory/backend-name`: the forced backend and the
       reported name agree (FR-007).
-- [ ] T018 Call `countCompletion` on the cancellation path so `completed` and
+- [x] T018 Call `countCompletion` on the cancellation path so `completed` and
       `failed` stop undercounting (FR-008).
-- [ ] T019 Add the case `stats/cancel-counts`: a cancelled op moves the counters
+- [x] T019 Add the case `stats/cancel-counts`: a cancelled op moves the counters
       once (FR-008).
 - [ ] T020 Extend the leak target with a cancel-then-stop case, since `stop()`
       completing changes what the pass observes.

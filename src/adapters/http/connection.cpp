@@ -21,6 +21,21 @@ namespace {
 
 constexpr domain::Bytes SOCKET_CHUNK{std::size_t{16} * 1024};
 
+/// One place where a transport error becomes an HTTP one. `cancelled` is kept
+/// apart from `protocol`: the peer did nothing wrong, a caller withdrew
+/// (FR-005 of 004).
+[[nodiscard]] domain::http::HttpError httpErrorFrom(ports::io::IoError error) noexcept
+{
+    switch (error) {
+    case ports::io::IoError::closed:
+        return domain::http::HttpError::closed;
+    case ports::io::IoError::cancelled:
+        return domain::http::HttpError::cancelled;
+    default:
+        return domain::http::HttpError::protocol;
+    }
+}
+
 /// Literal addresses never leave the process; a name goes through the engine,
 /// so the loop keeps running while the resolver works.
 [[nodiscard]] std::optional<sockaddr_storage> literal(const std::string &host, std::uint16_t port)
@@ -228,13 +243,11 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
         return;
     }
     if (!chunk) {
-        fail(chunk.error() == ports::io::IoError::closed ? domain::http::HttpError::closed
-                                                         : domain::http::HttpError::protocol);
+        fail(httpErrorFrom(chunk.error()));
         return;
     }
 
     if (ssl_ != nullptr) {
-        std::fprintf(stderr, "  [c] sock read %zu\n", chunk->size());
         (void)BIO_write(incoming_, chunk->data(), static_cast<int>(chunk->size()));
         if (state_ == State::handshaking) {
             driveHandshake();
