@@ -40,8 +40,10 @@ void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view con
     static_cast<void>(reader_.list(
         path, options,
         [this, shared, done = std::move(done)](ports::k8s::ListResult result) {
-            std::fprintf(stderr, "  [page] result=%d\n", result ? 1 : 0);
             if (!result) {
+                std::fprintf(stderr, "  [page] %s: %s\n",
+                             domain::k8s::describe(result.error().reason).data(),
+                             result.error().message.c_str());
                 done(std::unexpected(PageError::transport));
                 return;
             }
