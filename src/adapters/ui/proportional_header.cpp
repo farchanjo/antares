@@ -50,7 +50,11 @@ void ProportionalHeader::share()
     if (sections == 0 || weights_.isEmpty()) {
         return;
     }
-    const int room = width();
+    // The header is as wide as its sections want, not as wide as the pane, so
+    // measuring it would hand the last section a negative share. The viewport is
+    // the width that actually exists.
+    const QWidget *port = parentWidget() != nullptr ? parentWidget() : this;
+    const int room = port->width();
     if (room <= 0) {
         return;
     }
