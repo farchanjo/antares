@@ -436,3 +436,26 @@ Every family reuses a small set of cell types:
 | age | all | compact duration |
 | `⋮` | all | row menu |
 | `☐` | all | selection checkbox |
+
+## Navigation by keyboard
+
+Coordinate clicks hit the tree unreliably (the list scrolls under the pointer).
+Keyboard is deterministic and is the method from here:
+
+```sh
+agent-desktop --headed mouse-click --xy X,Y      # focus one tree row
+agent-desktop --headed press down --app Lens     # next row
+agent-desktop --headed press return --app Lens   # open it
+```
+
+`down` moves the selection; `return` opens the selected row. `escape` returns to
+the tree from a view.
+
+## Table view (Resource Quotas)
+
+Columns: `☐` · `Name` · `Namespace` · `Age` · `⋮`. `0 items` in this namespace.
+
+### Empty state
+
+A scope with nothing in it shows, centred and grey, **`Item list is empty`**. No
+icon, no action, no scope name. The `+` stays available above it.
