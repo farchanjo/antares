@@ -50,6 +50,9 @@ public:
 
     /// Which family the table shows. Its columns are the family's.
     void setFamily(Family family);
+
+    /// Narrow the rows to those whose name contains `needle`.
+    void setFilter(const std::string &needle);
     [[nodiscard]] Family family() const noexcept { return family_; }
 
     // No default arguments here: the base declares them and re-specifying a

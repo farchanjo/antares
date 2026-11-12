@@ -134,6 +134,11 @@ int QtListModel::columnCount(const QModelIndex &parent) const
     return parent.isValid() ? 0 : static_cast<int>(familyColumns(family_).size());
 }
 
+void QtListModel::setFilter(const std::string &needle)
+{
+    model_->setFilter(needle);
+}
+
 void QtListModel::setFamily(Family family)
 {
     if (family == family_) {

@@ -7,6 +7,7 @@
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QModelIndex;
 class QSplitter;
 class QStackedWidget;
 class QTabWidget;
@@ -57,6 +58,7 @@ private:
     void buildTree();
     void openFamily(QTreeWidgetItem *item);
     void applyColumnWidths();
+    void showDetail(const QModelIndex &index);
     void buildEmptyState();
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);

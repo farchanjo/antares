@@ -227,6 +227,10 @@ QWidget *MainWindow::buildNavigator()
     filterBox_ = new QLineEdit{searchRow};
     filterBox_->setPlaceholderText(tr("Search resources"));
     filterBox_->setClearButtonEnabled(true);
+    // Typing narrows the model; the model owns the filter so a repaint never
+    // re-scans.
+    QObject::connect(filterBox_, &QLineEdit::textChanged, this,
+                     [this](const QString &text) { model_.setFilter(text.toUtf8().constData()); });
     searchLayout->addWidget(filterBox_, 1);
     paneLayout->addWidget(searchRow);
 
@@ -278,6 +282,12 @@ QWidget *MainWindow::buildTablePage()
     view_->header()->setMinimumSectionSize(60);
     view_->header()->setDefaultSectionSize(160);
     applyColumnWidths();
+    // The detail pane follows the row under the cursor, so a click answers
+    // "what is this" without a second gesture.
+    QObject::connect(view_->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
+                     [this](const QModelIndex &current, const QModelIndex &) {
+                         showDetail(current);
+                     });
     view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     emptyState_ = new QLabel{tr("No objects in this scope."), stack};
@@ -386,6 +396,28 @@ void MainWindow::buildTree()
     navigator_->expandAll();
 }
 
+void MainWindow::showDetail(const QModelIndex &index)
+{
+    if (!index.isValid()) {
+        detail_->setText(tr("Select a row."));
+        return;
+    }
+    // Every column of the row, labelled, so the pane is useful without a
+    // per-family layout.
+    const std::span<const RowRole> columns = familyColumns(model_.family());
+    QStringList lines;
+    for (std::size_t at = 0; at < columns.size(); ++at) {
+        const QString value =
+            model_.data(model_.index(index.row(), static_cast<int>(at)), Qt::DisplayRole).toString();
+        if (value.isEmpty()) {
+            continue;
+        }
+        lines.append(QStringLiteral("%1: %2")
+                         .arg(QString::fromUtf8(rowRoleName(columns[at])), value));
+    }
+    detail_->setText(lines.isEmpty() ? tr("No detail.") : lines.join(QLatin1Char('\n')));
+}
+
 void MainWindow::openFamily(QTreeWidgetItem *item)
 {
     if (item == nullptr) {
@@ -398,6 +430,7 @@ void MainWindow::openFamily(QTreeWidgetItem *item)
     }
     const auto family = static_cast<Family>(index.toInt());
     model_.setFamily(family);
+    detail_->setText(tr("Select a row."));
     // The tab is named `<Family> - <cluster>`, like the reference.
     const QString label = QString::fromUtf8(familyLabel(family));
     const QString title = tr("%1 - %2").arg(label, contextBox_->currentText());
