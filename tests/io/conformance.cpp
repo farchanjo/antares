@@ -401,8 +401,7 @@ void caseBackendNameMatchesEngine()
     }
 #endif
 
-    const std::string reported = antares::application::io::selectedBackendName();
-    check(reported == actual, "the reported name matches the engine that was built");
+    check(engine->get()->name() == actual, "the reported name matches the engine that was built");
 
     if (!keep.empty()) {
         (void)::setenv("ANTARES_IO_BACKEND", keep.c_str(), 1);
@@ -515,7 +514,7 @@ void caseRingRefusedFallsBack()
     }
     check(dynamic_cast<antares::adapters::platform::io::EpollEngine *>(built->get()) != nullptr,
           "the engine is epoll");
-    check(antares::application::io::selectedBackendName() == "epoll", "the name says epoll");
+    check(built->get()->name() == "epoll", "the name says epoll");
 }
 
 /// Cancelling repeatedly while the loop completes and releases ops must not

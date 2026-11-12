@@ -36,7 +36,7 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       to a one-shot (FR-006).
 - [x] T015 Add the case `stop/reversible`: `run()` after `stop()` serves work
       again (FR-006).
-- [x] T016 Follow the factory branch in `selectedBackendName` so io_uring
+- [x] T016 Follow the factory branch in the name reporter so io_uring
       reports itself (FR-007).
 - [x] T017 Add the case `factory/backend-name`: the forced backend and the
       reported name agree (FR-007).
@@ -47,7 +47,7 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
 - [x] T020 Extend the leak target with a cancel-then-stop case, since `stop()`
       completing changes what the pass observes.
 - [x] T019 Add a case that clears `ANTARES_IO_BACKEND`, identifies the engine by
-      type and compares it against `selectedBackendName` (FR-007).
+      type and compares it against `IoEngine::name` (FR-007).
 - [x] T020 Add a test-only shim preloaded over `io_uring_setup` returning
       `ENOSYS`, and the case that the engine is epoll and the run completes
       (FR-010).

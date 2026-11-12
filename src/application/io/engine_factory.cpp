@@ -1,6 +1,5 @@
 #include "application/io/engine_factory.hpp"
 
-#include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <expected>
@@ -52,34 +51,7 @@ constexpr bool KERNEL_ENGINE_COMPILED_IN = false;
 constexpr std::string_view KERNEL_ENGINE_NAME = "poll";
 #endif
 
-/// What `makeEngine` actually built. The name is a fact about a past call, not a
-/// prediction: assuming the default path is what made it report `epoll` while the
-/// ring was running.
-std::atomic<const char *> chosen{nullptr};
-
-[[nodiscard]] const char *defaultBackendName() noexcept
-{
-#if defined(__APPLE__)
-    return "kqueue";
-#elif defined(__linux__)
-    return "io_uring";
-#else
-    return "poll";
-#endif
-}
-
 } // namespace
-
-std::string selectedBackendName()
-{
-    if (const char *forced = forcedBackend(); forced != nullptr) {
-        return std::string{forced};
-    }
-    if (const char *built = chosen.load(std::memory_order_acquire); built != nullptr) {
-        return std::string{built};
-    }
-    return std::string{defaultBackendName()};
-}
 
 std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngine()
 {
@@ -87,7 +59,6 @@ std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngi
     if (!overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::KqueueEngine>();
         if (engine->ready()) {
-            chosen.store("kqueue", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
@@ -98,20 +69,17 @@ std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngi
     if (!forcedIs("epoll") && !overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::IoUringEngine>();
         if (engine->ready()) {
-            chosen.store("io_uring", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
     if (!overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::EpollEngine>();
         if (engine->ready()) {
-            chosen.store("epoll", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
 #endif
 
-    chosen.store("poll", std::memory_order_release);
     return std::unique_ptr<ports::io::IoEngine>{
         std::make_unique<adapters::platform::io::PollEngine>()};
 }

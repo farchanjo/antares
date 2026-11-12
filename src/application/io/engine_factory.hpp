@@ -17,7 +17,4 @@ namespace antares::application::io {
 [[nodiscard]] std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError>
 makeEngine();
 
-/// Name the backend a call to `makeEngine` would select, without building it.
-[[nodiscard]] [[nodiscard]] std::string selectedBackendName();
-
 } // namespace antares::application::io
