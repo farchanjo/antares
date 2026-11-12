@@ -151,7 +151,8 @@ void QtListModel::toggleTick(std::uint32_t row)
         ticked_.insert(row);
     }
     const QModelIndex at = index(static_cast<int>(row), 0);
-    Q_EMIT QAbstractListModel::dataChanged(at, at, {});
+    Q_EMIT QAbstractListModel::dataChanged(at, at);
+    Q_EMIT ticksChanged();
 }
 
 void QtListModel::clearTicks()
@@ -160,7 +161,8 @@ void QtListModel::clearTicks()
         return;
     }
     ticked_.clear();
-    Q_EMIT QAbstractListModel::dataChanged(index(0, 0), index(rowCount(QModelIndex{}) - 1, 0), {});
+    Q_EMIT QAbstractListModel::dataChanged(index(0, 0), index(rowCount(QModelIndex{}) - 1, 0));
+    Q_EMIT ticksChanged();
 }
 
 void QtListModel::setScope(domain::k8s::Scope scope) { model_->setScope(std::move(scope)); }

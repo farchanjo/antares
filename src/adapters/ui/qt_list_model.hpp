@@ -71,6 +71,7 @@ public:
     [[nodiscard]] std::size_t tickedCount() const noexcept { return ticked_.size(); }
     /// Clear every tick.
     void clearTicks();
+
     [[nodiscard]] Family family() const noexcept { return family_; }
 
     // No default arguments here: the base declares them and re-specifying a
@@ -101,6 +102,12 @@ public:
     void wake() override;
 
     [[nodiscard]] ResourceListModel &model() noexcept { return *model_; }
+
+signals:
+    /// A tick changed. Its own signal, because connecting to `dataChanged` drags
+    /// `QList<int>` through a metatype converter the libstdc++ Qt cannot resolve
+    /// against this libc++ tree.
+    void ticksChanged();
 
 private:
     std::unique_ptr<ResourceListModel> model_;

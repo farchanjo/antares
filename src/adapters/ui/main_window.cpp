@@ -492,8 +492,24 @@ void MainWindow::buildStatus(const QString &message)
 {
     // Two counters on the left of the reference; the row count is the one this
     // build can answer.
-    count_ = new QLabel{QStringLiteral("0"), this};
+    count_ = new QLabel{this};
     statusBar()->addWidget(count_);
+
+    // The counter says what is shown, and what is ticked once anything is.
+    const auto refreshCount = [this] {
+        const int rows = model_.rowCount(QModelIndex{});
+        const std::size_t ticked = model_.tickedCount();
+        // `QString::arg` drags in a metatype converter that the libstdc++-built
+        // Qt cannot resolve against this libc++ tree, so the number is glued.
+        const QString shown = QString::number(rows);
+        count_->setText(ticked == 0
+                            ? tr("items: ") + shown
+                            : tr("selected: ") + QString::number(static_cast<int>(ticked)) +
+                                  tr(" of ") + shown);
+    };
+    QObject::connect(&model_, &QtListModel::ticksChanged, this, refreshCount);
+    QObject::connect(&model_, &QAbstractItemModel::modelReset, this, refreshCount);
+    refreshCount();
 
     status_ = new QLabel{message, this};
     status_->setVisible(!message.isEmpty());
