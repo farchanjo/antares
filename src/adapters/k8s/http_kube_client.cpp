@@ -153,8 +153,10 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
                 firstItem = false;
                 bool refused = false;
                 auto entry = domain::k8s::decodeEntry(scan, &refused);
-                std::fprintf(stderr, "  [items] entry=%d refused=%d at=%zu\n", entry ? 1 : 0,
-                             refused ? 1 : 0, scan.offset());
+                if (!entry && !refused) {
+                    std::fprintf(stderr, "  [items] erro=%u\n",
+                                 static_cast<unsigned>(entry.error()));
+                }
                 if (refused && scanFailures != nullptr) {
                     ++*scanFailures;
                 }
