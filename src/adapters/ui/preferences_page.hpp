@@ -22,6 +22,10 @@ class PreferencesPage final : public QWidget {
 public:
     explicit PreferencesPage(QWidget *parent = nullptr);
 
+public slots:
+    /// Show the page at `index`.
+    void showPage(int index);
+
 private:
     QButtonGroup *rail_ = nullptr;
     std::array<QToolButton *, 10> rail_hat_{};

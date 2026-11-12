@@ -97,17 +97,23 @@ PreferencesPage::PreferencesPage(QWidget *parent)
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
         button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         button->setChecked(index == 0);
-        QObject::connect(button, &QToolButton::clicked, pages_,
-                         [pages = pages_, index] { pages->setCurrentIndex(index); });
+        QObject::connect(button, &QToolButton::clicked, this,
+                         [this, index] { showPage(index); });
         rail_->addButton(button, index);
         railLayout->addWidget(button);
     }
     railLayout->addStretch(1);
 
-    QObject::connect(rail_, &QButtonGroup::idClicked, this, [this](int id) {
-        std::fprintf(stderr, "  [grupo] id=%d\n", id);
-    });
+    QObject::connect(rail_, &QButtonGroup::idClicked, this, &PreferencesPage::showPage);
 
+}
+
+void PreferencesPage::showPage(int index)
+{
+    std::fprintf(stderr, "  [pagina] %d de %d\n", index, pages_->count());
+    if (index >= 0 && index < pages_->count()) {
+        pages_->setCurrentIndex(index);
+    }
 }
 
 QWidget *PreferencesPage::buildPage(const QString &title)
