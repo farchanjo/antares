@@ -1,6 +1,7 @@
 #include "adapters/ui/preferences_page.hpp"
 
 #include <QCheckBox>
+#include <QTimer>
 
 #include <cstdio>
 #include <QComboBox>
@@ -92,6 +93,10 @@ PreferencesPage::PreferencesPage(QWidget *parent)
                      pages_->currentIndex());
     });
     rail_->setCurrentRow(0);
+    QTimer::singleShot(0, this, [this] {
+        std::fprintf(stderr, "  [geo] rail %dx%d visivel=%d ativo=%d\n", rail_->width(),
+                     rail_->height(), rail_->isVisible(), rail_->isEnabled());
+    });
 }
 
 QWidget *PreferencesPage::buildPage(const QString &title)
