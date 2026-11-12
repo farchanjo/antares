@@ -148,3 +148,65 @@ right.
 | External Tools catalogue | **no** | port whole, it is local |
 | Proxy, Editor, Tables, Terminal | no | port whole |
 | Kubernetes, Telemetry, Integrations | no | port whole |
+
+## Correction: the click scale
+
+The first clicks did nothing because `--xy` takes **points**, not pixels. The
+display is 3456 x 2160 pixels at 2x, so the point surface is 1728 x 1080 and a
+point measured on a `1000x625` screenshot scales by **1.728**. Every coordinate
+below is in points.
+
+## Content tabs
+
+The content region is a tab bar. Tabs observed: `Home`, `Preferences`,
+`Pods - hood`. Each carries a close button, and the active one is highlighted.
+`Home` is the start page. A tab is created by choosing a family in the navigator;
+the same family twice reuses its tab.
+
+## Table view (Pods)
+
+Breadcrumb above the table: `Pods - hood`.
+
+A toolbar row of its own:
+
+| Control | Behaviour |
+|---|---|
+| namespace dropdown | `fp-prod`; narrows the table to one namespace |
+| Ask AI field | placeholder `As…`; natural-language filter |
+| `Search Pods…` | substring filter, per family |
+| refresh | re-runs the list |
+| `20 items` | right-aligned count of what is shown |
+
+Columns, in order, all sortable by clicking the header:
+
+`☐` · `Name` · `Namespace` · `CPU` · `Memory` · `Container` · `Restarts` ·
+`Controlled By` · `Node` · `QoS` · `Status` · `Age`
+
+Sample rows, verbatim:
+
+```
+otel-coll  fp-prod  0.003  120.9MiB  ⏸  0  CloneSet     cpu-optimiz  Burstable  Running  31d
+otel-coll  fp-prod  0.004  129.5MiB  ⏸  0  CloneSet     cpu-optimiz  Burstable  Running  31d
+kafka-er   fp-prod  0.006  674.7MiB  ⏸  0  ReslicaSet   shardet.am   BestEffort Running  31d
+kafka-cc   fp-prod  0.013  903.4MiB  ⏸  0  StrimziPodSet cpu-optimiz Burstable  Running  31d
+```
+
+The first column is a selection checkbox. `Restarts` is a small numeric cell with
+a dot when non-zero. `Status` is a coloured word. The row action cluster appears
+on hover.
+
+Below the rows: a `+` to add a column, and a floating round `+` at the bottom
+right.
+
+## Status bar
+
+Left: a green dot and `hood (v1.34.12)` — the connected cluster and its server
+version. Right: `Support` with a lifebuoy icon.
+
+## What this changes in the port
+
+- The window needs a **tab bar**, not a single view.
+- The table needs a **toolbar of its own**: namespace, AI, search, refresh, count.
+- The columns are per family, not the four of the first capture. Twelve for pods.
+- The status bar names the cluster and its version, not a row count.
+- A row carries a **selection checkbox** and a hover action cluster.
