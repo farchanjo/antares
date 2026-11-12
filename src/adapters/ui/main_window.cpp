@@ -652,6 +652,10 @@ void MainWindow::applyColumnWidths()
         view_->setColumnWidth(static_cast<int>(at), sized > 24 ? sized : 24);
         used += sized > 24 ? sized : 24;
     }
+    const int ultima = static_cast<int>(shown.size()) - 1;
+    std::fprintf(stderr, "  [fim] col6=%d visivel=%d viewport=%d\n",
+                 view_->columnWidth(ultima), view_->isColumnHidden(ultima),
+                 view_->viewport()->width());
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
