@@ -119,6 +119,28 @@ Two things worth not copying: the icon rail duplicates the navigator for the
 common families, and there is no empty state — an unconnected cluster shows a
 watermark and nothing else.
 
+### Region map, ported
+
+Each region below is a requirement of this feature, in the order the port lands.
+
+- **R-1 icon rail** — fixed 48 px, one icon per family, the current one carries
+  the selection colour. It is a shortcut into the navigator, not a second tree.
+- **R-2 navigator** — 240 px, resizable by splitter, never below 180. Search box
+  at the top, tree below, cluster as the root. Each family expands to its
+  resources; a resource without a view yet is present but insensitive.
+- **R-3 toolbar** — context selector, namespace selector, resource kind. On the
+  right, the connection state and the refresh action.
+- **R-4 main** — the table for the selected node. Empty state names the scope and
+  offers refresh (FR-010).
+- **R-5 detail** — right pane, 360 px, collapsible. Shows the selected row's
+  metadata; a second click on the same row collapses it.
+- **R-6 status bar** — fixed 24 px strip: row count, truncation notice (FR-009),
+  and the connection state on the right.
+
+The window opens at 1100 x 680 and remembers its geometry across runs. Widths are
+the reference's; the splitter lets them move and the geometry file keeps what the
+operator chose.
+
 ## Layout Rules
 
 Taken from the Qt layout documentation
