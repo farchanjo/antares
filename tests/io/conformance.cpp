@@ -488,6 +488,20 @@ void caseQueueDeadlineKeepsOrder()
     check(ordered, "FIFO survives a bounded drain");
 }
 
+/// Only meaningful under the preloaded shim: the ring cannot open, so the
+/// factory must land on epoll and say so (FR-010).
+void caseRingRefusedFallsBack()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "the factory still builds an engine");
+    if (!built) {
+        return;
+    }
+    check(dynamic_cast<antares::adapters::platform::io::EpollEngine *>(built->get()) != nullptr,
+          "the engine is epoll");
+    check(antares::application::io::selectedBackendName() == "epoll", "the name says epoll");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -506,6 +520,7 @@ std::span<const Case> cases()
         {"backend-name-matches-engine", caseBackendNameMatchesEngine},
         {"queue-four-producers", caseQueueFourProducers},
         {"queue-deadline-keeps-order", caseQueueDeadlineKeepsOrder},
+        {"ring-refused-falls-back", caseRingRefusedFallsBack},
     };
     return table;
 }

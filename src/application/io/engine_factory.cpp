@@ -1,5 +1,6 @@
 #include "application/io/engine_factory.hpp"
 
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <expected>
@@ -21,7 +22,10 @@ namespace {
 /// escape hatch, so a refused kernel engine never blocks a run.
 [[nodiscard]] const char *forcedBackend() noexcept
 {
-    return std::getenv("ANTARES_IO_BACKEND");
+    const char *value = std::getenv("ANTARES_IO_BACKEND");
+    // An empty value is "not forced", which is what `VAR=` in a test environment
+    // means; without this the name would be the empty string.
+    return value != nullptr && value[0] != '\0' ? value : nullptr;
 }
 
 [[nodiscard]] bool forcedIs(const char *name) noexcept
@@ -48,20 +52,33 @@ constexpr bool KERNEL_ENGINE_COMPILED_IN = false;
 constexpr std::string_view KERNEL_ENGINE_NAME = "poll";
 #endif
 
+/// What `makeEngine` actually built. The name is a fact about a past call, not a
+/// prediction: assuming the default path is what made it report `epoll` while the
+/// ring was running.
+std::atomic<const char *> chosen{nullptr};
+
+[[nodiscard]] const char *defaultBackendName() noexcept
+{
+#if defined(__APPLE__)
+    return "kqueue";
+#elif defined(__linux__)
+    return "io_uring";
+#else
+    return "poll";
+#endif
+}
+
 } // namespace
 
 std::string selectedBackendName()
 {
-    if (forcedBackend() != nullptr) {
-        return std::string{forcedBackend()};
+    if (const char *forced = forcedBackend(); forced != nullptr) {
+        return std::string{forced};
     }
-#if defined(__linux__)
-    // The ring is what runs unless it was refused; the name has to say so, or a
-    // log would blame epoll for a ring bug.
-    return overrideRequestsPoll() ? std::string{"poll"} : std::string{"io_uring"};
-#else
-    return std::string{KERNEL_ENGINE_NAME};
-#endif
+    if (const char *built = chosen.load(std::memory_order_acquire); built != nullptr) {
+        return std::string{built};
+    }
+    return std::string{defaultBackendName()};
 }
 
 std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngine()
@@ -70,6 +87,7 @@ std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngi
     if (!overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::KqueueEngine>();
         if (engine->ready()) {
+            chosen.store("kqueue", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
@@ -80,17 +98,20 @@ std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngi
     if (!forcedIs("epoll") && !overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::IoUringEngine>();
         if (engine->ready()) {
+            chosen.store("io_uring", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
     if (!overrideRequestsPoll()) {
         auto engine = std::make_unique<adapters::platform::io::EpollEngine>();
         if (engine->ready()) {
+            chosen.store("epoll", std::memory_order_release);
             return std::unique_ptr<ports::io::IoEngine>{std::move(engine)};
         }
     }
 #endif
 
+    chosen.store("poll", std::memory_order_release);
     return std::unique_ptr<ports::io::IoEngine>{
         std::make_unique<adapters::platform::io::PollEngine>()};
 }
