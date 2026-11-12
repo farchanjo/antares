@@ -483,6 +483,16 @@ void EngineBase::run()
 
 void EngineBase::stop()
 {
+    // A `run` that has started but not yet reached the loop is about to clear
+    // `stopped_`. Stopping before it lands would be undone by it, and the loop
+    // would then run forever, so it is waited for first.
+    for (int spin = 0; loopStarted_.load(std::memory_order_acquire) &&
+                      !loopRunning_.load(std::memory_order_acquire) && !isEngineThread() &&
+                      spin < 100000;
+         ++spin) {
+        std::this_thread::yield();
+    }
+
     // Completion callbacks run on the loop only, so the cancellation is posted
     // and the loop drains it on the way out. With no loop running it runs here,
     // where nothing else can be touching the store.
@@ -522,6 +532,7 @@ void EngineBase::stop()
     if (isEngineThread()) {
         return;
     }
+
     const auto limit = std::chrono::steady_clock::now() + stopWait;
     while (loopRunning_.load(std::memory_order_acquire) &&
            std::chrono::steady_clock::now() < limit) {
