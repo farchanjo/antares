@@ -47,6 +47,9 @@ public:
     // No default arguments here: the base declares them and re-specifying a
     // default on an override is what `google-default-arguments` refuses.
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;
+    [[nodiscard]] int columnCount(const QModelIndex &parent) const override;
+    [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation,
+                                      int role) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
     void multiData(const QModelIndex &index, QModelRoleDataSpan span) const override;
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;

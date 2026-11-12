@@ -6,7 +6,8 @@
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QListView;
+class QTableView;
+class QTreeWidget;
 class QToolBar;
 
 namespace antares::adapters::ui {
@@ -37,15 +38,21 @@ public:
     /// The namespace selector and the filter box, likewise for the cases.
     [[nodiscard]] QComboBox *namespaceBox() const noexcept;
     [[nodiscard]] QLineEdit *filterBox() const noexcept;
+    [[nodiscard]] QComboBox *contextBox() const noexcept;
+    [[nodiscard]] QTreeWidget *navigator() const noexcept;
 
 private:
     void buildBar();
+    QWidget *buildNavigator();
+    QWidget *buildTable();
 
     QtListModel &model_;
     QToolBar *bar_ = nullptr;
+    QComboBox *contextBox_ = nullptr;
     QComboBox *namespaceBox_ = nullptr;
     QLineEdit *filterBox_ = nullptr;
-    QListView *view_ = nullptr;
+    QTableView *view_ = nullptr;
+    QTreeWidget *navigator_ = nullptr;
     QLabel *status_ = nullptr;
 };
 

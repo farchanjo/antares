@@ -135,6 +135,21 @@ void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,
     endMoveRows();
 }
 
+int QtListModel::columnCount(const QModelIndex &parent) const
+{
+    return parent.isValid() ? 0 : static_cast<int>(ROW_ROLE_COUNT);
+}
+
+QVariant QtListModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (orientation != Qt::Horizontal || role != Qt::DisplayRole || section < 0 ||
+        section >= static_cast<int>(ROW_ROLE_COUNT)) {
+        return {};
+    }
+    // The header is the only translatable part of the table; a cell is data.
+    return tr(rowRoleName(static_cast<RowRole>(section)).data());
+}
+
 void QtListModel::dataChanged(std::uint32_t first, std::uint32_t last,
                               std::span<const RowRole> roles)
 {
