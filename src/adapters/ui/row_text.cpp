@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <string>
 
 #include "domain/k8s/status_summary.hpp"
@@ -24,6 +25,72 @@ namespace {
     return std::to_string(*status.ready) + "/" + std::to_string(*status.total);
 }
 
+/// The label blob as one comma-separated line, with the record separator turned
+/// into `", "`. Truncated to the column's worth: a cell is a glance, not a
+/// document.
+[[nodiscard]] std::string labelsText(const domain::k8s::Labels &labels)
+{
+    constexpr std::size_t CEILING = 60;
+    std::string_view blob = labels.blob();
+    if (blob.size() > CEILING) {
+        blob = blob.substr(0, CEILING);
+    }
+    std::string text{blob};
+    for (std::size_t at = 0; at < text.size(); ++at) {
+        if (text[at] == '\n') {
+            text.replace(at, 1, ", ");
+            ++at;
+        }
+    }
+    return text;
+}
+
+/// The compact age the reference shows: `3y198d`, `53d`, `5d13h`. Read off the
+/// RFC 3339 creation stamp by calendar arithmetic, so no clock is needed beyond
+/// the current instant.
+[[nodiscard]] std::string ageText(const std::string &stamp)
+{
+    if (stamp.size() < 20) {
+        return {};
+    }
+    const auto number = [&stamp](std::size_t at, std::size_t len) {
+        std::uint64_t value = 0;
+        for (std::size_t digit = at; digit < at + len; ++digit) {
+            if (stamp[digit] < '0' || stamp[digit] > '9') {
+                return static_cast<std::uint64_t>(0);
+            }
+            value = value * 10 + static_cast<std::uint64_t>(stamp[digit] - '0');
+        }
+        return value;
+    };
+    const std::time_t then = [&stamp, &number] {
+        std::tm parts{};
+        parts.tm_year = static_cast<int>(number(0, 4)) - 1900;
+        parts.tm_mon = static_cast<int>(number(5, 2)) - 1;
+        parts.tm_mday = static_cast<int>(number(8, 2));
+        parts.tm_hour = static_cast<int>(number(11, 2));
+        parts.tm_min = static_cast<int>(number(14, 2));
+        parts.tm_sec = static_cast<int>(number(17, 2));
+        return ::timegm(&parts);
+    }();
+    const std::time_t now = std::time(nullptr);
+    if (then <= 0 || now <= then) {
+        return {};
+    }
+    const auto seconds = static_cast<std::uint64_t>(now - then);
+    const std::uint64_t days = seconds / 86400;
+    if (days < 1) {
+        return std::to_string(seconds / 3600) + "h";
+    }
+    if (days < 365) {
+        if (days < 30) {
+            return std::to_string(days) + "d";
+        }
+        return std::to_string(days / 30) + "mo" + std::to_string(days % 30) + "d";
+    }
+    return std::to_string(days / 365) + "y" + std::to_string(days % 365) + "d";
+}
+
 } // namespace
 
 std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &scope, RowRole role)
@@ -36,7 +103,9 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
     case RowRole::status:
         return statusText(entry.status);
     case RowRole::age:
-        return entry.creationTimestamp;
+        return ageText(entry.creationTimestamp);
+    case RowRole::labels:
+        return labelsText(entry.labels);
     case RowRole::conditions:
         return entry.status.reason;
     case RowRole::cpu:
@@ -47,7 +116,6 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
     case RowRole::qos:
     case RowRole::controlledBy:
     case RowRole::version:
-    case RowRole::labels:
     case RowRole::keys:
     case RowRole::type:
     case RowRole::webhooks:

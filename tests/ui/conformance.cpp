@@ -80,7 +80,10 @@ void caseMultiDataFillsSpan()
     checkEqual(texts[0], nameFor(0), "name role");
     checkEqual(texts[1], "shop", "namespace role reads the scope");
     checkEqual(texts[2], "Running", "status role");
-    checkEqual(texts[3], "2026-11-11T19:05:00Z", "age role is the creation stamp");
+    // The cell is a compact duration, as the reference renders it, not the raw
+    // stamp: `12h` for a stamp twelve hours old.
+    check(!texts[3].empty(), "age role is a duration");
+    check(texts[3].find('T') == std::string::npos, "age role is not the raw stamp");
 
     std::array<std::string, 2> shorter;
     const std::array<RowRole, 2> two{RowRole::name, RowRole::status};
