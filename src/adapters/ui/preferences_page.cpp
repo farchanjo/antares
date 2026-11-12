@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPushButton>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -63,15 +64,15 @@ PreferencesPage::PreferencesPage(QWidget *parent)
         void (*build)(QWidget *);
     } entries[] = {
         {"App", &PreferencesPage::buildApp},
-        {"Proxy", nullptr},
-        {"Kubernetes", nullptr},
+        {"Proxy", &PreferencesPage::buildProxy},
+        {"Kubernetes", &PreferencesPage::buildKubernetes},
         {"Editor", &PreferencesPage::buildEditor},
         {"Tables", &PreferencesPage::buildTables},
         {"Terminal", &PreferencesPage::buildTerminal},
-        {"Integrations", nullptr},
+        {"Integrations", &PreferencesPage::buildIntegrations},
         {"Telemetry", &PreferencesPage::buildTelemetry},
         {"Lens Teamwork", nullptr},
-        {"External Tools", nullptr},
+        {"External Tools", &PreferencesPage::buildExternalTools},
     };
     for (const auto &entry : entries) {
         QWidget *page = buildPage(QString::fromUtf8(entry.label));
@@ -185,6 +186,115 @@ void PreferencesPage::buildTerminal(QWidget *page)
 void PreferencesPage::buildTables(QWidget *page)
 {
     addSection(page, tr("Row line height"), QString{}, number(20, 64));
+}
+
+void PreferencesPage::buildProxy(QWidget *page)
+{
+    auto *proxy = new QLineEdit{};
+    proxy->setPlaceholderText(tr("Type HTTP proxy url (example: http://proxy.acme.org:8080)"));
+    proxy->setProperty("inline", true);
+    addSection(page, tr("HTTP proxy"), tr("Proxy is used only for non-cluster communication."),
+               proxy);
+    addSection(page, tr("Lens internal proxy"), tr("Bypass Lens internal KubeApi Proxy"), toggle(true));
+    addSection(page, tr("Certificate trust"), tr("Allow untrusted Certificate Authorities"),
+               toggle(true));
+}
+
+void PreferencesPage::buildKubernetes(QWidget *page)
+{
+    addSection(page, tr("Kubectl binary download"),
+               tr("Download kubectl binaries matching the Kubernetes cluster version"), toggle(true));
+    addSection(page, tr("Download mirror"), QString{}, combo({"Default (Google)"}, tr("Default (Google)")));
+    auto *directory = new QLineEdit{QStringLiteral("~/Library/Application Support/Lens/binaries")};
+    directory->setProperty("inline", true);
+    addSection(page, tr("Directory for binaries"),
+               tr("The directory to download binaries into."), directory);
+    auto *path = new QLineEdit{QStringLiteral("~/Library/Application Support/Lens/binaries/kubectl")};
+    path->setProperty("inline", true);
+    addSection(page, tr("Path to kubectl binary"), QString{}, path);
+    auto *sync = new QPushButton{tr("Sync Files and Folders")};
+    sync->setProperty("inline", true);
+    addSection(page, tr("Manage kubeconfigs"), QString{}, sync);
+}
+
+void PreferencesPage::buildIntegrations(QWidget *page)
+{
+    addSection(page, tr("AWS EKS"),
+               tr("Automatically discover and connect to Kubernetes clusters across your AWS "
+                  "accounts."),
+               new QPushButton{tr("Add AWS Account")});
+    addSection(page, tr("Azure AKS"),
+               tr("Automatically discover and connect to Kubernetes clusters across your Azure "
+                  "accounts."),
+               new QPushButton{tr("Add Azure Account")});
+    addSection(page, tr("Local kubeconfigs"),
+               tr("Discover and manage Kubernetes clusters from kubeconfig files on your local "
+                  "filesystem."),
+               new QPushButton{tr("Watch files & folders")});
+    addSection(page, tr("Enable Lens MCP server"),
+               tr("Expose Lens capabilities to AI agents and tools via the Model Context Protocol "
+                  "(MCP)."),
+               toggle(true));
+}
+
+void PreferencesPage::addToolRow(QWidget *page, const QString &name, const QString &description,
+                                 const QString &state)
+{
+    auto *layout = dynamic_cast<QVBoxLayout *>(page->layout());
+    if (layout == nullptr) {
+        return;
+    }
+    auto *row = new QWidget{page};
+    auto *rowLayout = new QHBoxLayout{row};
+    rowLayout->setContentsMargins({});
+
+    auto *text = new QWidget{row};
+    auto *textLayout = new QVBoxLayout{text};
+    textLayout->setContentsMargins({});
+    textLayout->setSpacing(0);
+    auto *title = new QLabel{name, text};
+    QFont bold = title->font();
+    bold.setBold(true);
+    title->setFont(bold);
+    textLayout->addWidget(title);
+    auto *hint = new QLabel{description, text};
+    hint->setWordWrap(true);
+    textLayout->addWidget(hint);
+    rowLayout->addWidget(text, 1);
+    rowLayout->addWidget(new QLabel{state, row}, 0, Qt::AlignTop);
+    layout->addWidget(row);
+}
+
+void PreferencesPage::buildExternalTools(QWidget *page)
+{
+    auto *layout = dynamic_cast<QVBoxLayout *>(page->layout());
+    if (layout != nullptr) {
+        auto *premium = new QLabel{tr("AI TOOL   PREMIUM"), page};
+        QFont small = premium->font();
+        small.setBold(true);
+        premium->setFont(small);
+        layout->addWidget(premium);
+        auto *line = new QLabel{tr(R"(The AI tool Lens launches to eg. "Ask AI".)" ), page};
+        line->setWordWrap(true);
+        layout->addWidget(line);
+    }
+    addToolRow(page, tr("Claude Code"), tr("The coding assistant by Anthropic"), tr("INSTALLED"));
+    addToolRow(page, tr("GitHub Copilot CLI"),
+               tr(R"(CLI command "copilot" not found in PATH, click "install" for instructions.)"),
+               tr("Install"));
+    addToolRow(page, tr("Gemini CLI"),
+               tr(R"(CLI command "gemini" not found in PATH, click "install" for instructions.)"),
+               tr("Install"));
+    addToolRow(page, tr("Codex CLI"),
+               tr(R"(CLI command "codex" not found in PATH, click "install" for instructions.)"),
+               tr("Install"));
+    addToolRow(page, tr("OpenCode"), tr("The coding assistant by SST"), tr("INSTALLED"));
+    addToolRow(page, tr("Custom"), tr("Runs your own configured command"), tr("CUSTOM"));
+    addToolRow(page, tr("No AI tool"), tr("Lens does not launch an AI tool."), QString{});
+    addSection(page, tr("Open AI tools in an external terminal"),
+               tr("Launch the selected AI tool in a new terminal window instead of a Lens "
+                  "terminal tab."),
+               toggle(false));
 }
 
 void PreferencesPage::buildTelemetry(QWidget *page)

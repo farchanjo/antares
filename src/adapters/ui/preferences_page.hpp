@@ -33,6 +33,13 @@ private:
     static void buildTerminal(QWidget *page);
     static void buildTables(QWidget *page);
     static void buildTelemetry(QWidget *page);
+    static void buildProxy(QWidget *page);
+    static void buildKubernetes(QWidget *page);
+    static void buildIntegrations(QWidget *page);
+    static void buildExternalTools(QWidget *page);
+    /// A settings row that is a name, a description and a right-aligned state.
+    static void addToolRow(QWidget *page, const QString &name, const QString &description,
+                           const QString &state);
 };
 
 } // namespace antares::adapters::ui
