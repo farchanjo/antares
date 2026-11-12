@@ -540,3 +540,52 @@ Columns: `☐` · `Name` · `Namespace` · `Type` · `Cluster IP` · `Ports` ·
 ## Family sub-tree: Storage
 
 `Persistent Volume Claims`, `Persistent Volumes`, `Storage Classes`.
+
+## Row detail
+
+A row click opens the object in the right pane, beside the list. This is the
+richest surface in the application and it is not a modal.
+
+Header: a kind icon, then the kind and the name (`Deployment kafka-entity-operator`),
+right-aligned actions: expand, edit, delete, close. The pane is resizable and
+closable.
+
+Below the header, **collapsible sections that behave as tabs**:
+
+### Metrics
+
+- Heading `Metrics`, an interval selector (`1h`), then expand, refresh, fullscreen.
+- A provenance line: `Displaying metrics from Prometheus conntest-ue /
+  prometheus-operator:9090`.
+- A line chart, Y from `0.000` to `1.000`, X over the interval (`04:07` … `05:01`).
+- A spinner while the series loads.
+
+### Properties
+
+A definition list, label left, value right:
+
+| Field | Rendered as |
+|---|---|
+| `Created` | relative then absolute: `81d 25m ago (Aug 23, 2026, 4:40:46 AM GMT-3)` |
+| `Name` | plain |
+| `Namespace` | link |
+| `Labels` | count, `8 Labels`, expanding to the pairs |
+| `Annotations` | `key=value`, comma separated |
+| `Replicas` | `1 desired, 1 updated, 1 total, 1 available, 0 unavailable` |
+| `Controlled By` | `kind name`, both linked |
+| `Selector` | the pairs, space separated, in a monospace face |
+| `Strategy Type` | plain |
+| `Status` | the status word |
+| `Conditions` | pills: `Progressing` blue, `Available` green |
+
+### Deploy Revisions
+
+Collapsed by default. Columns `#`, `Summary`, `Pods`, `Age`.
+
+## What this changes in the port
+
+- The detail pane is a **sectioned panel with internal tabs**, not a label.
+- Every value is a **labelled row**, so the pane needs a definition-list widget.
+- `Labels` shows a **count** and expands; it is not dumped inline.
+- Metrics is a **chart with a provenance line and an interval selector**.
+- The header carries **edit, delete and close**, so the pane is where writing starts.
