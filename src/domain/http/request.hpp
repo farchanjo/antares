@@ -46,8 +46,14 @@ using Body = std::vector<std::byte>;
 struct Request {
     Method method = Method::get;
 
-    /// RFC 9218 urgency, 0 (highest) .. 7. Sent as `priority: u=N`.
+    /// RFC 9218 urgency, 0 (highest) .. 7. Sent as `priority: u=N`, clamped
+    /// because the field only defines those eight values.
     std::uint8_t priority = 3;
+
+    [[nodiscard]] std::uint8_t urgency() const noexcept
+    {
+        return priority > 7 ? std::uint8_t{7} : priority;
+    }
     std::string url;
     std::vector<Header> headers;
     Body body;

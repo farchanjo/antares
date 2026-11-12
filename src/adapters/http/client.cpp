@@ -2,6 +2,10 @@
 
 #include "adapters/http/content_decoder.hpp"
 
+namespace {
+constexpr std::string_view AUTHORIZATION = "authorization";
+}
+
 #include <algorithm>
 #include <charconv>
 #include <chrono>
@@ -543,7 +547,16 @@ void HttpClient::followRedirect(const std::shared_ptr<Attempt> &attempt,
         auto &headers = attempt->request_.headers;
         headers.erase(std::remove_if(headers.begin(), headers.end(),
                                      [](const domain::http::Header &header) {
-                                         return header.name == "Authorization";
+                                         // Field names are case-insensitive (§5.1):
+                                         // an exact compare would let a lowercase
+                                         // `authorization` cross to another origin.
+                                         return std::equal(
+                                             header.name.begin(), header.name.end(),
+                                             AUTHORIZATION.begin(), AUTHORIZATION.end(),
+                                             [](char left, char right) {
+                                                 return std::tolower(static_cast<unsigned char>(
+                                                            left)) == right;
+                                             });
                                      }),
                       headers.end());
     }

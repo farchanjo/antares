@@ -467,6 +467,8 @@ set(ANTARES_HTTP_CASES
     content-encoding-stacked
     content-encoding-zstd
     content-encoding-brotli
+    redirect-drops-lowercase-auth
+    priority-clamps-to-seven
     content-encoding-unknown-passes-through
     accept-encoding-is-offered)
 

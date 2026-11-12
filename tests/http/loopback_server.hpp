@@ -73,6 +73,8 @@ public:
     LoopbackServer(const LoopbackServer &) = delete;
     LoopbackServer &operator=(const LoopbackServer &) = delete;
 
+    [[nodiscard]] std::uint16_t port() const noexcept { return port_; }
+
     [[nodiscard]] std::string url() const
     {
         return "http://127.0.0.1:" + std::to_string(port_);

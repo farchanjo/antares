@@ -53,7 +53,7 @@ std::string H1Session::serialize(const domain::http::Request &request, const std
     wire += "\r\nUser-Agent: ";
     wire += userAgent;
     wire += "\r\nAccept: */*\r\nConnection: keep-alive\r\npriority: u=";
-    wire += std::to_string(request.priority);
+    wire += std::to_string(request.urgency());
     wire += "\r\n";
 
     for (const domain::http::Header &header : request.headers) {

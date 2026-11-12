@@ -1242,6 +1242,46 @@ void caseSseStripsBom()
     }
 }
 
+/// Field names are case-insensitive (RFC 9110 §5.1), so a lowercase
+/// `authorization` must still be dropped when the redirect changes origin.
+void caseRedirectDropsLowercaseAuth()
+{
+    antares::test::LoopbackServer destination{"HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"};
+    antares::test::LoopbackServer server{[&destination](std::string_view) {
+        return "HTTP/1.1 302 Found\r\nLocation: " + destination.url() +
+               "/x\r\ncontent-length: 0\r\n\r\n";
+    }};
+
+    ClientConfig config;
+    config.redirects.follow = true;
+    config.redirects.forwardAuth = false;
+    Stack stack{config};
+
+    auto request = get(server.url() + "/");
+    request.headers.push_back(antares::domain::http::Header{"authorization", "Bearer secret"});
+    (void)stack.blocking().send(std::move(request));
+
+    std::string seen = destination.lastRequest();
+    std::transform(seen.begin(), seen.end(), seen.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    check(!seen.empty(), "the redirect reached the other origin");
+    check(seen.find("authorization") == std::string::npos,
+          "the lowercase credential did not cross origins");
+}
+
+/// RFC 9218 §5 defines urgency 0..7, so anything past it clamps.
+void casePriorityClampsToSeven()
+{
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"};
+    Stack stack;
+    auto request = get(server.url() + "/");
+    request.priority = 42;
+    (void)stack.blocking().send(std::move(request));
+
+    const std::string seen = server.lastRequest();
+    check(seen.find("u=7") != std::string::npos, "urgency clamped to 7");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1295,6 +1335,8 @@ std::span<const Case> cases()
         {"content-encoding-stacked", caseContentEncodingStacked},
         {"content-encoding-zstd", caseContentEncodingZstd},
         {"content-encoding-brotli", caseContentEncodingBrotli},
+        {"redirect-drops-lowercase-auth", caseRedirectDropsLowercaseAuth},
+        {"priority-clamps-to-seven", casePriorityClampsToSeven},
         {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
         {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };

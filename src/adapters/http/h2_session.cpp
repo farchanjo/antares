@@ -221,7 +221,7 @@ H2Session::submitStreaming(const domain::http::Request &request, const std::stri
     }
     add(":authority", authority);
     add(":path", path);
-    const std::string urgency = "u=" + std::to_string(request.priority);
+    const std::string urgency = "u=" + std::to_string(request.urgency());
     add("priority", urgency);
     // RFC 9113 §8.2.2: connection-specific fields are not repeated on the
     // wire; TE survives only with the value "trailers".
