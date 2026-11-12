@@ -130,7 +130,6 @@ std::span<const RowRole> familyColumns(Family family) noexcept
     case Family::roleBindings:
     case Family::clusterRoles:
     case Family::clusterRoleBindings:
-        return BINDINGS;
     case Family::webhookConfigurations:
         return BINDINGS;
     case Family::customResources:
