@@ -239,3 +239,19 @@ Differences from the pods table, and they matter:
 
 The two share only `Name` and `Age`. A single fixed column set will not do: the
 table is described per family.
+
+## Family sub-trees
+
+Families expand, and the expansion is the resource list of that family.
+
+`Workloads`: Overview, Pods, Deployments, Daemon Sets, Stateful Sets,
+Replica Sets, Replication Controllers, Jobs, Cron Jobs.
+
+`Network`: Services, Endpoint Slices, Endpoints, Ingresses, Ingress Classes,
+Network Policies, Gateway API (`NEW`), Port Forwarding.
+
+A family without a sub-tree is a leaf that opens its view directly (`Nodes`,
+`Namespaces`, `Events`).
+
+The nested labels are the Kubernetes kinds in the plural, title-cased, with the
+space of the kind name kept (`Daemon Sets`, not `DaemonSets`).
