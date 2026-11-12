@@ -31,6 +31,7 @@
 
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
+#include <QScrollBar>
 #include "adapters/ui/edit_dialog.hpp"
 #include "adapters/ui/preferences_page.hpp"
 #include "adapters/ui/row_delegate.hpp"
@@ -622,9 +623,14 @@ void MainWindow::applyColumnWidths()
         weightTotal += wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
     }
     // The menu column is reserved before the rest is shared: it carries no weight
-    // of its own and would otherwise be squeezed to the floor and clipped.
+    // of its own and would otherwise be squeezed to the floor and clipped. The
+    // vertical scroll bar sits inside the viewport and takes its own strip, so it
+    // comes off the room too.
     constexpr int MENU_WIDTH = 30;
-    const int room = view_->viewport()->width() - MENU_WIDTH;
+    const int bar = view_->verticalScrollBar()->isVisible()
+                        ? view_->verticalScrollBar()->width()
+                        : 0;
+    const int room = view_->viewport()->width() - MENU_WIDTH - bar;
     std::fprintf(stderr, "  [larg] secoes=%zu room=%d\n", shown.size(), room);
     if (room <= 60 || weightTotal <= 0) {
         return;
