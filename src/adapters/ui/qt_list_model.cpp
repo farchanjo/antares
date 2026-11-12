@@ -158,7 +158,13 @@ void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,
 
 int QtListModel::columnCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : static_cast<int>(ROW_ROLE_COUNT);
+    const int columns = parent.isValid() ? 0 : static_cast<int>(ROW_ROLE_COUNT);
+    static int once = 0;
+    if (once < 3) {
+        std::fprintf(stderr, "  [columnCount] %d\n", columns);
+        ++once;
+    }
+    return columns;
 }
 
 QVariant QtListModel::headerData(int section, Qt::Orientation orientation, int role) const
