@@ -255,3 +255,17 @@ A family without a sub-tree is a leaf that opens its view directly (`Nodes`,
 
 The nested labels are the Kubernetes kinds in the plural, title-cased, with the
 space of the kind name kept (`Daemon Sets`, not `DaemonSets`).
+
+## Row selection
+
+Clicking a row selects it: the whole row takes an accent background. The
+selection is single and survives a re-sort. `⌘`-click and `⇧`-click extend it;
+the leading checkboxes are the persistent form of the same idea, so a row can be
+acted on after the view has moved.
+
+The table has no alternating stripe; the selected row is the only fill.
+
+## Window states
+
+The window maximises to the full display and remembers that across a restart. The
+navigator, the rail and the status bar keep their widths; only the table grows.
