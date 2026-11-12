@@ -90,8 +90,10 @@ void RowDelegate::paintMeter(QPainter *painter, const QStyleOptionViewItem &opti
     painter->setBrush(faint);
     painter->drawRoundedRect(track, HALF_HEIGHT, HALF_HEIGHT);
 
+    // The model writes `x%`; an empty cell would make `chopped` read past the
+    // start, so the suffix is dropped only when it is really there.
     bool ok = false;
-    const double percent = text.chopped(1).toDouble(&ok);
+    const double percent = text.endsWith(QLatin1Char('%')) ? text.chopped(1).toDouble(&ok) : 0;
     if (ok && percent > 0) {
         const QColor fill{0x15, 0x65, 0xC0};
         QRect filled = track;
