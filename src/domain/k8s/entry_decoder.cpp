@@ -661,7 +661,7 @@ std::expected<Entry, json::ScanError> scanEntry(json::ScalarScan &scan)
             // The metrics API shape: a list of containers, each with a `usage`
             // pair. A pod object has no such member, so this is a no-op there
             // and the fields stay zero.
-            std::fprintf(stderr, "  [uso] containers em %s\n", entry.identity.name.text().c_str());
+            std::fprintf(stderr, "  [uso] containers em %s\n", entry.identity.name);
             auto used = scanUsage(scan, entry);
             if (!used) {
                 return std::unexpected(used.error());
