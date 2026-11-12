@@ -265,6 +265,10 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
+    // A reset recreates the header sections at the default width; the widths are
+    // a property of the family, so they are re-applied whenever it changes.
+    QObject::connect(&model_, &QAbstractItemModel::modelReset, this,
+                     [this] { applyColumnWidths(); });
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
     view_->setAlternatingRowColors(true);
     view_->header()->setStretchLastSection(true);
