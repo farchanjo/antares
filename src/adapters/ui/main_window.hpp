@@ -80,6 +80,8 @@ private:
     QLabel *count_ = nullptr;
     QLabel *emptyState_ = nullptr;
     QTabWidget *content_ = nullptr;
+    /// Index of the resource tab; the Preferences tab sits before it.
+    int tableTab_ = 0;
     QStackedWidget *pages_ = nullptr;
     QSplitter *splitter_ = nullptr;
 };

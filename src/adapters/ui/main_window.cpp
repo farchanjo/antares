@@ -269,9 +269,9 @@ QWidget *MainWindow::buildContent()
     content_->setMovable(true);
     // The tab strip is the reference's, and its first tab is the start page:
     // the watermark while nothing is open, the rows once a family is chosen.
-    content_->addTab(buildTablePage(), tr("Start"));
-    // Preferences is a tab of its own, as the reference opens it.
-    content_->insertTab(0, new PreferencesPage{content_}, tr("Preferences"));
+    // Preferences is a tab of its own and comes first, as the reference opens it.
+    content_->addTab(new PreferencesPage{content_}, tr("Preferences"));
+    tableTab_ = content_->addTab(buildTablePage(), tr("Start"));
     return content_;
 }
 
@@ -453,13 +453,8 @@ void MainWindow::openFamily(QTreeWidgetItem *item)
     // The tab is named `<Family> - <cluster>`, like the reference.
     const QString label = QString::fromUtf8(familyLabel(family));
     const QString title = tr("%1 - %2").arg(label, contextBox_->currentText());
-    if (content_->count() > 1) {
-        content_->setTabText(0, title);
-        content_->setCurrentIndex(0);
-        return;
-    }
-    content_->setTabText(0, title);
-    content_->setCurrentIndex(0);
+    content_->setTabText(tableTab_, title);
+    content_->setCurrentIndex(tableTab_);
 }
 
 void MainWindow::buildStatus(const QString &message)
