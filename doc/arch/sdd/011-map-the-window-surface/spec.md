@@ -152,6 +152,29 @@ Resources`, `Security Center`. `Argo CD` and `Device Resources` carry a `NEW`
 badge. The content region shows the product watermark while no view is open. The
 status bar carries two counters on the left and `Support` on the right.
 
+### What navigation revealed
+
+Clicking through the running app (`agent-desktop --headed mouse-click`) showed a
+richer surface than the first capture, and corrected it:
+
+- **The rail is a cluster list, not a family list.** Each entry is a circular
+  avatar with the cluster's initials and its own colour; the selected one carries
+  a ring. Below them: add cluster, terminal with a count badge, settings.
+- **The navigator is sectional and nested.** `KUBERNETES CLUSTERS` holds `AKS`,
+  `EKS` and `Local Kubeconfigs`; a kubeconfig expands to its clusters
+  (`gryffindor`, `hood`, `otherproject`, `salazar`, `services`, `snap`), and each
+  cluster expands to the fifteen resource families. `TEAMWORK` is a second
+  section below. A connected cluster carries a green dot.
+- **The content region is tabbed.** A tab carries a breadcrumb (`Pods - salazar`)
+  and a close button. `Preferences` opened as a tab, with its own left rail: App,
+  Proxy, Kubernetes, Editor, Tables, Terminal, Integrations, Telemetry, Lens
+  Teamwork, External Tools.
+- **A settings page is a form, not a table**: a heading, a description, a
+  refresh action, then a list of rows each with an icon, a name, a one-line
+  explanation and a right-aligned state (`INSTALLED`, `Install`, `CUSTOM`). A
+  trailing toggle sits alone at the bottom.
+- **Badges are real**: `NEW` sits at the right edge of a family row, in caps.
+
 ### Region map, ported
 
 Each region below is a requirement of this feature, in the order the port lands.

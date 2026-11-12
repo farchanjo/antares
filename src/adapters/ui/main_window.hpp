@@ -11,6 +11,7 @@ class QSplitter;
 class QTreeView;
 class QToolBar;
 class QToolButton;
+class QPushButton;
 class QTreeWidget;
 
 namespace antares::adapters::ui {
@@ -49,6 +50,8 @@ private:
     QWidget *buildTable();
     QWidget *buildDetail();
     void buildTree();
+    void buildEmptyState();
+    QWidget *buildRailAvatar();
     void buildStatus(const QString &message);
 
     QtListModel &model_;
@@ -62,6 +65,8 @@ private:
     QLabel *detail_ = nullptr;
     QLabel *status_ = nullptr;
     QLabel *region_ = nullptr;
+    QLabel *count_ = nullptr;
+    QLabel *emptyState_ = nullptr;
     QSplitter *splitter_ = nullptr;
 };
 

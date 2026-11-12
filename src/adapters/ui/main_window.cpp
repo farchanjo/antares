@@ -7,14 +7,17 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QSplitter>
+#include <QStackedWidget>
 #include <QStatusBar>
-#include <QTreeView>
+#include <QStyle>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTreeView>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "adapters/ui/avatar.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
 
@@ -25,16 +28,16 @@ namespace {
 constexpr int RAIL_WIDTH = 48;
 constexpr int NAVIGATOR_WIDTH = 240;
 constexpr int DETAIL_WIDTH = 360;
+constexpr int TOOL_HEIGHT = 22;
 
-/// A rail button: icon over nothing, square, checkable, one per family.
-QToolButton *railButton(QWidget *parent, const QString &text, const QString &tip)
+/// An icon-only tool button, disabled when the action has nowhere to go.
+QToolButton *iconButton(QWidget *parent, QStyle::StandardPixmap icon, const QString &tip)
 {
     auto *button = new QToolButton{parent};
-    button->setText(text);
+    button->setIcon(parent->style()->standardIcon(icon));
     button->setToolTip(tip);
-    button->setCheckable(true);
-    button->setFixedSize(RAIL_WIDTH - 12, RAIL_WIDTH - 18);
     button->setAutoRaise(true);
+    button->setFixedSize(TOOL_HEIGHT, TOOL_HEIGHT);
     return button;
 }
 
@@ -45,7 +48,6 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     : QMainWindow(parent)
     , model_(model)
 {
-    // The context is data, not a translatable string (I18N-001).
     setWindowTitle(context.isEmpty() ? tr("antares") : tr("antares — %1").arg(context));
     resize(1100, 680);
 
@@ -62,7 +64,6 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     namespaceBox_->addItems(namespaces);
     layout->addWidget(bar_);
 
-    // R-1 | R-2 | R-4 | R-5, in one splitter so each width is the operator's.
     splitter_ = new QSplitter{Qt::Horizontal, central};
     splitter_->addWidget(buildRail());
     splitter_->addWidget(buildNavigator());
@@ -86,6 +87,14 @@ void MainWindow::buildToolBar()
     bar_ = new QToolBar{this};
     bar_->setMovable(false);
     bar_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    // History first, on the left, like the reference.
+    auto *back = iconButton(bar_, QStyle::SP_ArrowBack, tr("Back"));
+    back->setEnabled(false);
+    auto *forward = iconButton(bar_, QStyle::SP_ArrowForward, tr("Forward"));
+    forward->setEnabled(false);
+    bar_->addWidget(back);
+    bar_->addWidget(forward);
 
     auto *scope = new QWidget{bar_};
     auto *scopeLayout = new QHBoxLayout{scope};
@@ -118,6 +127,26 @@ void MainWindow::buildToolBar()
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     bar_->addWidget(spacer);
 
+    // The right-hand cluster of the reference: AI, overflow, notifications, me.
+    auto *ai = new QToolButton{bar_};
+    ai->setText(tr("Configure AI"));
+    ai->setAutoRaise(true);
+    ai->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    ai->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+    bar_->addWidget(ai);
+
+    auto *more = new QToolButton{bar_};
+    more->setText(QStringLiteral("\u25BE"));
+    more->setAutoRaise(true);
+    bar_->addWidget(more);
+
+    auto *notify = new QToolButton{bar_};
+    notify->setText(tr("notifications"));
+    notify->setAutoRaise(true);
+    notify->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    notify->setIcon(style()->standardIcon(QStyle::SP_MessageBoxInformation));
+    bar_->addWidget(notify);
+
     region_ = new QLabel{tr("not connected"), bar_};
     bar_->addWidget(region_);
 }
@@ -129,29 +158,42 @@ QWidget *MainWindow::buildRail()
     rail->setFixedWidth(RAIL_WIDTH);
     auto *railLayout = new QVBoxLayout{rail};
     railLayout->setContentsMargins(6, 6, 6, 6);
-    railLayout->setSpacing(4);
+    railLayout->setSpacing(6);
 
-    // The rail is a shortcut into the tree, not a second tree (R-1).
-    const struct {
-        const char *label;
-        const char *tip;
-    } families[] = {
-        {QT_TR_NOOP("W"), QT_TR_NOOP("Workloads")},
-        {QT_TR_NOOP("C"), QT_TR_NOOP("Config")},
-        {QT_TR_NOOP("N"), QT_TR_NOOP("Network")},
-        {QT_TR_NOOP("S"), QT_TR_NOOP("Storage")},
-        {QT_TR_NOOP("A"), QT_TR_NOOP("Access Control")},
-    };
+    // One avatar per cluster, then the add action. A rail entry is a cluster,
+    // not a resource family.
+    const QStringList clusters = contextBox_->count() > 0
+                                     ? QStringList{contextBox_->currentText()}
+                                     : QStringList{tr("local")};
     bool first = true;
-    for (const auto &family : families) {
-        auto *button = railButton(rail, tr(family.label), tr(family.tip));
+    for (const QString &cluster : clusters) {
+        auto *avatar = new Avatar{cluster, rail};
         if (first) {
-            button->setChecked(true);
+            avatar->setChecked(true);
             first = false;
         }
-        railLayout->addWidget(button);
+        railLayout->addWidget(avatar, 0, Qt::AlignHCenter);
     }
+
+    auto *add = new QToolButton{rail};
+    add->setText(QStringLiteral("+"));
+    add->setToolTip(tr("Add cluster"));
+    add->setAutoRaise(true);
+    railLayout->addWidget(add, 0, Qt::AlignHCenter);
+
     railLayout->addStretch(1);
+
+    auto *terminal = new QToolButton{rail};
+    terminal->setText(tr(">_"));
+    terminal->setToolTip(tr("Terminal"));
+    terminal->setAutoRaise(true);
+    railLayout->addWidget(terminal, 0, Qt::AlignHCenter);
+
+    auto *settings = new QToolButton{rail};
+    settings->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    settings->setToolTip(tr("Settings"));
+    settings->setAutoRaise(true);
+    railLayout->addWidget(settings, 0, Qt::AlignHCenter);
 
     return rail;
 }
@@ -161,12 +203,25 @@ QWidget *MainWindow::buildNavigator()
     auto *pane = new QWidget{this};
     auto *paneLayout = new QVBoxLayout{pane};
     paneLayout->setContentsMargins(6, 6, 6, 6);
+    paneLayout->setSpacing(4);
 
-    // The search narrows the tree, so it sits at the top of it (R-2).
-    filterBox_ = new QLineEdit{pane};
+    auto *title = new QLabel{tr("Navigator"), pane};
+    QFont titleFont = title->font();
+    titleFont.setBold(true);
+    title->setFont(titleFont);
+    paneLayout->addWidget(title);
+
+    // The search holds the cluster name; the two icons are the filter and the
+    // magnifier of the reference.
+    auto *searchRow = new QWidget{pane};
+    auto *searchLayout = new QHBoxLayout{searchRow};
+    searchLayout->setContentsMargins({});
+    searchLayout->setSpacing(2);
+    filterBox_ = new QLineEdit{searchRow};
     filterBox_->setPlaceholderText(tr("Search resources"));
     filterBox_->setClearButtonEnabled(true);
-    paneLayout->addWidget(filterBox_);
+    searchLayout->addWidget(filterBox_, 1);
+    paneLayout->addWidget(searchRow);
 
     navigator_ = new QTreeWidget{pane};
     navigator_->setHeaderHidden(true);
@@ -180,14 +235,14 @@ QWidget *MainWindow::buildNavigator()
 
 QWidget *MainWindow::buildTable()
 {
-    // A tree view, not a table one: the reference shows a flat tree, and the
-    // widget draws a header over columns the same way without a proxy.
-    view_ = new QTreeView{this};
+    // The empty state sits in a stack with the rows, so a scope with nothing in
+    // it says why instead of showing a blank grid.
+    auto *stack = new QStackedWidget{this};
+
+    view_ = new QTreeView{stack};
     view_->setRootIsDecorated(false);
     view_->setItemsExpandable(false);
     view_->setAllColumnsShowFocus(true);
-    // Uniform heights spare the view a size hint per row; the config already
-    // says the rows are uniform.
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
     const ViewConfig config;
@@ -201,7 +256,14 @@ QWidget *MainWindow::buildTable()
     }
     view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    return view_;
+    emptyState_ = new QLabel{tr("No objects in this scope."), stack};
+    emptyState_->setAlignment(Qt::AlignCenter);
+    emptyState_->setWordWrap(true);
+
+    stack->addWidget(view_);
+    stack->addWidget(emptyState_);
+    stack->setCurrentWidget(view_);
+    return stack;
 }
 
 QWidget *MainWindow::buildDetail()
@@ -213,13 +275,16 @@ QWidget *MainWindow::buildDetail()
     paneLayout->setContentsMargins(8, 8, 8, 8);
 
     auto *heading = new QLabel{tr("Detail"), pane};
+    QFont headingFont = heading->font();
+    headingFont.setBold(true);
+    heading->setFont(headingFont);
     paneLayout->addWidget(heading);
 
     detail_ = new QLabel{tr("Select a row."), pane};
     detail_->setWordWrap(true);
-    // A wrapping label must say so, or the layout gives it one line (LR-006).
     detail_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     detail_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    detail_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     paneLayout->addWidget(detail_, 1);
 
     return pane;
@@ -227,27 +292,46 @@ QWidget *MainWindow::buildDetail()
 
 void MainWindow::buildTree()
 {
-    // The families the API exposes, in the order the reference uses. A later
-    // feature replaces this with discovery; the shape stays.
     auto *root = new QTreeWidgetItem{navigator_, QStringList{tr("Cluster")}};
     root->setExpanded(true);
     const struct {
         const char *label;
+        bool isNew;
     } families[] = {
-        {QT_TR_NOOP("Overview")},   {QT_TR_NOOP("Workloads")},  {QT_TR_NOOP("Config")},
-        {QT_TR_NOOP("Network")},    {QT_TR_NOOP("Storage")},    {QT_TR_NOOP("Namespaces")},
-        {QT_TR_NOOP("Events")},     {QT_TR_NOOP("Access Control")},
+        {QT_TR_NOOP("Overview"), false},   {QT_TR_NOOP("Applications"), false},
+        {QT_TR_NOOP("Argo CD"), true},     {QT_TR_NOOP("Nodes"), false},
+        {QT_TR_NOOP("Workloads"), false},  {QT_TR_NOOP("Config"), false},
+        {QT_TR_NOOP("Network"), false},    {QT_TR_NOOP("Storage"), false},
+        {QT_TR_NOOP("Device Resources"), true}, {QT_TR_NOOP("Namespaces"), false},
+        {QT_TR_NOOP("Events"), false},     {QT_TR_NOOP("Helm"), false},
+        {QT_TR_NOOP("Access Control"), false}, {QT_TR_NOOP("Custom Resources"), false},
+        {QT_TR_NOOP("Security Center"), false},
     };
     for (const auto &family : families) {
-        static_cast<void>(new QTreeWidgetItem{root, QStringList{tr(family.label)}});
+        auto *item = new QTreeWidgetItem{root, QStringList{tr(family.label)}};
+        if (family.isNew) {
+            item->setText(1, tr("NEW"));
+        }
     }
+    navigator_->setColumnCount(2);
+    navigator_->header()->setStretchLastSection(false);
+    navigator_->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    navigator_->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
 }
 
 void MainWindow::buildStatus(const QString &message)
 {
+    // Two counters on the left of the reference; the row count is the one this
+    // build can answer.
+    count_ = new QLabel{QStringLiteral("0"), this};
+    statusBar()->addWidget(count_);
+
     status_ = new QLabel{message, this};
     status_->setVisible(!message.isEmpty());
-    statusBar()->addWidget(status_);
+    statusBar()->addWidget(status_, 1);
+
+    auto *support = new QLabel{tr("Support"), this};
+    statusBar()->addPermanentWidget(support);
     statusBar()->setSizeGripEnabled(true);
 }
 

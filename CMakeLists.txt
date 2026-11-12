@@ -69,6 +69,7 @@ set(ANTARES_UI_SOURCES
     src/adapters/ui/row_role.cpp
     src/adapters/ui/row_text.cpp
     src/adapters/ui/view_config.cpp
+    src/adapters/ui/avatar.cpp
     src/adapters/ui/kube_page_source.cpp
     src/adapters/ui/qt_list_model.cpp
 )
