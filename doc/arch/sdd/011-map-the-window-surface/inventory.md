@@ -282,3 +282,32 @@ bar and the toolbars are fixed height. A layout that hard-codes a column width,
 or that refuses to shrink, is wrong.
 
 The same holds for the detail pane: it collapses to nothing and reopens.
+
+## Mapping status
+
+| Area | State |
+|---|---|
+| window, toolbar, rail, navigator, status bar | captured |
+| Pods view | captured, twelve columns |
+| Nodes view | captured, eleven columns, meters and pills |
+| Workloads sub-tree | captured, nine entries |
+| Network sub-tree | captured, eight entries |
+| Preferences shell and External Tools page | captured |
+| tab bar, close button, ⌘W | captured |
+| row selection | captured |
+| Config, Storage, Device Resources, Events, Helm, Access Control, Custom Resources, Security Center | **not yet opened** |
+| row detail, row menu, column add, sort, namespace dropdown | **not yet opened** |
+| File, Edit, View, Help menus | **not yet opened** |
+| remaining Preferences sub-pages | **not yet opened** |
+
+Known shortcuts: `⌘W` closes the active tab.
+
+## Next captures
+
+1. `Config` (`Secrets`, `Config Maps`, `Resource Quotas`, `Limit Ranges`, `HPA`, `Pod Disruption Budgets`) — expect secrets to mask values.
+2. `Storage` (`Persistent Volume Claims`, `Persistent Volumes`, `Storage Classes`) — expect a capacity meter.
+3. `Events` — expect a time-ordered log with a type column.
+4. A row click, for the detail pane.
+5. The `⋮` row menu.
+6. The `+` under the last column, for the column picker.
+7. The four menus.
