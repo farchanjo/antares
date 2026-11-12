@@ -472,3 +472,11 @@ Pills are the general answer for a multi-valued status cell — nodes use the sa
 shape for `Conditions`. Amber marks a degraded one (`SchedulingDisab`).
 
 Empty families in this namespace: Resource Quotas, Limit Ranges.
+
+## Table view (Pod Disruption Budgets)
+
+Columns: `☐` · `Name` · `Namespace` · `Min Available` · `Max Unavailable` ·
+`Current Healthy` · `Desired Healthy` · `Age` · `⋮`
+
+`Max Unavailable` renders `N/A` when the budget states a minimum instead — an
+either/or pair, only one of which is set. `8 items`.
