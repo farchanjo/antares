@@ -87,8 +87,9 @@ PreferencesPage::PreferencesPage(QWidget *parent)
         rail_->addItem(QString::fromUtf8(entry.label));
     }
 
-    QObject::connect(rail_, &QListWidget::currentRowChanged, this, [this](int row) {
-        std::fprintf(stderr, "  [rail] linha=%d\n", row);
+    QObject::connect(rail_, &QListWidget::itemSelectionChanged, this, [this] {
+        const int row = rail_->currentRow();
+        std::fprintf(stderr, "  [rail] sel=%d\n", row);
         pages_->setCurrentIndex(row);
     });
     QObject::connect(rail_, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
