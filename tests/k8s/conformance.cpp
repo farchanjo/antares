@@ -106,14 +106,20 @@ void caseSubresourceSegment()
                "/api/v1/namespaces/default/pods/web-0/log", "log subresource path");
 }
 
-// FR-001 — a hostile name never reaches the path.
+// FR-001, FR-002 — a hostile name never reaches the path, and the two rules
+// part at the object-name boundary: uppercase, `_` and `:` are legal in a name
+// and refused in a namespace, which the server does keep strict.
 void caseHostileNameRefused()
 {
     const ApiPath base{corePods(), std::nullopt, std::nullopt, Subresource::none};
     check(!base.inNamespace("../../etc").has_value(), "traversal namespace refused");
     check(!base.inNamespace("Kube-System").has_value(), "uppercase namespace refused");
-    check(!base.named("web_0").has_value(), "underscore name refused");
+    check(!base.named("../../etc").has_value(), "traversal name refused");
     check(!base.inNamespace("").has_value(), "empty namespace refused");
+    check(base.named("web_0").has_value(), "underscore name accepted");
+    check(base.named("system:controller:persistent-volume-binder").has_value(),
+          "colon name accepted");
+    check(!base.inNamespace("system:controller").has_value(), "colon namespace refused");
 
     check(!GroupVersionResource::of("", "v1", "pods/exec").has_value(), "slash in resource");
     check(!GroupVersionResource::of("APPS", "v1", "deployments").has_value(), "uppercase group");

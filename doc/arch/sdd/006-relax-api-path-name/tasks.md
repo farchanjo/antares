@@ -5,7 +5,7 @@
 - [x] T001 Write the failing table case over the eleven name classes: upper, `_`,
       `:`, `.`, 253 bytes, 254 bytes, empty, `.`, `..`, `a/b`, `a%b` (FR-001,
       FR-004).
-- [ ] T002 Add `SEGMENT_CEILING` and `isPathSegment`; point `named` at it
+- [x] T002 Add `SEGMENT_CEILING` and `isPathSegment`; point `named` at it
       (FR-001, FR-004).
 - [ ] T003 Keep `isDnsLabel` on `inNamespace` and say in the header which
       function guards which (FR-002).

@@ -53,6 +53,17 @@ bool isDnsLabel(std::string_view text) noexcept
     });
 }
 
+bool isPathSegment(std::string_view text) noexcept
+{
+    if (text.empty() || text.size() > SEGMENT_CEILING) {
+        return false;
+    }
+    if (text == "." || text == "..") {
+        return false;
+    }
+    return text.find_first_of("/%") == std::string_view::npos;
+}
+
 bool isDnsSubdomain(std::string_view text) noexcept
 {
     if (text.empty() || text.size() > SUBDOMAIN_CEILING) {
@@ -130,8 +141,8 @@ std::expected<ApiPath, ApiError> ApiPath::inNamespace(std::string name) const
 
 std::expected<ApiPath, ApiError> ApiPath::named(std::string name) const
 {
-    if (!isDnsSubdomain(name)) {
-        return std::unexpected(rejected("name is not a DNS-1123 subdomain: " + name));
+    if (!isPathSegment(name)) {
+        return std::unexpected(rejected("name is not a path segment: " + name));
     }
     ApiPath copy = *this;
     copy.name = std::move(name);

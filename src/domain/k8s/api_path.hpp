@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -67,6 +68,18 @@ struct ApiPath {
 /// True when `text` is a DNS-1123 label: lowercase alphanumeric or `-`, at most
 /// 63 characters, starting and ending alphanumeric.
 [[nodiscard]] bool isDnsLabel(std::string_view text) noexcept;
+
+/// The ceiling the server puts on a name, in bytes (FR-001, D-05).
+inline constexpr std::size_t SEGMENT_CEILING = 253;
+
+/// True when `text` is a path segment the server accepts as `metadata.name`:
+/// 1 to 253 bytes, no `/` and no `%`, and neither `.` nor `..` (FR-001).
+///
+/// `%` is refused because the server decodes a path before it routes, so an
+/// escape would arrive as one encoding too many; `.` and `..` are refused
+/// because they resolve as segments (FR-004). Everything else passes, which is
+/// what makes uppercase, `_` and `:` legal where a DNS label would refuse them.
+[[nodiscard]] bool isPathSegment(std::string_view text) noexcept;
 
 /// True when `text` is a DNS-1123 subdomain: dot-separated labels, at most 253
 /// characters.
