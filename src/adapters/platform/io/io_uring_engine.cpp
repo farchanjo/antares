@@ -103,10 +103,13 @@ bool IoUringEngine::arm(PendingOp &op, std::uint32_t mask)
         return false;
     }
 
-    // The op address is the tag. It is stable for the op's life, and it is the
-    // same value the removal path hands back.
+    // A serial, not the op address: the completion may outlive the op, and the
+    // map is what says whether the address is still good.
+    const std::uint64_t tag = lastTag_++;
+    op.tag = tag;
+    byTag_[tag] = &op;
     io_uring_prep_poll_add(sqe, op.handle->native(), mask);
-    sqe->user_data = reinterpret_cast<std::uint64_t>(&op);
+    sqe->user_data = tag;
     ++queued_;
     return true;
 }
@@ -154,6 +157,9 @@ bool IoUringEngine::armConnect(PendingOp &op) { return arm(op, maskFor(OpKind::c
 void IoUringEngine::forget(PendingOp &op)
 {
     const std::lock_guard<std::mutex> guard{ringMutex_};
+    // Withdrawn before the removal is even queued: from here on, a completion
+    // carrying this tag is stale and is dropped.
+    byTag_.erase(op.tag);
     struct io_uring_sqe *sqe = nextSlot();
     if (sqe == nullptr) {
         return;
@@ -161,7 +167,7 @@ void IoUringEngine::forget(PendingOp &op)
 
     // Removing a request that already completed is harmless: the kernel answers
     // ENOENT, which arrives as an auxiliary completion and is ignored.
-    io_uring_prep_poll_remove(sqe, reinterpret_cast<std::uint64_t>(&op));
+    io_uring_prep_poll_remove(sqe, op.tag);
     sqe->user_data = AUX_TAG;
     ++queued_;
     (void)flushLocked();
@@ -225,6 +231,10 @@ bool IoUringEngine::waitReady(int timeoutMilliseconds)
         // A cancelled request still reports. `cancelPending` already completed
         // the op and dropped it, so acting again would run the callback twice.
         if (cqe->res == -ECANCELED) {
+            {
+                const std::lock_guard<std::mutex> guard{ringMutex_};
+                byTag_.erase(cqe->user_data);
+            }
             io_uring_cqe_seen(ring_, cqe);
             cqe = nullptr;
             if (io_uring_peek_cqe(ring_, &cqe) < 0) {
@@ -233,7 +243,15 @@ bool IoUringEngine::waitReady(int timeoutMilliseconds)
             continue;
         }
 
-        auto *op = reinterpret_cast<PendingOp *>(cqe->user_data);
+        PendingOp *op = nullptr;
+        {
+            const std::lock_guard<std::mutex> guard{ringMutex_};
+            const auto found = byTag_.find(cqe->user_data);
+            if (found != byTag_.end()) {
+                op = found->second;
+                byTag_.erase(found);
+            }
+        }
         if (op != nullptr) {
             switch (op->kind) {
             case OpKind::read:

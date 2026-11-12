@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <mutex>
+#include <unordered_map>
 
 #include "adapters/platform/io/engine_base.hpp"
 
@@ -81,6 +82,15 @@ private:
     /// True while a poll request sits on the wake pipe. Without it each pass
     /// would park another, filling the ring with dead requests.
     bool wakeArmed_ = false;
+
+    /// Live requests by tag. A cancelled op is erased here before it is
+    /// released, so its completion — which may already sit in the ring — finds
+    /// no entry and is skipped rather than read through a freed pointer.
+    std::unordered_map<std::uint64_t, PendingOp *> byTag_;
+
+    /// Source of request tags. The two fixed tags are 1 and 2, so this starts
+    /// clear of both.
+    std::uint64_t lastTag_ = 16;
 };
 
 } // namespace antares::adapters::platform::io
