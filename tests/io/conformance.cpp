@@ -512,9 +512,12 @@ void caseRingRefusedFallsBack()
     if (!built) {
         return;
     }
+    // The shim is Linux-only, so this runs there and nowhere else.
+#if defined(__linux__)
     check(dynamic_cast<antares::adapters::platform::io::EpollEngine *>(built->get()) != nullptr,
           "the engine is epoll");
     check(built->get()->name() == "epoll", "the name says epoll");
+#endif
 }
 
 /// Cancelling repeatedly while the loop completes and releases ops must not
