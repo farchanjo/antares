@@ -604,6 +604,44 @@ void caseStopIsReversible()
     engine.stop();
 }
 
+/// Two lookups inside the watchdog window each settle once. A single engine-wide
+/// claim let the second job's serial make the first look unclaimed, so a late
+/// timeout settled an already-settled job (FR-002).
+void caseResolveTwoJobsOneWindow()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    std::atomic<int> first{0};
+    std::atomic<int> second{0};
+    std::atomic<int> total{0};
+    antares::test::Await both;
+
+    const auto count = [&total, &both](std::atomic<int> &slot) {
+        return [&slot, &total, &both](IoEngine::ResolveResult) {
+            slot.fetch_add(1);
+            if (total.fetch_add(1) == 1) {
+                both.signal();
+            }
+        };
+    };
+
+    check(engine.submitResolve("localhost", 80, count(first)).has_value(), "first submit");
+    check(engine.submitResolve("localhost", 443, count(second)).has_value(), "second submit");
+    check(both.wait(), "both lookups settled");
+
+    // The watchdog fires after the resolver for both; a shared claim would settle
+    // one of them a second time.
+    std::this_thread::sleep_for(std::chrono::milliseconds{5500});
+    check(first.load() == 1, "the first job settled exactly once");
+    check(second.load() == 1, "the second job settled exactly once");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -626,6 +664,7 @@ std::span<const Case> cases()
         {"cancel-walks-under-lock", caseCancelWalksUnderLock},
         {"stop-settles-pending", caseStopSettlesPending},
         {"stop-is-reversible", caseStopIsReversible},
+        {"resolve-two-jobs-one-window", caseResolveTwoJobsOneWindow},
     };
     return table;
 }

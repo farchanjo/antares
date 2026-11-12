@@ -191,6 +191,13 @@ private:
     /// otherwise pend the request for the life of the process.
     static constexpr domain::Duration resolveTimeout = std::chrono::seconds{5};
 
+    /// Per-job claim, shared by the resolver thread and the watchdog. A single
+    /// engine-wide slot let a late answer settle a job the timer had already
+    /// failed (FR-002).
+    struct ResolveClaim {
+        std::atomic<bool> settled{false};
+    };
+
     struct ResolveJob {
         std::uint64_t serial = 0;
         std::string host;
@@ -198,11 +205,12 @@ private:
         /// Shared: the resolver thread and its timer both may settle the job,
         /// and whichever runs second must find the callback still alive.
         std::shared_ptr<ResolveDone> done;
+        std::shared_ptr<ResolveClaim> claim;
     };
 
     /// Claim `serial` for settling. True exactly once per job, so a late
     /// resolver answer cannot complete a job the timer already failed.
-    [[nodiscard]] bool claimResolve(std::uint64_t serial);
+    [[nodiscard]] static bool claimResolve(const std::shared_ptr<ResolveClaim> &claim);
 
     void startResolver();
     void resolverLoop();
@@ -213,7 +221,6 @@ private:
     std::thread resolver_;
     bool resolveStop_ = false;
     std::atomic<std::uint64_t> resolveSerial_{0};
-    std::atomic<std::uint64_t> resolveSettled_{0};
 
     /// Posted tasks, multi-producer and lock-free (FR-003). A node enters once and
     /// only the loop removes it, so there is no ABA: `head_` is the whole state.

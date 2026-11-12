@@ -255,10 +255,11 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
 
     const auto serial = resolveSerial_.fetch_add(1) + 1;
     auto shared = std::make_shared<ResolveDone>(std::move(done));
+    auto claim = std::make_shared<ResolveClaim>();
 
     {
         const std::lock_guard<std::mutex> guard{resolveMutex_};
-        resolveQueue_.push_back(ResolveJob{serial, std::move(host), port, shared});
+        resolveQueue_.push_back(ResolveJob{serial, std::move(host), port, shared, claim});
     }
     resolveReady_.notify_one();
     startResolver();
@@ -266,8 +267,8 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
     // The watchdog. It runs on the loop, which outlives every timer, so the
     // bare `this` is sound; `claimResolve` makes sure only one of the two
     // settles the job.
-    static_cast<void>(submitTimer(resolveTimeout, [this, serial, shared] {
-        if (!claimResolve(serial)) {
+    static_cast<void>(submitTimer(resolveTimeout, [claim, shared] {
+        if (!claimResolve(claim)) {
             return;
         }
         (*shared)(std::unexpected(IoError::timeout));
@@ -275,9 +276,9 @@ std::expected<void, IoError> EngineBase::submitResolve(std::string host, std::ui
     return {};
 }
 
-bool EngineBase::claimResolve(std::uint64_t serial)
+bool EngineBase::claimResolve(const std::shared_ptr<ResolveClaim> &claim)
 {
-    return resolveSettled_.exchange(serial) != serial;
+    return claim != nullptr && !claim->settled.exchange(true, std::memory_order_acq_rel);
 }
 
 void EngineBase::startResolver()
@@ -334,7 +335,7 @@ void EngineBase::resolverLoop()
 
         std::fprintf(stderr, "  resolved ok=%d\n", static_cast<int>(result.has_value()));
         post([this, job, result = std::move(result)]() mutable {
-            if (!claimResolve(job.serial)) {
+            if (!claimResolve(job.claim)) {
                 return;
             }
             (*job.done)(std::move(result));

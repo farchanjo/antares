@@ -10,9 +10,9 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       the freed op (FR-001).
 - [ ] T002 Override `forget` in `KqueueEngine` with `EV_DELETE` for the op's
       descriptor and filter, tolerating `ENOENT` (FR-001).
-- [ ] T003 Add `settled` to the shared resolve job and key `claimResolve` on it
+- [x] T003 Add `settled` to the shared resolve job and key `claimResolve` on it
       instead of the engine-wide slot (FR-002).
-- [ ] T004 Add the case `resolve/two-jobs-one-window`: two lookups of the same
+- [x] T004 Add the case `resolve/two-jobs-one-window`: two lookups of the same
       host inside the watchdog, both settle once (FR-002).
 - [x] T005 Replace `tasks_` with an intrusive MPSC list: atomic head, push by
       compare-exchange, drain by one exchange and a reverse (FR-003).
