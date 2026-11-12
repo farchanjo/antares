@@ -43,6 +43,12 @@ public:
 
     [[nodiscard]] const std::vector<Value> &items() const noexcept { return items_; }
 
+    using Member = std::pair<std::string, Value>;
+
+    /// The members of an object, in document order. Empty for anything else.
+    /// A caller that needs key order sorts them itself.
+    [[nodiscard]] const std::vector<Member> &members() const noexcept { return members_; }
+
     /// A member of an object, or null when the key is absent or this is not an
     /// object. Returning null for absence keeps the caller free of a second
     /// check.

@@ -20,18 +20,16 @@ import (
 
 // #ObjectKey is the store's only index: the scope plus the uid.
 #ObjectKey: {
-    cluster:              #Text
-    groupVersionResource: #Text & strings.MaxRunes(316)
-    namespace:            #NamespaceName
-    uid:                  #Text
+    scope: #Scope
+    uid:   #Text
 }
 
-// #Identity is what a view renders to name an object.
+// #Identity is what a view renders to name an object. The namespace and the
+// kind come from the scope the entry is stored in, so neither is repeated per
+// row (FR-003).
 #Identity: {
-    uid:       #Text
-    name:      #ObjectName
-    namespace: #NamespaceName
-    kind:      #Text
+    uid:  #Text
+    name: #ObjectName
 }
 
 // #Label is one qualified key and its value.

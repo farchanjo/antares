@@ -169,6 +169,18 @@ set(ANTARES_K8S_SOURCES
     src/domain/k8s/status.cpp
     src/domain/k8s/watch_event.cpp
     src/domain/k8s/kubeconfig.cpp
+    src/domain/k8s/cluster_name.cpp
+    src/domain/k8s/namespace_name.cpp
+    src/domain/k8s/object_name.cpp
+    src/domain/k8s/uid.cpp
+    src/domain/k8s/scope.cpp
+    src/domain/k8s/labels.cpp
+    src/domain/k8s/change_set.cpp
+    src/domain/k8s/store_error.cpp
+    src/domain/k8s/store_metrics.cpp
+    src/domain/k8s/entry_decoder.cpp
+    src/application/k8s/store_scope.cpp
+    src/application/k8s/object_store.cpp
     src/adapters/k8s/kubeconfig_loader.cpp
     src/adapters/k8s/cluster_binding.cpp
     src/adapters/k8s/http_kube_client.cpp
@@ -363,16 +375,16 @@ if(APPLE)
         VERBATIM)
 endif()
 
-add_executable(antares_k8s_conformance tests/k8s/conformance.cpp)
+add_executable(antares_k8s_conformance tests/k8s/conformance.cpp
+                                tests/support/counting_allocator.cpp)
 target_link_libraries(antares_k8s_conformance PRIVATE antares_k8s)
+target_include_directories(antares_k8s_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+target_compile_definitions(antares_k8s_conformance
+    PRIVATE ANTARES_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/k8s/fixtures")
 set_target_properties(antares_k8s_conformance PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
-if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
-    target_link_libraries(antares_k8s_conformance PRIVATE mimalloc-static)
-    if(APPLE)
-        target_link_options(antares_k8s_conformance PRIVATE
-            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
-    endif()
-endif()
+# No mimalloc here: the suite replaces the global `operator new`/`delete` with a
+# counting pair (tests/support/counting_allocator.cpp) and the two would collide.
+# The allocation pattern under test is the store's, not the allocator's.
 if(APPLE)
     add_custom_command(TARGET antares_k8s_conformance POST_BUILD
         COMMAND dsymutil $<TARGET_FILE:antares_k8s_conformance>
@@ -425,7 +437,21 @@ set(ANTARES_K8S_CASES
     exec-empty-payload
     exec-unknown-channel
     exec-resize-payload
-    exec-error-frame)
+    exec-error-frame
+    frame-cursor-compacts-once
+    entry-projection
+    entry-refuses-hostile
+    entry-labels-truncated
+    entry-worst-case-bound
+    store-bounds-5000-pods
+    store-shares-entry
+    store-upsert-in-place
+    store-change-set-replays
+    store-admits-until-ceiling
+    store-relist-reconciles
+    store-relist-abandoned
+    store-routes-events
+    store-metrics-bounded)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")

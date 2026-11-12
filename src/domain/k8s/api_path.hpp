@@ -40,6 +40,10 @@ struct GroupVersionResource {
     /// Builds a descriptor, refusing a name outside DNS-1123.
     [[nodiscard]] static std::expected<GroupVersionResource, ApiError>
     of(std::string group, std::string version, std::string resource);
+
+    /// Identity, so a descriptor can key the store's scopes.
+    friend bool operator==(const GroupVersionResource &, const GroupVersionResource &) noexcept =
+        default;
 };
 
 /// Where a resource lives and what is addressed, rendered as one path (FR-001).

@@ -1,9 +1,13 @@
 #include "domain/k8s/watch_event.hpp"
 
 #include <expected>
+#include <optional>
+#include <string>
 #include <utility>
 
+#include "domain/k8s/entry_decoder.hpp"
 #include "domain/k8s/status.hpp"
+#include "domain/k8s/store_error.hpp"
 
 namespace antares::domain::k8s {
 
@@ -47,6 +51,25 @@ namespace {
     return line;
 }
 
+/// An ERROR frame carries a Status in place of an object, so the code is the
+/// only way to tell a 410 from a transient failure.
+[[nodiscard]] ApiError failureFromStatus(const json::Value &status)
+{
+    Status parsed;
+    parsed.state = std::string{status.textAt("status")};
+    parsed.reasonToken = std::string{status.textAt("reason")};
+    parsed.message = std::string{status.textAt("message")};
+    parsed.code = static_cast<std::uint16_t>(status.intAt("code").value_or(0));
+
+    ApiError failure = parsed.toError();
+    // A 410 Expired is what makes a caller re-list; the token may be absent, so
+    // the code stands in for it.
+    if (failure.reason == Reason::unexpected && parsed.code == 410) {
+        failure.reason = Reason::expired;
+    }
+    return failure;
+}
+
 } // namespace
 
 std::string_view eventName(EventType type) noexcept
@@ -66,6 +89,44 @@ std::string_view eventName(EventType type) noexcept
     return "ADDED";
 }
 
+std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(const json::Value &document)
+{
+    if (!document.isObject()) {
+        return std::unexpected(
+            ApiError{Reason::unexpected, 0, "watch frame is not a JSON object"});
+    }
+
+    const std::string_view token = document.textAt("type");
+    const std::optional<EventType> type = typeFromToken(token);
+    if (!type) {
+        return std::unexpected(
+            ApiError{Reason::unexpected, 0, "unknown watch frame type: " + std::string{token}});
+    }
+
+    const json::Value &object = document.member("object");
+
+    WatchEvent event;
+    event.type = *type;
+    event.resourceVersion = std::string{object.member("metadata").textAt("resourceVersion")};
+
+    if (event.type == EventType::error) {
+        event.failure = failureFromStatus(object);
+        return std::optional<WatchEvent>{std::move(event)};
+    }
+    if (event.type == EventType::bookmark) {
+        return std::optional<WatchEvent>{std::move(event)};
+    }
+
+    auto entry = decodeEntry(object);
+    if (!entry) {
+        return std::unexpected(ApiError{Reason::unexpected, 0,
+                                        std::string{storeErrorName(entry.error())}});
+    }
+    event.resourceVersion = entry->resourceVersion;
+    event.entry = std::move(*entry);
+    return std::optional<WatchEvent>{std::move(event)};
+}
+
 std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(std::string_view line)
 {
     const std::string_view text = trimmed(line);
@@ -74,59 +135,39 @@ std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(std::string_
     }
 
     const auto document = json::Value::parse(text);
-    if (!document || !document->isObject()) {
+    if (!document) {
         return std::unexpected(
             ApiError{Reason::unexpected, 0, "watch frame is not a JSON object"});
     }
-
-    const std::string_view token = document->textAt("type");
-    const std::optional<EventType> type = typeFromToken(token);
-    if (!type) {
-        return std::unexpected(
-            ApiError{Reason::unexpected, 0, "unknown watch frame type: " + std::string{token}});
-    }
-
-    WatchEvent event;
-    event.type = *type;
-    event.payload = document->member("object");
-    event.resourceVersion =
-        std::string{event.payload.member("metadata").textAt("resourceVersion")};
-
-    if (event.type == EventType::error) {
-        // An ERROR frame carries a Status in place of an object, so the code is
-        // the only way to tell a 410 from a transient failure.
-        Status status;
-        status.state = std::string{event.payload.textAt("status")};
-        status.reasonToken = std::string{event.payload.textAt("reason")};
-        status.message = std::string{event.payload.textAt("message")};
-        status.code = static_cast<std::uint16_t>(event.payload.intAt("code").value_or(0));
-        event.failure = status.toError();
-        // A 410 Expired is what makes a caller re-list; the token may be absent,
-        // so the code stands in for it.
-        if (event.failure.reason == Reason::unexpected && status.code == 410) {
-            event.failure.reason = Reason::expired;
-        }
-    }
-
-    return std::optional<WatchEvent>{std::move(event)};
+    return decodeWatchEvent(*document);
 }
 
-std::vector<std::string> takeFrames(std::string &buffer)
+FrameCursor::FrameCursor(std::string &buffer) noexcept : buffer_(buffer) {}
+
+FrameCursor::~FrameCursor()
 {
-    std::vector<std::string> frames;
-    std::size_t start = 0;
+    static_cast<void>(compact());
+}
 
-    while (true) {
-        const std::size_t newline = buffer.find('\n', start);
-        if (newline == std::string::npos) {
-            break;
-        }
-        frames.emplace_back(buffer.substr(start, newline - start));
-        start = newline + 1;
+std::optional<std::string_view> FrameCursor::next() noexcept
+{
+    const std::size_t newline = buffer_.find('\n', start_);
+    if (newline == std::string::npos) {
+        return std::nullopt;
     }
+    const std::string_view frame{buffer_.data() + start_, newline - start_};
+    start_ = newline + 1;
+    return frame;
+}
 
-    buffer.erase(0, start);
-    return frames;
+std::size_t FrameCursor::compact() noexcept
+{
+    const std::size_t erased = start_;
+    if (erased > 0) {
+        buffer_.erase(0, erased);
+        start_ = 0;
+    }
+    return erased;
 }
 
 } // namespace antares::domain::k8s

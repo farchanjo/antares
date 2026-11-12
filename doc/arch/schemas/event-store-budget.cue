@@ -2,6 +2,8 @@
 
 package schemas
 
+import "strings"
+
 // Budget and batch shapes for the event store (feature 005). Split from
 // bound-the-event-memory.cue because that file would otherwise pass the
 // one-definition ceiling.
@@ -36,6 +38,16 @@ package schemas
     totals:       #Totals
     _scopeFits:   true & (scope.entries <= totals.entries)
     _budgetFits:  true & (totals.entries*entry.worst + totals.scopes*scope.fixedBytes <= totals.bytes)
+}
+
+// #Scope is what a store scope is keyed by, plus the kind its resource serves.
+// One group-version-resource serves exactly one kind, so the kind belongs to
+// the scope and not to every entry.
+#Scope: {
+    cluster:              #Text
+    groupVersionResource: #Text & strings.MaxRunes(316)
+    kind:                 #Text
+    namespace:            #NamespaceName
 }
 
 // #ScopeState is what a scope publishes about itself.
