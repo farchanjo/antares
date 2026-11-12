@@ -1,6 +1,8 @@
 #include "adapters/ui/row_delegate.hpp"
 
 #include <QApplication>
+
+#include <cstdio>
 #include <QPainter>
 #include <QStyleOptionButton>
 
@@ -138,6 +140,9 @@ void RowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
         return;
     }
     case RowRole::actions: {
+        std::fprintf(stderr, "  [pinta] col=%d rect=%d,%d %dx%d\n", index.column(),
+                     option.rect.x(), option.rect.y(), option.rect.width(),
+                     option.rect.height());
         QStyleOptionViewItem base = option;
         base.text.clear();
         QStyledItemDelegate::paint(painter, base, index);
