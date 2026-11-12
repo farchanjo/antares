@@ -22,7 +22,10 @@ ProportionalHeader::ProportionalHeader(QWidget *parent)
 {
     setStretchLastSection(false);
     setSectionsMovable(false);
-    setSectionResizeMode(QHeaderView::Fixed);
+    // Interactive, not Fixed: a fixed header is pinned to the sum of its
+    // sections and never grows to the pane, so every measurement of it came back
+    // at a hundred pixels while the rows drew across six hundred.
+    setSectionResizeMode(QHeaderView::Interactive);
     setMinimumSectionSize(24);
 }
 
