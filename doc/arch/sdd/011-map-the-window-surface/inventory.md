@@ -523,3 +523,16 @@ is the raw cron expression, `Time zone` its zone, `Suspend` a boolean word.
 
 `Overview`, `Pods`, `Deployments`, `Daemon Sets`, `Stateful Sets`, `Replica Sets`,
 `Replication Controllers`, `Jobs`, `Cron Jobs`.
+
+## Table view (Services)
+
+Columns: `☐` · `Name` · `Namespace` · `Type` · `Cluster IP` · `Ports` ·
+`External IP` · `Selector` · `ArgoCD` · `Age` · `Status` · `⋮`. `18 items`.
+
+- `Type` is the service type (`ClusterIP`), plain text.
+- `Ports` concatenates `port/name/protocol`, comma separated and truncated
+  (`80,443/TCP, 47…`).
+- `Cluster IP` shows `None` for a headless service.
+- `Selector` renders the label selector, truncated.
+- `External IP` is empty for a cluster-internal service.
+- `Status` is the green `Active` pill.
