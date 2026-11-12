@@ -74,6 +74,7 @@ private:
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
     QtListModel &model_;
     QToolBar *bar_ = nullptr;

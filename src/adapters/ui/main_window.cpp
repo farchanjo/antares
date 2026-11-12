@@ -17,6 +17,7 @@
 #include <QTabWidget>
 #include <QStatusBar>
 #include <QStyle>
+#include <QResizeEvent>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -625,6 +626,14 @@ void MainWindow::applyColumnWidths()
         header->setWeight(static_cast<int>(at), weight, role == RowRole::actions ? 28 : 48);
     }
     header->shareNow(view_->viewport()->width());
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    // The pane is the only thing that knows how wide it now is: the header cannot
+    // measure it, and at show time the window is still the default size.
+    applyColumnWidths();
 }
 
 void MainWindow::showEvent(QShowEvent *event)
