@@ -277,3 +277,16 @@ own features.
   header and this one keeps only the shortfall it names.
 
 ## Clarifications
+
+## Translation
+
+The interface is translated to `pt_BR`. `lupdate` and `lrelease` are a build
+requirement on any machine that builds the catalogue, and every string the
+interface shows goes through `tr()`.
+
+Column headers are not translated through `rowRoleName`: that is the stable
+identifier the log and the dispatcher use. `rowRoleLabel` carries the prose, and
+it is the one the header and the detail pass to `tr()`.
+
+A build without the Qt tooling still links — it only loses the catalogue, and the
+interface falls back to English.
