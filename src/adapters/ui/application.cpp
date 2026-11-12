@@ -244,7 +244,8 @@ std::expected<void, StartupError> Application::build()
         namespaces.append(QString::fromUtf8(initialNamespace.c_str()));
     }
     std::fprintf(stderr, "  [build] janela\n");
-    window_ = std::make_unique<MainWindow>(*model_, contexts, context, namespaces, message);
+    window_ = std::make_unique<MainWindow>(*model_, kube_.get(), contexts, context, namespaces,
+                                           message);
     std::fprintf(stderr, "  [build] janela ok\n");
     if (!window_) {
         destroy();

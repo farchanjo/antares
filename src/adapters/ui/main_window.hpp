@@ -18,6 +18,10 @@ class QPushButton;
 class QTreeWidget;
 class QTreeWidgetItem;
 
+namespace antares::ports::k8s {
+class KubeClient;
+}
+
 namespace antares::adapters::ui {
 
 class DetailPane;
@@ -38,8 +42,9 @@ public:
     /// `model` is not owned: the application keeps it and destroys the window
     /// first. `contexts` and `namespaces` fill the selectors; `message` is the
     /// reason the list is empty, if any.
-    MainWindow(QtListModel &model, const QStringList &contexts, const QString &context,
-               const QStringList &namespaces, const QString &message, QWidget *parent = nullptr);
+    MainWindow(QtListModel &model, ports::k8s::KubeClient *writer, const QStringList &contexts,
+               const QString &context, const QStringList &namespaces, const QString &message,
+               QWidget *parent = nullptr);
 
     [[nodiscard]] QLabel *status() const noexcept;
     [[nodiscard]] QLabel *region() const noexcept;
@@ -63,6 +68,7 @@ private:
     void applyColumnWidths();
     void showDetail(const QModelIndex &index);
     void refreshCount();
+    void removeObject(const QString &name);
     void buildEmptyState();
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);
@@ -83,6 +89,7 @@ private:
     QLabel *emptyState_ = nullptr;
     QTabWidget *content_ = nullptr;
     RowDelegate *delegate_ = nullptr;
+    ports::k8s::KubeClient *writer_ = nullptr;
     /// Index of the resource tab; the Preferences tab sits before it.
     int tableTab_ = 0;
     QStackedWidget *pages_ = nullptr;

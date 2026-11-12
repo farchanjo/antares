@@ -11,6 +11,7 @@
 #include <QCursor>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
@@ -30,6 +31,8 @@
 #include "adapters/ui/detail_pane.hpp"
 #include "adapters/ui/preferences_page.hpp"
 #include "adapters/ui/row_delegate.hpp"
+#include "domain/k8s/options.hpp"
+#include "ports/k8s/kube_client.hpp"
 #include "adapters/ui/family.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
@@ -56,10 +59,12 @@ QToolButton *iconButton(QWidget *parent, QStyle::StandardPixmap icon, const QStr
 
 } // namespace
 
-MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QString &context,
-                       const QStringList &namespaces, const QString &message, QWidget *parent)
+MainWindow::MainWindow(QtListModel &model, ports::k8s::KubeClient *writer, const QStringList &contexts,
+                       const QString &context, const QStringList &namespaces, const QString &message,
+                       QWidget *parent)
     : QMainWindow(parent)
     , model_(model)
+    , writer_(writer)
 {
     setWindowTitle(context.isEmpty() ? tr("antares") : tr("antares — %1").arg(context));
     resize(1640, 980);
@@ -326,8 +331,8 @@ QWidget *MainWindow::buildTablePage()
             return;
         }
         QMenu menu{this};
-        menu.addAction(tr("Edit"), this, [] {});
-        menu.addAction(tr("Delete"), this, [] {});
+        const QString name = index.sibling(index.row(), 0).data().toString();
+        menu.addAction(tr("Delete"), this, [this, name] { removeObject(name); });
         menu.addSeparator();
         menu.addAction(tr("Copy name"), this, [this, index] {
             QApplication::clipboard()->setText(index.sibling(index.row(), 0).data().toString());
@@ -441,6 +446,37 @@ void MainWindow::buildTree()
     static_cast<void>(teamwork);
 
     navigator_->expandAll();
+}
+
+void MainWindow::removeObject(const QString &name)
+{
+    if (writer_ == nullptr || name.isEmpty()) {
+        return;
+    }
+    if (QMessageBox::question(this, tr("Delete"),
+                              tr("Delete %1? This cannot be undone.").arg(name)) !=
+        QMessageBox::Yes) {
+        return;
+    }
+    domain::k8s::ApiPath path{model_.scope().type, std::nullopt, std::nullopt};
+    if (!model_.scope().namespaceName.empty()) {
+        path.namespaceName = model_.scope().namespaceName.text();
+    }
+    const auto named = path.named(name.toUtf8().constData());
+    if (!named) {
+        return;
+    }
+    const auto submitted = writer_->remove(
+        *named, domain::k8s::DeleteOptions{}, [this](ports::k8s::StatusResult result) {
+            if (!result) {
+                QMessageBox::warning(nullptr, tr("Delete"), tr("The server refused the delete."));
+                return;
+            }
+            model_.refresh();
+        });
+    if (!submitted) {
+        QMessageBox::warning(this, tr("Delete"), tr("The request could not be sent."));
+    }
 }
 
 void MainWindow::refreshCount()
