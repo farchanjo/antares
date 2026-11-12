@@ -98,37 +98,47 @@ HttpClient::~HttpClient()
     // attempt has to settle before the members go. On a loop thread the wait
     // would deadlock, so it is skipped there and the pool owns the lifetime.
     if (pool_.isLoopThread()) {
+        // The members still go with this object, and the other loops are still
+        // running, so the drop is taken under the state lock.
+        const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+        idle_.clear();
+        sessions_.clear();
         return;
     }
     if (!pool_.isRunning()) {
         // No loop to post to, so the members are dropped in place. `close` is
         // not called here on purpose: it re-enters the engine, and during
         // teardown the engine may be the thing being destroyed.
+        const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
         idle_.clear();
         sessions_.clear();
         return;
     }
     // Hand every socket back to the loop that owns it. The post captures the
     // connection, so it outlives the member that named it and `this` is never
-    // touched from the loop.
-    for (auto &[key, bucket] : idle_) {
-        for (auto &connection : bucket) {
-            if (!connection) {
+    // touched from the loop. The guard is not held across the drain wait: the
+    // loops need it to make progress.
+    {
+        const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+        for (auto &[key, bucket] : idle_) {
+            for (auto &connection : bucket) {
+                if (!connection) {
+                    continue;
+                }
+                auto owned = connection;
+                key.first->post([owned] { owned->close(); });
+            }
+        }
+        for (auto &[key, session] : sessions_) {
+            if (!session) {
                 continue;
             }
-            auto owned = connection;
-            key.first->post([owned] { owned->close(); });
+            auto socket = session->connection();
+            if (!socket) {
+                continue;
+            }
+            key.first->post([socket] { socket->close(); });
         }
-    }
-    for (auto &[key, session] : sessions_) {
-        if (!session) {
-            continue;
-        }
-        auto socket = session->connection();
-        if (!socket) {
-            continue;
-        }
-        key.first->post([socket] { socket->close(); });
     }
 
     std::unique_lock<std::mutex> lock{drainMutex_};
@@ -210,14 +220,18 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     auto user = std::move(done);
     auto guarded = [this, user = std::move(user), decode](
                        std::expected<domain::http::Response, domain::http::HttpError> result) {
-        if (result && decode) {
-            decodeContent(*result);
-        }
-        if (result && config_.cookies) {
-            storeCookies(*result);
-        }
-        if (result && config_.cache) {
-            cached(*result);
+        {
+            // `current_`, the jar and the cache are shared by every loop.
+            const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+            if (result && decode) {
+                decodeContent(*result);
+            }
+            if (result && config_.cookies) {
+                storeCookies(*result);
+            }
+            if (result && config_.cache) {
+                cached(*result);
+            }
         }
         user(std::move(result));
         pending_.fetch_sub(1, std::memory_order_acq_rel);
@@ -234,13 +248,24 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     // Bind the attempt to one loop for its whole life; hop there now, so every
     // step below runs on that loop (FR-002).
     attempt->engine_ = &pool_.next();
-    inflight_.push_back(attempt);
+    {
+        // The caller thread, not the loop: an attempt may complete on another
+        // loop before this one is even posted.
+        const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+        inflight_.push_back(attempt);
+    }
     armIdleTimer(attempt);
     attempt->engine_->post([this, attempt] {
         // A live session already owns the connection for this origin; opening
-        // another one would just be closed again.
-        auto found = sessions_.find({attempt->engine_, attempt->url_.authority});
-        if (found != sessions_.end() && found->second && !found->second->isClosed()) {
+        // another one would just be closed again. The lookup is taken under the
+        // state lock and the steps below run outside it: both of them take it.
+        bool live = false;
+        {
+            const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+            const auto found = sessions_.find({attempt->engine_, attempt->url_.authority});
+            live = found != sessions_.end() && found->second && !found->second->isClosed();
+        }
+        if (live) {
             startHttp2(attempt);
             return;
         }
@@ -298,9 +323,12 @@ void HttpClient::start(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 {
-    // The scope the response will be filed under. Only one attempt is in flight
-    // per client at a time on this loop, so a member is enough.
-    current_ = attempt->url_;
+    // The scope the response will be filed under. Two loops may be in flight at
+    // once, so the member is written under the state lock.
+    {
+        const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
+        current_ = attempt->url_;
+    }
     attempt->connection_ = acquire(*attempt->engine_, attempt->url_);
     if (attempt->connection_) {
         ++stats_.reused;
@@ -457,6 +485,9 @@ std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
                                                   const std::string &authority,
                                                   std::shared_ptr<Connection> connection)
 {
+    // Shared by every loop, like the idle pool: the node is linked under the
+    // state lock. The session itself stays loop-local.
+    const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
     auto &slot = sessions_[{&engine, authority}];
     if (slot && !slot->isClosed()) {
         return slot;
@@ -696,6 +727,7 @@ void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::
 
 void HttpClient::retire(const std::shared_ptr<Attempt> &attempt) noexcept
 {
+    const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
     const auto slot = std::find(inflight_.begin(), inflight_.end(), attempt);
     if (slot != inflight_.end()) {
         inflight_.erase(slot);
@@ -838,6 +870,7 @@ void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,
 std::shared_ptr<Connection> HttpClient::acquire(ports::io::IoEngine &engine,
                                                 const domain::http::Url &url)
 {
+    const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
     auto found = idle_.find({&engine, url.authority});
     if (found == idle_.end() || found->second.empty()) {
         return nullptr;
@@ -853,6 +886,9 @@ void HttpClient::release(std::shared_ptr<Connection> connection)
         return;
     }
 
+    // The attempt on the other loop may be releasing at the same time: the map
+    // is shared, so the node may not be linked in unguarded.
+    const std::lock_guard<std::recursive_mutex> guard{stateMutex_};
     auto &bucket = idle_[{&connection->engine(), connection->url().authority}];
     if (bucket.size() >= config_.pool.maxIdlePerHost) {
         connection->close();

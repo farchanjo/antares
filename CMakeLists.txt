@@ -440,6 +440,7 @@ set(ANTARES_HTTP_CASES
     post-not-retried
     idle-timer-fires
     pool-spreads-across-loops
+    pool-release-races
     https-negotiates-h2
     https-falls-back-to-h11
     h2-multiplexes-one-connection

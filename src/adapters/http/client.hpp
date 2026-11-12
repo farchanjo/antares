@@ -21,8 +21,11 @@
 
 namespace antares::adapters::http {
 
-/// HTTP client over the engine. All state lives on the engine thread, so no
-/// mutex guards the pool and a completion never waits (FR-002).
+/// HTTP client over the engine. One attempt is bound to one loop for its whole
+/// life, but the pool it comes back to is shared by every loop, so the pool
+/// state (`idle_`, `sessions_`, `inflight_`, `current_`) is guarded by one
+/// mutex (FR-002). No completion ever waits on that mutex. Clients fan work
+/// across loops; a single-loop pool never contends.
 class HttpClient final : public ports::http::Client,
                          public std::enable_shared_from_this<HttpClient> {
 public:
@@ -114,21 +117,29 @@ private:
     std::unique_ptr<TlsContext> tlsUpgrade_;
     domain::http::CookieJar jar_;
     domain::http::ConditionalCache cache_;
-    /// The URL of the request in flight, for the cookie scope.
+    /// The URL of the request in flight, for the cookie scope. Guarded by
+    /// `stateMutex_`.
     domain::http::Url current_;
+    /// Guards the state every loop shares: an attempt on one loop may release
+    /// while an attempt on another is acquiring, and neither owns the map.
+    /// Recursive because dropping a connection (or replacing an h2 session)
+    /// destroys a callback that may hold the last reference to this client, and
+    /// that destructor takes the same lock.
+    mutable std::recursive_mutex stateMutex_;
     /// Keyed by loop *and* authority: a connection may only be reused from
-    /// the loop that owns it.
+    /// the loop that owns it. Guarded by `stateMutex_`.
     std::map<std::pair<ports::io::IoEngine *, std::string>,
              std::vector<std::shared_ptr<Connection>>>
         idle_;
 
-    /// One multiplexed session per loop and origin (FR-019).
+    /// One multiplexed session per loop and origin (FR-019). Guarded by
+    /// `stateMutex_`.
     std::map<std::pair<ports::io::IoEngine *, std::string>, std::shared_ptr<H2Session>> sessions_;
     /// Attempts in flight, and the latch the destructor waits on. A completion
     /// captures `this`, so the client may not die while one is still pending.
     /// Attempts in flight. Without an owner the only references are the
     /// callbacks the connections hold, and a connection that also pointed back at
-    /// the client closed the cycle (FR-026).
+    /// the client closed the cycle (FR-026). Guarded by `stateMutex_`.
     std::vector<std::shared_ptr<Attempt>> inflight_;
 
     /// Drop the attempt and its pending share. Safe to call twice.

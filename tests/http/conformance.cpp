@@ -317,6 +317,26 @@ void casePoolSpreadsAcrossLoops()
     check(busy == 2, "both loops took work");
 }
 
+/// Regression: both loops park their connection in the client's idle pool at
+/// the same time. One race per iteration is rare, so the case repeats it; an
+/// unguarded pool loses a node (LeakSanitizer) or tears the tree down.
+void casePoolReleaseRaces()
+{
+    for (int repeat = 0; repeat < 100; ++repeat) {
+        antares::test::LoopbackServer server{
+            "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx"};
+        ClientConfig config;
+        Stack stack{config, /*loops=*/2};
+        antares::test::Await first;
+        antares::test::Await second;
+        (void)stack.client().submit(get(server.url() + "/a"), [&](auto) { first.signal(); });
+        (void)stack.client().submit(get(server.url() + "/b"), [&](auto) { second.signal(); });
+        check(first.wait(), "first completed");
+        check(second.wait(), "second completed");
+        check(stack.client().stats().completed == 2, "both answers settled");
+    }
+}
+
 void caseHttpsNegotiatesH2()
 {
     antares::test::TlsServer server{"hello", /*h2=*/true};
@@ -1455,6 +1475,7 @@ std::span<const Case> cases()
         {"post-not-retried", casePostNotRetried},
         {"idle-timer-fires", caseIdleTimerFires},
         {"pool-spreads-across-loops", casePoolSpreadsAcrossLoops},
+        {"pool-release-races", casePoolReleaseRaces},
         {"https-negotiates-h2", caseHttpsNegotiatesH2},
         {"https-falls-back-to-h11", caseHttpsFallsBackToH11},
         {"h2-multiplexes-one-connection", caseH2MultiplexesOneConnection},
