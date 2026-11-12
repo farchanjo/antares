@@ -65,8 +65,8 @@ public:
 
     /// Usage of one object, in percent, keyed by name.
     struct Usage {
-        double cpu = 0.0;
-        double memory = 0.0;
+        std::uint64_t cpu = 0;
+        std::uint64_t memory = 0;
     };
     /// Replace the usage table. Empty cells come back for a missing name, which
     /// is what a cluster without a metrics server gives.

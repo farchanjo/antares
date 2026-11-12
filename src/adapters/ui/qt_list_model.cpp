@@ -65,6 +65,20 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     if (!wanted) {
         return {};
     }
+    if (*wanted == RowRole::cpu || *wanted == RowRole::memory) {
+        const auto named = model_->data(static_cast<std::uint32_t>(index.row()), RowRole::name);
+        const auto found = usage_.find(named.value_or(std::string{}));
+        if (found == usage_.end()) {
+            return QVariant{toQt(std::string{})};
+        }
+        const std::uint64_t raw = *wanted == RowRole::cpu ? found->second.cpu : found->second.memory;
+        if (raw == 0) {
+            return QVariant{toQt(std::string{})};
+        }
+        return QVariant{toQt(*wanted == RowRole::cpu
+                                 ? std::to_string(raw / 1'000'000) + "m"
+                                 : std::to_string(raw / (1024ULL * 1024)) + "Mi")};
+    }
     const auto raw = model_->data(static_cast<std::uint32_t>(index.row()), *wanted);
     const std::string text = raw.value_or(std::string{});
     return QVariant{toQt(text)};

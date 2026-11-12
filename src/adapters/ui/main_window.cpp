@@ -554,7 +554,8 @@ void MainWindow::fetchMetrics()
             // The metrics API answers one entry per pod, already summed by the
             // decoder into nano-cores and bytes. A percentage needs the pod's
             // request as the denominator, so it stays a raw sum for now.
-            usage.emplace(item.identity.name, QtListModel::Usage{});
+            usage.emplace(item.identity.name,
+                          QtListModel::Usage{item.cpuNano, item.memoryBytes});
         }
         model_.setUsage(std::move(usage));
     }));
