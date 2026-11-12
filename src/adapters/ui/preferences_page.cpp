@@ -125,7 +125,6 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
     small.setPointSizeF(small.pointSizeF() * 0.85);
     small.setBold(true);
     label->setFont(small);
-    label->setStyleSheet(QStringLiteral("color: palette(mid);"));
     row->addWidget(label, 1);
     if (control != nullptr) {
         control->setParent(section);
@@ -135,20 +134,12 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
 
     int hintVisible = 0;
     if (!description.isEmpty()) {
+        // The description is a plain label with the default palette: a styled
+        // one inherited nothing and painted invisible.
         auto *hint = new QLabel{description, section};
-        // A wrapped label inside a scroll area measures zero high before its
-        // width settles, so the policy is explicit and the height is floored.
         hint->setWordWrap(true);
-        hint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-        hint->setMinimumHeight(hint->fontMetrics().lineSpacing() * 2);
-        hint->setStyleSheet(QStringLiteral("color: palette(mid);"));
         sectionLayout->addWidget(hint);
         hintVisible = 1;
-    }
-    // A full-width control goes under the text instead of beside it.
-    if (control != nullptr && control->property("inline").toBool()) {
-        row->removeWidget(control);
-        sectionLayout->addWidget(control);
     }
 
     section->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
