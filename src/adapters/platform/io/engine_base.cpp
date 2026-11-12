@@ -502,20 +502,7 @@ void EngineBase::stop()
         return;
     }
     post([this] { cancelAll(); });
-    {
-        const std::lock_guard<std::mutex> guard{resolveMutex_};
-        resolveStop_ = true;
-    }
-    resolveReady_.notify_all();
-    if (resolver_.joinable()) {
-        // `stop()` may run on the resolver itself when a completion unwinds
-        // into the owner, and a thread cannot join itself.
-        if (resolver_.get_id() == std::this_thread::get_id()) {
-            resolver_.detach();
-        } else {
-            resolver_.join();
-        }
-    }
+    stopResolver();
 
     if (wake_[1] >= 0) {
         const char byte = 1;
@@ -540,6 +527,82 @@ void EngineBase::stop()
            std::chrono::steady_clock::now() < limit) {
         std::this_thread::yield();
     }
+}
+
+void EngineBase::stopResolver()
+{
+    {
+        const std::lock_guard<std::mutex> guard{resolveMutex_};
+        resolveStop_ = true;
+    }
+    resolveReady_.notify_all();
+    if (!resolver_.joinable()) {
+        return;
+    }
+    // `stop()` may run on the resolver itself when a completion unwinds into the
+    // owner, and a thread cannot join itself.
+    if (resolver_.get_id() == std::this_thread::get_id()) {
+        resolver_.detach();
+        return;
+    }
+    resolver_.join();
+}
+
+void EngineBase::attach()
+{
+    // The host already owns a loop, so the engine becomes a source in it: the
+    // thread is recorded, which makes `isEngineThread()` true and stops `post()`
+    // from running a task inline on a caller that is not the loop.
+    tuning::tuneLoopThread("antares.io");
+    loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+    loopStarted_.store(true, std::memory_order_release);
+    stopped_.store(false, std::memory_order_release);
+    loopRunning_.store(true, std::memory_order_release);
+    armWakeup();
+}
+
+void EngineBase::runOnce(domain::Duration budget)
+{
+    drainWakeup();
+    drainUntil(std::chrono::steady_clock::now() + budget);
+    fireDueTimers();
+    // A zero timeout polls: the readiness the host just reported is performed
+    // here, and a backend that needs the request rearmed (io_uring) does it on
+    // the way in. Completions land in the task queue and run on the next turn.
+    (void)waitReady(0);
+}
+
+int EngineBase::waitHandle() const noexcept { return wakeReader(); }
+
+std::optional<domain::Instant> EngineBase::nextDeadline() const
+{
+    const std::lock_guard<std::mutex> guard{timerMutex_};
+    if (timers_.empty()) {
+        return std::nullopt;
+    }
+    return std::min_element(timers_.begin(), timers_.end(),
+                            [](const Timer &left, const Timer &right) {
+                                return left.due < right.due;
+                            })
+        ->due;
+}
+
+void EngineBase::shutdown()
+{
+    // A host that never attached has the blocking loop, and `stop()` is its
+    // boundary. Attached, nothing else runs the queue after the host returns, so
+    // the cancellation is drained here rather than posted into the void.
+    if (!loopRunning_.load(std::memory_order_acquire)) {
+        stop();
+        return;
+    }
+    if (stopped_.exchange(true)) {
+        return;
+    }
+    post([this] { cancelAll(); });
+    drainUntil(std::chrono::steady_clock::time_point::max());
+    loopRunning_.store(false, std::memory_order_release);
+    stopResolver();
 }
 
 void EngineBase::fireDueTimers()

@@ -109,6 +109,11 @@ public:
                             SocketFailed failed) = 0;
 
     [[nodiscard]] virtual ClientStats stats() const noexcept = 0;
+
+    /// Requests in flight. The shutdown drain waits on this reaching zero, so a
+    /// client that does not track it may keep the default and never delay a
+    /// close.
+    [[nodiscard]] virtual std::size_t pending() const noexcept { return 0; }
 };
 
 } // namespace antares::ports::http

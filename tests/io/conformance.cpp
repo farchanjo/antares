@@ -610,6 +610,41 @@ void caseStopIsReversible()
     engine.stop();
 }
 
+/// The hosted mode (ADR 0020): `attach` makes the engine a source in the
+/// caller's loop, `runOnce` drains what was posted, and the nearest deadline is
+/// published so the host can arm its own timer.
+void caseHostedRunOnce()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+
+    engine.attach();
+    check(engine.waitHandle() >= 0, "the host has a descriptor to watch");
+
+    std::atomic<int> ran{0};
+    engine.post([&] { ran.fetch_add(1); });
+    engine.runOnce(std::chrono::milliseconds{4});
+    check(ran.load() == 1, "a posted task runs in the turn");
+
+    check(engine.submitTimer(std::chrono::milliseconds{20}, [&] { ran.fetch_add(1); }).has_value(),
+          "timer accepted");
+    check(engine.nextDeadline().has_value(), "the nearest deadline is published");
+
+    // Bounded by the wall clock, not by a sleep: every turn is a chance for the
+    // timer to fire, and the case fails if it never does.
+    const auto giveUp = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+    while (ran.load() < 2 && std::chrono::steady_clock::now() < giveUp) {
+        engine.runOnce(std::chrono::milliseconds{4});
+    }
+    check(ran.load() == 2, "a timer fires in a hosted turn");
+
+    engine.shutdown();
+}
+
 /// Two lookups inside the watchdog window each settle once. A single engine-wide
 /// claim let the second job's serial make the first look unclaimed, so a late
 /// timeout settled an already-settled job (FR-002).
@@ -752,6 +787,7 @@ std::span<const Case> cases()
         {"resolve-two-jobs-one-window", caseResolveTwoJobsOneWindow},
         {"stats-cancel-counts", caseStatsCancelCounts},
         {"forget-drops-registration", caseForgetDropsRegistration},
+        {"hosted-runonce-drives-work", caseHostedRunOnce},
     };
     return table;
 }

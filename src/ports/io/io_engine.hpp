@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <optional>
 
 #include <sys/socket.h>
 #include <string>
@@ -15,6 +16,7 @@
 
 #include "domain/units/bytes.hpp"
 #include "domain/units/duration.hpp"
+#include "domain/units/instant.hpp"
 #include "ports/io/io_error.hpp"
 #include "ports/io/io_handle.hpp"
 #include "ports/io/io_stats.hpp"
@@ -114,6 +116,34 @@ public:
 
     /// Stop the loop; no callback runs after this returns.
     virtual void stop() = 0;
+
+    // -- Hosted mode (ADR 0020) ---------------------------------------------
+    //
+    // A host that already owns a loop attaches the engine to it instead of
+    // calling `run()`: `attach()` records the loop thread and arms the wakeup,
+    // the host watches `waitHandle()` and calls `runOnce()` on every ready
+    // signal, and `nextDeadline()` tells it how long a host timer may sleep.
+    // Only one of `run()` and the hosted trio may be used on an engine.
+
+    /// Become a source in the caller's loop. Records the loop thread and arms
+    /// the wakeup; no thread is started and nothing blocks.
+    virtual void attach() = 0;
+
+    /// One non-blocking turn: drain the wakeup, run the posted tasks within
+    /// `budget`, fire the due timers, then poll once with a zero timeout.
+    virtual void runOnce(domain::Duration budget) = 0;
+
+    /// The descriptor the host watches for readability, or -1 when the backend
+    /// has none. The poll backend answers the wakeup pipe, which is the only
+    /// readiness it can signal.
+    [[nodiscard]] virtual int waitHandle() const noexcept = 0;
+
+    /// The nearest timer deadline, or nothing when no timer is armed.
+    [[nodiscard]] virtual std::optional<domain::Instant> nextDeadline() const = 0;
+
+    /// Complete every pending operation as cancelled, then stop. The hosted
+    /// equivalent of `stop()`, and the call the host makes on the way out.
+    virtual void shutdown() = 0;
 };
 
 } // namespace antares::ports::io

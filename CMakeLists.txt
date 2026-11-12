@@ -49,11 +49,22 @@ target_include_directories(antares_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/s
 # The toolkit is not the core. Linking Qt into `antares_core` would let a domain
 # header include `<QObject>` and still build, so D-03 would hold on paper only.
 # Everything below `adapters/ui` links the core; only that adapter links this.
-add_library(antares_ui INTERFACE)
-target_link_libraries(antares_ui INTERFACE antares_core)
-
+#
+# Without Qt6 the tree still configures, builds and tests the engine, HTTP and
+# Kubernetes layers; the window is simply absent. That is what lets the Linux
+# loop run while the acceptance target (P-05) is the only one with a toolkit.
 if(Qt6_FOUND)
-    target_link_libraries(antares_ui INTERFACE Qt6::Core Qt6::Widgets)
+    add_library(antares_ui STATIC
+        src/application/k8s/object_store.cpp
+        src/adapters/ui/resource_model.cpp
+        src/adapters/ui/main_window.cpp
+        src/adapters/ui/application.cpp)
+    target_link_libraries(antares_ui PUBLIC antares_k8s Qt6::Core Qt6::Widgets)
+    # Q_OBJECT on the model and the window needs the metaobject compiler.
+    set_target_properties(antares_ui PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+else()
+    add_library(antares_ui INTERFACE)
+    target_link_libraries(antares_ui INTERFACE antares_core)
 endif()
 
 # Stable-header precompiled header, propagated to every consumer through the
@@ -255,6 +266,9 @@ add_custom_target(check
 # running it twice per pipeline buys nothing.
 add_dependencies(check antares_io_conformance antares_http_conformance
                  antares_k8s_conformance)
+if(Qt6_FOUND)
+    add_dependencies(check antares_ui_conformance)
+endif()
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
@@ -286,6 +300,39 @@ else()
         COMMENT "antares: leak pass (LeakSanitizer)"
         VERBATIM
         USES_TERMINAL)
+endif()
+
+# The product executable (FR-001 of 010). It is the only consumer of
+# `antares_ui`, so a missing toolkit costs nothing above it.
+if(Qt6_FOUND)
+    add_executable(antares_app src/adapters/ui/main.cpp)
+    target_link_libraries(antares_app PRIVATE antares_ui)
+    set_target_properties(antares_app PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+        target_link_libraries(antares_app PRIVATE mimalloc-static)
+        if(APPLE)
+            target_link_options(antares_app PRIVATE
+                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+        endif()
+    endif()
+    if(APPLE)
+        add_custom_command(TARGET antares_app POST_BUILD
+            COMMAND dsymutil $<TARGET_FILE:antares_app>
+            COMMENT "dsymutil antares_app"
+            VERBATIM)
+    endif()
+
+    add_executable(antares_ui_conformance tests/ui/conformance.cpp)
+    target_link_libraries(antares_ui_conformance PRIVATE antares_ui)
+    target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+    set_target_properties(antares_ui_conformance PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+        target_link_libraries(antares_ui_conformance PRIVATE mimalloc-static)
+        if(APPLE)
+            target_link_options(antares_ui_conformance PRIVATE
+                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+        endif()
+    endif()
 endif()
 
 add_executable(antares_io_conformance tests/io/conformance.cpp)
@@ -343,7 +390,8 @@ set(ANTARES_IO_CASES
     stop-is-reversible
     resolve-two-jobs-one-window
     stats-cancel-counts
-    forget-drops-registration)
+    forget-drops-registration
+    hosted-runonce-drives-work)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)
@@ -519,4 +567,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT APPLE)
     set_tests_properties("shim/ring-refused-falls-back" PROPERTIES
         ENVIRONMENT "LD_PRELOAD=$<TARGET_FILE:antares_io_uring_shim>;ANTARES_IO_BACKEND="
         TIMEOUT 30)
+endif()
+
+# The application cases need an event loop, so they run offscreen: the CI host
+# has no display, and the window still has to be built and shown.
+if(Qt6_FOUND)
+    foreach(case build-and-shutdown two-instances sigterm-returns)
+        add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
+        set_tests_properties("ui/${case}" PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    endforeach()
 endif()
