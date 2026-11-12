@@ -139,9 +139,10 @@ set(ANTARES_HTTP_SOURCES
 add_library(antares_http STATIC ${ANTARES_HTTP_SOURCES})
 pkg_check_modules(ZLIB REQUIRED IMPORTED_TARGET zlib)
 pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd)
+pkg_check_modules(BROTLI REQUIRED IMPORTED_TARGET libbrotlidec libbrotlienc)
 
 target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2
-                                      PkgConfig::ZLIB PkgConfig::ZSTD)
+                                      PkgConfig::ZLIB PkgConfig::ZSTD PkgConfig::BROTLI)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(antares_http PUBLIC PkgConfig::LIBURING)
 endif()
@@ -465,6 +466,7 @@ set(ANTARES_HTTP_CASES
     content-encoding-gzip-multi-member
     content-encoding-stacked
     content-encoding-zstd
+    content-encoding-brotli
     content-encoding-unknown-passes-through
     accept-encoding-is-offered)
 

@@ -9,6 +9,7 @@
 #include <csignal>
 #include <cstdio>
 
+#include <brotli/encode.h>
 #include <zlib.h>
 #include <zstd.h>
 #include <cctype>
@@ -1058,6 +1059,19 @@ std::string gzipOf(std::string_view plain)
     return out;
 }
 
+std::string brotliOf(std::string_view plain)
+{
+    std::size_t size = BrotliEncoderMaxCompressedSize(plain.size());
+    std::string out(size, '\0');
+    if (BrotliEncoderCompress(BROTLI_MAX_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+                              plain.size(), reinterpret_cast<const std::uint8_t *>(plain.data()),
+                              &size, reinterpret_cast<std::uint8_t *>(out.data())) != 1) {
+        return {};
+    }
+    out.resize(size);
+    return out;
+}
+
 std::string zstdOf(std::string_view plain)
 {
     std::string out(ZSTD_compressBound(plain.size()), '\0');
@@ -1138,6 +1152,22 @@ void caseContentEncodingZstd()
 
 /// A coding this build cannot undo reaches the caller untouched rather than
 /// failing the request.
+void caseContentEncodingBrotli()
+{
+    const std::string plain = "antares brotli round trip";
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\ncontent-encoding: br\r\ncontent-length: " +
+        std::to_string(brotliOf(plain).size()) + "\r\n\r\n" + brotliOf(plain)};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "brotli response arrived");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  plain,
+              "the body came back decoded");
+    }
+}
+
 void caseContentEncodingUnknownPassesThrough()
 {
     antares::test::LoopbackServer server{
@@ -1166,6 +1196,7 @@ void caseAcceptEncodingIsOffered()
     check(flat.find("accept-encoding:") != std::string::npos, "the header was sent");
     check(flat.find("gzip") != std::string::npos, "gzip is offered");
     check(flat.find("zstd") != std::string::npos, "zstd is offered");
+    check(flat.find("br") != std::string::npos, "brotli is offered");
 }
 
 /// RFC 7464: RS delimits, the LF proves no truncation, and a malformed element
@@ -1263,6 +1294,7 @@ std::span<const Case> cases()
         {"content-encoding-gzip-multi-member", caseContentEncodingGzipMultiMember},
         {"content-encoding-stacked", caseContentEncodingStacked},
         {"content-encoding-zstd", caseContentEncodingZstd},
+        {"content-encoding-brotli", caseContentEncodingBrotli},
         {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
         {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };

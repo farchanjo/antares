@@ -6,6 +6,7 @@
 #include <ranges>
 #include <vector>
 
+#include <brotli/decode.h>
 #include <zlib.h>
 #include <zstd.h>
 
@@ -102,6 +103,9 @@ namespace {
     if (equals("zstd")) {
         return ContentEncoding::zstd;
     }
+    if (equals("br")) {
+        return ContentEncoding::brotli;
+    }
     return ContentEncoding::unknown;
 }
 
@@ -138,7 +142,7 @@ std::vector<ContentEncoding> parseEncodings(std::string_view value)
 
 std::string_view acceptedEncodings() noexcept
 {
-    return "gzip, deflate, zstd, identity";
+    return "gzip, deflate, zstd, br, identity";
 }
 
 namespace {
@@ -178,6 +182,51 @@ std::expected<std::string, domain::http::HttpError> decodeOne(ContentEncoding en
             return std::unexpected(domain::http::HttpError::protocol);
         }
         out.resize(written);
+        return out;
+    }
+    case ContentEncoding::brotli: {
+        // The streaming API is the only one there is: a one-shot call needs the
+        // decoded size up front, which the frame does not carry.
+        BrotliDecoderState *state =
+            BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+        if (state == nullptr) {
+            return std::unexpected(domain::http::HttpError::protocol);
+        }
+
+        std::string out;
+        out.reserve(coded.size() * std::size_t{2});
+        const std::size_t ceiling = ceilingFor(coded.size());
+        std::array<std::uint8_t, std::size_t{16} * 1024> chunk{};
+
+        const auto *nextIn = reinterpret_cast<const std::uint8_t *>(coded.data());
+        std::size_t availableIn = coded.size();
+
+        while (true) {
+            std::size_t availableOut = chunk.size();
+            auto *nextOut = chunk.data();
+            const BrotliDecoderResult status = BrotliDecoderDecompressStream(
+                state, &availableIn, &nextIn, &availableOut, &nextOut, nullptr);
+
+            out.append(reinterpret_cast<const char *>(chunk.data()), chunk.size() - availableOut);
+            if (out.size() > ceiling) {
+                BrotliDecoderDestroyInstance(state);
+                return std::unexpected(domain::http::HttpError::protocol);
+            }
+            if (status == BROTLI_DECODER_RESULT_SUCCESS) {
+                break;
+            }
+            if (status == BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT &&
+                availableIn == 0) {
+                // No progress and no input left: the peer truncated the stream.
+                BrotliDecoderDestroyInstance(state);
+                return std::unexpected(domain::http::HttpError::protocol);
+            }
+            if (status == BROTLI_DECODER_RESULT_ERROR) {
+                BrotliDecoderDestroyInstance(state);
+                return std::unexpected(domain::http::HttpError::protocol);
+            }
+        }
+        BrotliDecoderDestroyInstance(state);
         return out;
     }
     case ContentEncoding::unknown:
