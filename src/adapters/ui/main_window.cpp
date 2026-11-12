@@ -26,7 +26,6 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
-#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
@@ -326,8 +325,6 @@ QWidget *MainWindow::buildTablePage()
     // The trailing column opens the row menu; every other click keeps the
     // selection behaviour the view already has.
     QObject::connect(view_, &QTreeView::clicked, this, [this](const QModelIndex &index) {
-        std::fprintf(stderr, "  [clique] col=%d valido=%d\n", index.column(),
-                     index.isValid() ? 1 : 0);
         const std::span<const RowRole> columns = familyColumns(model_.family());
         if (!index.isValid() || index.column() < 0 ||
             index.column() >= static_cast<int>(columns.size())) {
@@ -340,7 +337,6 @@ QWidget *MainWindow::buildTablePage()
         if (columns[static_cast<std::size_t>(index.column())] != RowRole::actions) {
             return;
         }
-        std::fprintf(stderr, "  [menu] col=%d linha=%d\n", index.column(), index.row());
         QMenu menu{this};
         const QString name = index.sibling(index.row(), 0).data().toString();
         menu.addAction(tr("Edit"), this, [this, name] { editObject(name); });
@@ -637,7 +633,6 @@ void MainWindow::applyColumnWidths()
                         ? view_->verticalScrollBar()->width()
                         : 0;
     const int room = view_->viewport()->width() - MENU_WIDTH - bar;
-    std::fprintf(stderr, "  [larg] secoes=%zu room=%d\n", shown.size(), room);
     if (room <= 60 || weightTotal <= 0) {
         return;
     }
@@ -655,10 +650,6 @@ void MainWindow::applyColumnWidths()
         view_->setColumnWidth(static_cast<int>(at), sized > 24 ? sized : 24);
         used += sized > 24 ? sized : 24;
     }
-    const int ultima = static_cast<int>(shown.size()) - 1;
-    std::fprintf(stderr, "  [fim] col6=%d visivel=%d viewport=%d\n",
-                 view_->columnWidth(ultima), view_->isColumnHidden(ultima) ? 1 : 0,
-                 view_->viewport()->width());
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
