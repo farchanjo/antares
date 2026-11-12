@@ -756,3 +756,21 @@ participate in surveys to improve the Lens experience.`
 `Telemetry & usage data is collected to continuously improve the Lens experience.`
 
 Both on by default. Each is a free-standing toggle, not a nested group.
+
+### Lens Teamwork
+
+`INVITATIONS` — `Loading invitations…`.
+
+`SPACES` — `Here you'll find all spaces your account is associated with.`, a
+right-aligned `Search…` field, then `Loading spaces…`.
+
+`Spaces Settings` — `DEFAULT CLUSTER CONNECT REGION`, dropdown, `United States`.
+
+Both lists are remote: they show a loading line and no empty state, because the
+absence of a space is not the same as a space with nothing in it.
+
+## Preferences, complete
+
+All ten sub-pages are captured. The shape is uniform: small-caps section title, a
+grey description, and the control right-aligned (toggle) or full width (field,
+dropdown, button list). `External Tools` is the only page with a row list.
