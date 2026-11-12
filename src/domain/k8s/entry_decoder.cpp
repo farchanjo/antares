@@ -1,6 +1,7 @@
 #include "domain/k8s/entry_decoder.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -462,6 +463,7 @@ constexpr std::array<Step, 5> BINARY{Step{"Ki", 1024}, Step{"Mi", 1024ULL * 1024
             return std::unexpected(scan.error());
         }
         if (name == "cpu") {
+            std::fprintf(stderr, "  [uso] cpu=%.20s\n", text.data());
             entry.cpuNano += scale(text, NANO);
         }
         if (name == "memory") {
@@ -659,6 +661,7 @@ std::expected<Entry, json::ScanError> scanEntry(json::ScalarScan &scan)
             // The metrics API shape: a list of containers, each with a `usage`
             // pair. A pod object has no such member, so this is a no-op there
             // and the fields stay zero.
+            std::fprintf(stderr, "  [uso] containers em %s\n", entry.identity.name.text().c_str());
             auto used = scanUsage(scan, entry);
             if (!used) {
                 return std::unexpected(used.error());
