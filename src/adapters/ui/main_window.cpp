@@ -609,6 +609,11 @@ void MainWindow::openFamily(QTreeWidgetItem *item)
     const auto family = static_cast<Family>(index.toInt());
     model_.setFamily(family);
     detail_->clear();
+    // A family change resets the model, so the page has to be asked for again;
+    // only the start-up path did it and every later family opened empty.
+    if (model_.canFetchMore({})) {
+        model_.fetchMore({});
+    }
     // The tab is named `<Family> - <cluster>`, like the reference.
     const QString label = QString::fromUtf8(familyLabel(family));
     const QString title = tr("%1 - %2").arg(label, contextBox_->currentText());
