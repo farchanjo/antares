@@ -31,19 +31,28 @@ One `RESULT` line per measurement. Exit 0 means every threshold in the spec held
 
 ## Measured on this host
 
-macOS 27.0.1, arm64, `-O2`, 2026-11-12.
+macOS 27.0.1, arm64, 16 cores, `-O2`, 2026-11-12, with a real Cocoa window
+(no `offscreen`), frontmost, under `caffeinate -dimsu` and one
+`NSActivityUserInitiated` per run except FR-007.
 
 | Ref | Number |
 |---|---|
-| FR-001 | 5 wakes, 240 µs |
-| FR-002 | 64.6 idle fps against 62.6 saturated — ratio 0.969 |
-| FR-003 | modal opens; 99.3 MB delivered underneath it |
-| FR-004 | 99.4 MB through a live resize, 116.2 MB through a held menu, 1 509 frames |
-| FR-005 | 254.8 ms against a 200 ms request, fired on the main thread |
-| FR-006 | p99 1 007 µs, 40 overruns in 20 765 turns |
-| FR-007 | occluded p99 255.9 ms, with activity 253.3 ms |
-| FR-008 | 32 watches at 62 fps, 643.1 MB |
+| FR-001 | 5 wakes, 192 µs / 569 µs / 1 049 µs / 1 211 µs over four runs |
+| FR-002 | 62.2 idle fps against 62.5 saturated — ratio 1.004; 121 idle turns against 104 282 saturated, p99 turn 283 µs, 0 overruns, 853 MB |
+| FR-003 | modal opens; 60.2 MB delivered underneath it |
+| FR-004 | 260.8 MB through a live resize, 281.9 MB through a held menu, 1 237 frames |
+| FR-005 | 274 ms against a 200 ms request, fired on the main thread |
+| FR-006 | p99 50.0 ms, 40 overruns in 49 turns |
+| FR-007 | occluded p99 253.2 ms, max 254.1 ms; with the activity assertion p99 253.2 ms, max 253.8 ms |
+| FR-008 | 32 watches at 63.3 fps, 926 MB, p99 turn 8.5 ms |
+| `leaks` | 5 147 leaks / 694 KB, every root in AppKit, HIToolbox or Qt; none in the engine, the harness or a connection |
 
-FR-005 and FR-007 both land near 255 ms rather than 200/33: the offscreen platform
-plugin clamps the timer to its own quantum. The ratio between the occluded and
-active runs is what the record reads, not the absolute.
+Measured one FR per process. Left unattended as a single `all` run, the process
+stalls after about two minutes: with the window occluded, macOS defers the phase
+timers themselves, so the run never advances even though the engine is idle. The
+activity assertion above is what keeps it moving, and FR-007 is the one case that
+measures with the assertion released.
+
+A background app is throttled hard: without the `activateIgnoringOtherApps` in
+`main`, FR-001 measures ~70 ms per wake instead of ~1 ms. The record reads the
+frontmost numbers.

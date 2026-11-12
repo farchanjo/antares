@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 deciders: [Fabricio Archanjo]
 consulted: []
@@ -54,6 +54,11 @@ ADR-0020, which moves from `proposed` on them.
 A failure at FR-001 is a design change, not a tweak: the fallback is
 `CFFileDescriptor` in `kCFRunLoopCommonModes`, then `dispatch_source` on the main
 queue.
+
+The spike ran on 2026-11-12 and every threshold held, so the fallback stayed
+unused and ADR-0020 moved on the numbers it produced. The same contract is
+driven without Qt by `tests/io/hosted.cpp`, which the Linux suite gates; the
+spike stays the Darwin-only proof and is not built by the project.
 
 ### Consequences
 
