@@ -1,6 +1,8 @@
 #include "adapters/ui/preferences_page.hpp"
 
 #include <QCheckBox>
+
+#include <cstdio>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -85,6 +87,10 @@ PreferencesPage::PreferencesPage(QWidget *parent)
 
     QObject::connect(rail_, &QListWidget::currentRowChanged, pages_,
                      &QStackedWidget::setCurrentIndex);
+    QObject::connect(rail_, &QListWidget::currentRowChanged, pages_, [this](int row) {
+        std::fprintf(stderr, "  [rail] linha=%d paginas=%d atual=%d\n", row, pages_->count(),
+                     pages_->currentIndex());
+    });
     rail_->setCurrentRow(0);
 }
 
