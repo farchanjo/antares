@@ -26,6 +26,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
@@ -620,6 +621,7 @@ void MainWindow::applyColumnWidths()
     // of its own and would otherwise be squeezed to the floor and clipped.
     constexpr int MENU_WIDTH = 30;
     const int room = view_->viewport()->width() - MENU_WIDTH;
+    std::fprintf(stderr, "  [larg] secoes=%zu room=%d\n", shown.size(), room);
     if (room <= 60 || weightTotal <= 0) {
         return;
     }
