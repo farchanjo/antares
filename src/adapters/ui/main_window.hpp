@@ -62,6 +62,7 @@ private:
     void openFamily(QTreeWidgetItem *item);
     void applyColumnWidths();
     void showDetail(const QModelIndex &index);
+    void refreshCount();
     void buildEmptyState();
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);
