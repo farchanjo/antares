@@ -9,8 +9,8 @@ namespace antares::adapters::ui {
 
 namespace {
 
-constexpr int avatarSize = 30;
-constexpr int ringWidth = 2;
+constexpr int AVATAR_SIZE = 30;
+constexpr int RING_WIDTH = 2;
 
 } // namespace
 
@@ -22,7 +22,7 @@ Avatar::Avatar(QString name, QWidget *parent)
 {
     setCheckable(true);
     setAutoRaise(true);
-    setFixedSize(avatarSize + 2 * ringWidth, avatarSize + 2 * ringWidth);
+    setFixedSize(AVATAR_SIZE + 2 * RING_WIDTH, AVATAR_SIZE + 2 * RING_WIDTH);
     setToolTip(name_);
 }
 
@@ -42,14 +42,14 @@ QColor Avatar::colorFor(const QString &name)
 {
     // A small fixed palette beats a hash: the colours stay distinguishable and
     // the same name always lands on the same one.
-    static constexpr int paletteSize = 6;
+    static constexpr int PALETTE_SIZE = 6;
     // `toStdString` is an undefined symbol here (Qt is libstdc++, the tree is
     // libc++), so the sum is taken over the UTF-8 bytes instead.
     std::size_t hash = 0;
     for (const char byte : name.toUtf8()) {
         hash = hash * 31 + static_cast<std::size_t>(static_cast<unsigned char>(byte));
     }
-    switch (hash % paletteSize) {
+    switch (hash % PALETTE_SIZE) {
     case 0:
         return QColor{0xC6, 0x28, 0x28};
     case 1:
@@ -71,11 +71,11 @@ void Avatar::paintEvent(QPaintEvent *event)
     QPainter painter{this};
     painter.setRenderHint(QPainter::Antialiasing);
 
-    const QRectF disc = rect().adjusted(ringWidth, ringWidth, -ringWidth, -ringWidth);
+    const QRectF disc = rect().adjusted(RING_WIDTH, RING_WIDTH, -RING_WIDTH, -RING_WIDTH);
     if (isChecked()) {
         // The selected cluster carries a ring, not a different fill, so the
         // initials stay legible.
-        painter.setPen(QPen{color_.lighter(160), ringWidth});
+        painter.setPen(QPen{color_.lighter(160), RING_WIDTH});
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(rect().adjusted(0, 0, -1, -1));
     }

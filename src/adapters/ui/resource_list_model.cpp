@@ -109,9 +109,9 @@ void ResourceListModel::refresh()
 
 std::optional<std::string> ResourceListModel::data(std::uint32_t row, RowRole role) const
 {
-    const std::uint32_t rows = static_cast<std::uint32_t>(visible_.size());
+    const auto rows = static_cast<std::uint32_t>(visible_.size());
     if (row < rows) {
-        const std::uint32_t rowInStore = visible_[row];
+        const auto rowInStore = visible_[row];
         const application::k8s::StoreScope *scope = stored();
         if (scope == nullptr) {
             return std::nullopt;
