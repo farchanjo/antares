@@ -399,13 +399,14 @@ void EngineBase::completeCancelled(PendingOp &op)
 
 void EngineBase::pushTask(PostedTask task)
 {
-    auto *node = new TaskNode{std::move(task), nullptr};
+    auto node = std::make_unique<TaskNode>(TaskNode{std::move(task), nullptr});
     node->next = head_.load(std::memory_order_relaxed);
     // Release publishes the node contents; a failure means another producer won
     // and the expected value was refreshed for us.
-    while (!head_.compare_exchange_weak(node->next, node, std::memory_order_release,
+    while (!head_.compare_exchange_weak(node->next, node.get(), std::memory_order_release,
                                         std::memory_order_relaxed)) {
     }
+    (void)node.release();
 }
 
 EngineBase::TaskNode *EngineBase::takeTasks() noexcept
@@ -595,11 +596,10 @@ void EngineBase::drainUntil(std::chrono::steady_clock::time_point deadline)
             break;
         }
 
-        TaskNode *node = queue;
+        const std::unique_ptr<TaskNode> node{queue};
         queue = node->next;
 
-        PostedTask task = std::move(node->task);
-        delete node;
+        const PostedTask task = std::move(node->task);
         task();
         ranAny = true;
     }

@@ -30,15 +30,28 @@ if [ -z "$files" ]; then
     exit 0
 fi
 
-for file in $files; do
-    case $file in
-    */tests/* | */build/*) continue ;;
-    esac
-    "$tidy" -p "$builddir" --quiet "$file" || status=1
-done
-
-if [ "$status" -ne 0 ]; then
-    echo "D-07: clang-tidy reported findings — fix them or record why in .clang-tidy." >&2
+# One process per translation unit, bounded by the core count. Sequentially this
+# took six minutes on sixteen cores; the units are independent.
+units=$(printf '%s\n' "$files" | grep -v -e '/tests/' -e '/build/' || true)
+if [ -z "$units" ]; then
+    exit 0
 fi
 
-exit $status
+jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
+reports=$(mktemp)
+trap 'rm -f "$reports"' EXIT
+
+printf '%s\n' "$units" | xargs -P "$jobs" -I{} sh -c '
+    if ! out=$("$0" -p "$1" --quiet "$2" 2>&1); then
+        printf "%s\n" "$out" >> "$3"
+
+    fi
+' "$tidy" "$builddir" {} "$reports"
+
+if [ -s "$reports" ]; then
+    cat "$reports"
+    echo "D-07: clang-tidy reported findings — fix them or record why in .clang-tidy." >&2
+    exit 1
+fi
+
+exit 0
