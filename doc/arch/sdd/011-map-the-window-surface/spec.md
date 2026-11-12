@@ -290,3 +290,14 @@ it is the one the header and the detail pass to `tr()`.
 
 A build without the Qt tooling still links — it only loses the catalogue, and the
 interface falls back to English.
+
+## A stale PCH fails the tidy gate
+
+`clang-tidy` reads the precompiled header the build produced. When a header
+changes and the PCH is not rebuilt, every translation unit is analysed against
+the old declarations and the gate reports methods as non-static that already are,
+variables as non-const that are written through, and so on — a hundred and
+seventy-five findings in files nobody touched.
+
+`find build/<preset> -name '*.pch' -delete` before a tidy run that looks wrong is
+the fix. Nothing else changes.
