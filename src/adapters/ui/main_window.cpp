@@ -31,6 +31,7 @@
 #include "adapters/ui/detail_pane.hpp"
 #include "adapters/ui/edit_dialog.hpp"
 #include "adapters/ui/preferences_page.hpp"
+#include "adapters/ui/proportional_header.hpp"
 #include "adapters/ui/row_delegate.hpp"
 #include "domain/k8s/options.hpp"
 #include "ports/k8s/kube_client.hpp"
@@ -297,6 +298,8 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
+    auto *header = new ProportionalHeader{view_};
+    view_->setHeader(header);
     delegate_ = new RowDelegate{model_, this};
     view_->setItemDelegate(delegate_);
     // A reset recreates the header sections at the default width; the widths are
@@ -307,9 +310,7 @@ QWidget *MainWindow::buildTablePage()
     view_->setAlternatingRowColors(true);
     // The name column absorbs the space and the rest keep their natural width,
     // so the trailing menu stays reachable without a horizontal scroll.
-    view_->header()->setStretchLastSection(false);
-    view_->header()->setSectionResizeMode(QHeaderView::Interactive);
-    view_->header()->setMinimumSectionSize(28);
+
     view_->header()->setMinimumSectionSize(60);
     view_->header()->setDefaultSectionSize(160);
     applyColumnWidths();
