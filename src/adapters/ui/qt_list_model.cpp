@@ -75,49 +75,6 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     return QVariant{toQt(text)};
 }
 
-void QtListModel::multiData(const QModelIndex &index, QModelRoleDataSpan span) const
-{
-    if (!index.isValid()) {
-        return;
-    }
-    static int hits = 0;
-    if (hits < 4) {
-        std::fprintf(stderr, "  [multiData] row=%d col=%d span=%zu\n", index.row(), index.column(),
-                     static_cast<std::size_t>(span.size()));
-        ++hits;
-    }
-    std::array<RowRole, ROW_ROLE_COUNT> roles{};
-    std::array<std::uint32_t, ROW_ROLE_COUNT> positions{};
-    std::size_t count = 0;
-    for (const QModelRoleData &entry : span) {
-        std::optional<RowRole> role = roleForIndex(static_cast<std::uint32_t>(entry.role()));
-        // Same rule as `data`: only `DisplayRole` takes the column.
-        if (!role && entry.role() == Qt::DisplayRole && index.column() >= 0 &&
-            index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
-            role = static_cast<RowRole>(index.column());
-        }
-        if (!role || count >= ROW_ROLE_COUNT) {
-            continue;
-        }
-        roles[count] = *role;
-        positions[count] = static_cast<std::uint32_t>(count);
-        ++count;
-    }
-
-    std::array<std::string, ROW_ROLE_COUNT> texts{};
-    model_->multiData(static_cast<std::uint32_t>(index.row()),
-                      std::span<const RowRole>{roles.data(), count},
-                      std::span<std::string>{texts.data(), count});
-    for (std::size_t at = 0; at < count; ++at) {
-        span.data()[positions[at]].setData(QVariant{toQt(texts[at])});
-    }
-    static int shown = 0;
-    if (shown < 4 && count > 0) {
-        std::fprintf(stderr, "  [multiData] count=%zu texto=[%s]\n", count, texts[0].c_str());
-        ++shown;
-    }
-}
-
 QHash<int, QByteArray> QtListModel::roleNames() const
 {
     QHash<int, QByteArray> names;

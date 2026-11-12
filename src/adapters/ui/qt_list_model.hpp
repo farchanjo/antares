@@ -54,7 +54,6 @@ public:
     [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation,
                                       int role) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
-    void multiData(const QModelIndex &index, QModelRoleDataSpan span) const override;
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
     [[nodiscard]] bool canFetchMore(const QModelIndex &parent) const override;
