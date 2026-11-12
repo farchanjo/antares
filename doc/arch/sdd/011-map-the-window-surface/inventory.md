@@ -667,3 +667,22 @@ will make commands like kubectl and helm skip Lens internal KubeApi proxy.`
 will make Lens to trust ANY certificate authority without any validations. Needed
 with some corporate proxies that do certificate re-writing. Does not affect
 cluster communications!`
+
+### Kubernetes
+
+`KUBECTL BINARY DOWNLOAD` — toggle on. `Download kubectl binaries matching the
+Kubernetes cluster version`.
+
+`DOWNLOAD MIRROR` — dropdown, `Default (Google)`.
+
+`DIRECTORY FOR BINARIES` — path field, `The directory to download binaries into.`
+
+`PATH TO KUBECTL BINARY` — path field.
+
+`MANAGE KUBECONFIGS` — button `Sync Files and Folders`.
+
+`SYNCED ITEMS` — the synced paths, each with a bin icon to drop it
+(`/Users/farchanjo/.kube/config`).
+
+A `Helm` heading follows with a `CHARTS` section, so one page can carry more than
+one heading.
