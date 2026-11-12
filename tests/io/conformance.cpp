@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <expected>
 #include <string>
@@ -17,6 +18,12 @@
 #include "support/await.hpp"
 
 #include "application/io/engine_factory.hpp"
+#if defined(__linux__)
+#include "adapters/platform/io/epoll_engine.hpp"
+#include "adapters/platform/io/io_uring_engine.hpp"
+#elif defined(__APPLE__)
+#include "adapters/platform/io/kqueue_engine.hpp"
+#endif
 #include "domain/units/bytes.hpp"
 #include "ports/io/io_engine.hpp"
 #include "ports/io/io_handle.hpp"
@@ -352,6 +359,42 @@ void caseCountersMove()
     check(after.failures() <= after.completed, "failures never exceed completions");
 }
 
+/// The name the factory reports must be the engine it built. A forced value that
+/// reports itself is a tautology, so the variable is cleared and the engine is
+/// identified by type.
+void caseBackendNameMatchesEngine()
+{
+    const char *saved = std::getenv("ANTARES_IO_BACKEND");
+    const std::string keep = saved != nullptr ? saved : std::string{};
+    (void)::unsetenv("ANTARES_IO_BACKEND");
+
+    const auto engine = antares::application::io::makeEngine();
+    check(engine.has_value(), "the factory builds an engine");
+    if (!engine) {
+        return;
+    }
+
+    const char *actual = "poll";
+#if defined(__linux__)
+    if (dynamic_cast<antares::adapters::platform::io::IoUringEngine *>(engine->get()) != nullptr) {
+        actual = "io_uring";
+    } else if (dynamic_cast<antares::adapters::platform::io::EpollEngine *>(engine->get()) != nullptr) {
+        actual = "epoll";
+    }
+#elif defined(__APPLE__)
+    if (dynamic_cast<antares::adapters::platform::io::KqueueEngine *>(engine->get()) != nullptr) {
+        actual = "kqueue";
+    }
+#endif
+
+    const std::string reported = antares::application::io::selectedBackendName();
+    check(reported == actual, "the reported name matches the engine that was built");
+
+    if (!keep.empty()) {
+        (void)::setenv("ANTARES_IO_BACKEND", keep.c_str(), 1);
+    }
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -367,6 +410,7 @@ std::span<const Case> cases()
         {"no-callback-after-stop", caseNoCallbackAfterStop},
         {"cancel-pending-keeps-socket", caseCancelPendingKeepsSocket},
         {"counters-move", caseCountersMove},
+        {"backend-name-matches-engine", caseBackendNameMatchesEngine},
     };
     return table;
 }

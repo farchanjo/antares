@@ -319,7 +319,8 @@ set(ANTARES_IO_CASES
     stop-ends-callbacks
     no-callback-after-stop
     cancel-pending-keeps-socket
-    counters-move)
+    counters-move
+    backend-name-matches-engine)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)

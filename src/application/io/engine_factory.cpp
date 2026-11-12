@@ -55,7 +55,13 @@ std::string selectedBackendName()
     if (forcedBackend() != nullptr) {
         return std::string{forcedBackend()};
     }
+#if defined(__linux__)
+    // The ring is what runs unless it was refused; the name has to say so, or a
+    // log would blame epoll for a ring bug.
+    return overrideRequestsPoll() ? std::string{"poll"} : std::string{"io_uring"};
+#else
     return std::string{KERNEL_ENGINE_NAME};
+#endif
 }
 
 std::expected<std::unique_ptr<ports::io::IoEngine>, ports::io::IoError> makeEngine()
