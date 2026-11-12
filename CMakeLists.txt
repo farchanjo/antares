@@ -71,6 +71,7 @@ set(ANTARES_UI_SOURCES
     src/adapters/ui/view_config.cpp
     src/adapters/ui/avatar.cpp
     src/adapters/ui/detail_pane.cpp
+    src/adapters/ui/edit_dialog.cpp
     src/adapters/ui/family.cpp
     src/adapters/ui/kube_page_source.cpp
     src/adapters/ui/preferences_page.cpp

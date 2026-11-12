@@ -29,6 +29,7 @@
 
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
+#include "adapters/ui/edit_dialog.hpp"
 #include "adapters/ui/preferences_page.hpp"
 #include "adapters/ui/row_delegate.hpp"
 #include "domain/k8s/options.hpp"
@@ -332,6 +333,7 @@ QWidget *MainWindow::buildTablePage()
         }
         QMenu menu{this};
         const QString name = index.sibling(index.row(), 0).data().toString();
+        menu.addAction(tr("Edit"), this, [this, name] { editObject(name); });
         menu.addAction(tr("Delete"), this, [this, name] { removeObject(name); });
         menu.addSeparator();
         menu.addAction(tr("Copy name"), this, [this, index] {
@@ -446,6 +448,50 @@ void MainWindow::buildTree()
     static_cast<void>(teamwork);
 
     navigator_->expandAll();
+}
+
+void MainWindow::editObject(const QString &name)
+{
+    if (writer_ == nullptr || name.isEmpty()) {
+        return;
+    }
+    domain::k8s::ApiPath path{model_.scope().type, std::nullopt, std::nullopt};
+    if (!model_.scope().namespaceName.empty()) {
+        path.namespaceName = model_.scope().namespaceName.text();
+    }
+    const auto named = path.named(name.toUtf8().constData());
+    if (!named) {
+        return;
+    }
+    // The document is fetched first: the editor shows the server's own body, not
+    // a projection the client guessed.
+    const auto submitted = writer_->get(*named, [this, name, path = *named](
+                                                     ports::k8s::ObjectResult result) {
+        if (!result) {
+            QMessageBox::warning(nullptr, tr("Edit"), tr("The object could not be read."));
+            return;
+        }
+        auto *dialog = new EditDialog{tr("Edit %1").arg(name),
+                                      QString::fromUtf8(result->body.dump().c_str()), this};
+        if (dialog->exec() != QDialog::Accepted) {
+            dialog->deleteLater();
+            return;
+        }
+        const std::string body = dialog->body().toUtf8().constData();
+        dialog->deleteLater();
+        static_cast<void>(writer_->patch(
+            path, domain::k8s::PatchType::merge, body, std::nullopt,
+            [this](ports::k8s::ObjectResult applied) {
+                if (!applied) {
+                    QMessageBox::warning(nullptr, tr("Edit"), tr("The server refused the change."));
+                    return;
+                }
+                model_.refresh();
+            }));
+    });
+    if (!submitted) {
+        QMessageBox::warning(this, tr("Edit"), tr("The request could not be sent."));
+    }
 }
 
 void MainWindow::removeObject(const QString &name)
