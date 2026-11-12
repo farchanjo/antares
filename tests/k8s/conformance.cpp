@@ -125,6 +125,51 @@ void caseHostileNameRefused()
     check(!isDnsSubdomain("a..b"), "subdomain refuses an empty label");
 }
 
+/// FR-001, FR-004, FR-005 — the eleven name classes of the spec table. The
+/// table is the contract: a name the server would take has to build, because a
+/// row the app shows must be openable, and the four classes that would break
+/// the path have to be refused, because widening the rule must not reopen
+/// traversal. `.` and `..` resolve as segments, `/` splits one, and `%` would
+/// reach the server unescaped.
+void caseNameClasses()
+{
+    struct Row {
+        std::string name;
+        bool accepted;
+    };
+
+    const std::vector<Row> table{
+        {"System:Controller:Persistent-Volume-Binder", true},
+        {"web_0", true},
+        {"system:controller:persistent-volume-binder", true},
+        {"kube-root-ca.crt", true},
+        {std::string(SEGMENT_CEILING, 'a'), true},
+        {std::string(SEGMENT_CEILING + 1, 'a'), false},
+        {"", false},
+        {".", false},
+        {"..", false},
+        {"a/b", false},
+        {"a%b", false},
+    };
+    check(table.size() == 11, "the table carries every class once");
+
+    const ApiPath base{corePods(), std::nullopt, std::nullopt, Subresource::none};
+    for (std::size_t index = 0; index < table.size(); ++index) {
+        const Row &row = table[index];
+        const std::string label = "class " + std::to_string(index) + " accepted";
+        const std::string refused = "class " + std::to_string(index) + " refused";
+
+        const auto built = base.named(row.name);
+        check(built.has_value() == row.accepted, row.accepted ? label : refused);
+        if (!built || !row.accepted) {
+            continue;
+        }
+        // An accepted name stays one segment: no separator is introduced by the
+        // builder, so the name renders between the resource and the end.
+        checkEqual(built->render(), "/api/v1/pods/" + row.name, "name stays one segment");
+    }
+}
+
 // FR-002 — every set option rides the query.
 void caseListOptionsRendered()
 {
@@ -553,6 +598,7 @@ constexpr Case cases[] = {
     {"namespace-segment", caseNamespaceSegment},
     {"subresource-segment", caseSubresourceSegment},
     {"hostile-name-refused", caseHostileNameRefused},
+    {"name-classes", caseNameClasses},
     {"list-options-rendered", caseListOptionsRendered},
     {"list-options-empty", caseListOptionsEmpty},
     {"patch-content-types", casePatchContentTypes},

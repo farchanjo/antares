@@ -2,7 +2,7 @@
 
 ## Task Breakdown
 
-- [ ] T001 Write the failing table case over the eleven name classes: upper, `_`,
+- [x] T001 Write the failing table case over the eleven name classes: upper, `_`,
       `:`, `.`, 253 bytes, 254 bytes, empty, `.`, `..`, `a/b`, `a%b` (FR-001,
       FR-004).
 - [ ] T002 Add `SEGMENT_CEILING` and `isPathSegment`; point `named` at it
