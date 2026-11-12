@@ -61,8 +61,14 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     if (!wanted) {
         return {};
     }
-    const std::string text = model_->data(static_cast<std::uint32_t>(index.row()), *wanted)
-                                 .value_or(std::string{});
+    const auto raw = model_->data(static_cast<std::uint32_t>(index.row()), *wanted);
+    static int logged = 0;
+    if (logged < 6) {
+        std::fprintf(stderr, "  [data] row=%d col=%d role=%d ok=%d\n", index.row(), index.column(),
+                     role, raw ? 1 : 0);
+        ++logged;
+    }
+    const std::string text = raw.value_or(std::string{});
     return QVariant{toQt(text)};
 }
 
