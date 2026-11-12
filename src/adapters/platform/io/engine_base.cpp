@@ -428,14 +428,16 @@ EngineBase::TaskNode *EngineBase::takeTasks() noexcept
 
 void EngineBase::post(PostedTask task)
 {
-    // A stopped engine has no loop to come back for, so the task runs here rather
-    // than waiting for `run` that will not happen. Without this the answer
-    // depended on whether the thread had reached the loop yet.
+    // Queued first, so a loop that is on its way out still finds it. Only then is
+    // the absence of a loop acted on: with no loop to come back for, this thread
+    // drains. Both drains take the list by exchange, so a task runs exactly once
+    // whichever gets there first.
+    pushTask(std::move(task));
+
     if (stopped_.load(std::memory_order_acquire) && !loopRunning_.load(std::memory_order_acquire)) {
-        task();
+        drainUntil(std::chrono::steady_clock::time_point::max());
         return;
     }
-    pushTask(std::move(task));
     poke();
 }
 
