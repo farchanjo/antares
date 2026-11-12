@@ -96,6 +96,29 @@ Three findings, in severity order:
 - **NFR-003** Scrolling a five-thousand-object namespace holds 60 fps.
 - **NFR-004** No control is reachable by mouse only.
 
+## Reference: Lens
+
+Observed on the acceptance platform, 2026-11-12, screenshot and accessibility
+tree. Lens is the shape this window grows into; the regions are named here so a
+later feature can point at one instead of describing it again.
+
+| Region | What it holds |
+|---|---|
+| title bar | menus (File, Edit, View, Help) |
+| toolbar | one action cluster on the right: AI configure, chat, account |
+| icon rail | one icon per resource family, narrow, fixed |
+| navigator | search box, then a tree: cluster, Overview, Applications, Node, Workloads, Config, Network, Storage, Device Resources, Namespaces, Events, Helm, Access Control, Custom Resources, Security Center |
+| main | the table for the selected node |
+| status bar | Support, on the right |
+
+Three things worth copying, in this order: the navigator is a tree and not a
+flat selector; the search box sits at the top of the navigator and narrows it;
+the status bar is a fixed strip that never scrolls.
+
+Two things worth not copying: the icon rail duplicates the navigator for the
+common families, and there is no empty state — an unconnected cluster shows a
+watermark and nothing else.
+
 ## Layout Rules
 
 Taken from the Qt layout documentation
