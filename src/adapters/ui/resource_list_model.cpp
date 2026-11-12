@@ -84,6 +84,12 @@ void ResourceListModel::rebuildVisible()
     }
 }
 
+void ResourceListModel::setScope(domain::k8s::Scope scope)
+{
+    scope_ = std::move(scope);
+    refresh();
+}
+
 void ResourceListModel::setFilter(std::string needle)
 {
     if (needle == filter_) {

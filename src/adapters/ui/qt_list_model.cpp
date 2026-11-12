@@ -141,7 +141,14 @@ void QtListModel::setFamily(Family family)
     }
     beginResetModel();
     family_ = family;
+    // The scope carries the resource: the list must ask the new one.
+    domain::k8s::Scope scope = model_->scope();
+    scope.type = domain::k8s::GroupVersionResource{
+        QString::fromUtf8(familyGroup(family)).toUtf8().constData(),
+        QString::fromUtf8(familyVersion(family)).toUtf8().constData(),
+        QString::fromUtf8(familyResource(family)).toUtf8().constData()};
     endResetModel();
+    model_->setScope(std::move(scope));
 }
 
 QVariant QtListModel::headerData(int section, Qt::Orientation orientation, int role) const

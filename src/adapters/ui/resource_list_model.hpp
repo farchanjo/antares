@@ -60,6 +60,10 @@ public:
 
     [[nodiscard]] const domain::k8s::Scope &scope() const noexcept { return scope_; }
 
+    /// Point the list at another family. The rows are dropped and the first page
+    /// is asked for again under the new scope.
+    void setScope(domain::k8s::Scope scope);
+
     /// Stored rows, plus the retry row while a fetch has failed.
     [[nodiscard]] std::uint32_t rowCount() const noexcept;
 

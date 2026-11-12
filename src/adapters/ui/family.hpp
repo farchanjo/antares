@@ -61,6 +61,12 @@ enum class Family : std::uint8_t {
 /// The family's plural resource name, for the API path.
 [[nodiscard]] const char *familyResource(Family family) noexcept;
 
+/// The API group. Empty for a core resource.
+[[nodiscard]] const char *familyGroup(Family family) noexcept;
+
+/// The API version.
+[[nodiscard]] const char *familyVersion(Family family) noexcept;
+
 /// Whether the family is namespaced. A cluster-scoped family hides the
 /// namespace column and the selector.
 [[nodiscard]] bool familyIsNamespaced(Family family) noexcept;

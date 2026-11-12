@@ -299,6 +299,58 @@ const char *familyResource(Family family) noexcept
     return "pods";
 }
 
+const char *familyGroup(Family family) noexcept
+{
+    // Everything antares lists today is core or a well-known group; a custom
+    // resource will carry its own and this becomes a lookup.
+    switch (family) {
+    case Family::deployments:
+    case Family::daemonSets:
+    case Family::statefulSets:
+    case Family::replicaSets:
+        return "apps";
+    case Family::jobs:
+    case Family::cronJobs:
+        return "batch";
+    case Family::ingresses:
+    case Family::networkPolicies:
+        return "networking.k8s.io";
+    case Family::horizontalPodAutoscalers:
+        return "autoscaling";
+    case Family::podDisruptionBudgets:
+        return "policy";
+    case Family::priorityClasses:
+    case Family::runtimeClasses:
+    case Family::leases:
+        return "scheduling.k8s.io";
+    case Family::storageClasses:
+        return "storage.k8s.io";
+    case Family::roles:
+    case Family::roleBindings:
+    case Family::clusterRoles:
+    case Family::clusterRoleBindings:
+        return "rbac.authorization.k8s.io";
+    case Family::webhookConfigurations:
+        return "admissionregistration.k8s.io";
+    case Family::customResources:
+        return "apiextensions.k8s.io";
+    case Family::endpointSlices:
+        return "discovery.k8s.io";
+    default:
+        return "";
+    }
+}
+
+const char *familyVersion(Family family) noexcept
+{
+    switch (family) {
+    case Family::horizontalPodAutoscalers:
+        return "v2";
+    default:
+        return "v1";
+    }
+}
+
 bool familyIsNamespaced(Family family) noexcept
 {
     switch (family) {
