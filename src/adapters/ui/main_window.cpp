@@ -450,7 +450,11 @@ void MainWindow::showEvent(QShowEvent *event)
 {
     QMainWindow::showEvent(event);
     // After the first layout pass, so the sections exist at their final count.
-    QTimer::singleShot(0, this, [this] { applyColumnWidths(); });
+    QTimer::singleShot(0, this, [this] {
+        applyColumnWidths();
+        std::fprintf(stderr, "  [pos] n=%d w5=%d\n", view_->header()->count(),
+                     view_->columnWidth(5));
+    });
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }
