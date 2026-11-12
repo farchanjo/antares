@@ -26,6 +26,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
