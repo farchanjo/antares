@@ -68,6 +68,7 @@ private:
     void applyColumnWidths();
     void showDetail(const QModelIndex &index);
     void refreshCount();
+    void fetchMetrics();
     void removeObject(const QString &name);
     void editObject(const QString &name);
     void buildEmptyState();

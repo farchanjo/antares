@@ -65,6 +65,15 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     if (!wanted) {
         return {};
     }
+    if (*wanted == RowRole::cpu || *wanted == RowRole::memory) {
+        const auto name = model_->data(static_cast<std::uint32_t>(index.row()), RowRole::name);
+        const auto found = usage_.find(name.value_or(std::string{}));
+        if (found == usage_.end()) {
+            return QVariant{toQt(std::string{})};
+        }
+        const double value = *wanted == RowRole::cpu ? found->second.cpu : found->second.memory;
+        return QVariant{toQt(std::to_string(static_cast<int>(value)) + "%")};
+    }
     const auto raw = model_->data(static_cast<std::uint32_t>(index.row()), *wanted);
     const std::string text = raw.value_or(std::string{});
     return QVariant{toQt(text)};
@@ -156,6 +165,15 @@ void QtListModel::toggleTick(std::uint32_t row)
     const QModelIndex at = index(static_cast<int>(row), 0);
     Q_EMIT QAbstractListModel::dataChanged(at, at);
     Q_EMIT ticksChanged();
+}
+
+void QtListModel::setUsage(std::map<std::string, Usage> usage)
+{
+    usage_ = std::move(usage);
+    if (rowCount(QModelIndex{}) > 0) {
+        Q_EMIT QAbstractListModel::dataChanged(index(0, 0),
+                                               index(rowCount(QModelIndex{}) - 1, 0));
+    }
 }
 
 void QtListModel::clearTicks()

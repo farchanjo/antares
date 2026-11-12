@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -62,6 +63,15 @@ public:
     /// Drop the rows and ask for the first page again.
     void refresh();
 
+    /// Usage of one object, in percent, keyed by name.
+    struct Usage {
+        double cpu = 0.0;
+        double memory = 0.0;
+    };
+    /// Replace the usage table. Empty cells come back for a missing name, which
+    /// is what a cluster without a metrics server gives.
+    void setUsage(std::map<std::string, Usage> usage);
+
     /// Whether the row carries a tick. Kept on the model, not the view, so a
     /// repaint or a re-sort keeps it.
     [[nodiscard]] bool isTicked(std::uint32_t row) const;
@@ -119,6 +129,7 @@ private:
     Family family_ = Family::pods;
     /// Ticked rows, by position. Dropped when the family or the scope changes.
     std::set<std::uint32_t> ticked_;
+    std::map<std::string, Usage> usage_;
 };
 
 } // namespace antares::adapters::ui

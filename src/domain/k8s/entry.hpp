@@ -36,6 +36,11 @@ struct Entry {
     std::string nodeName;
     /// The pod's QoS class.
     std::string qosClass;
+    /// Usage as the metrics API reports it, already summed over the containers:
+    /// nano-cores for CPU and bytes for memory. Zero when no metrics server
+    /// answered, which is a normal cluster.
+    std::uint64_t cpuNano = 0;
+    std::uint64_t memoryBytes = 0;
 
     [[nodiscard]] const Uid &uid() const noexcept { return identity.uid; }
 

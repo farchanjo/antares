@@ -1193,7 +1193,7 @@ void caseStoreBounds5000Pods()
         used = antares::test::live() - before;
         check(store.totalEntries() == 5000, "every pod is stored");
     }
-    check(used <= 3'100'000, "five thousand pods cost at most 3 100 000 bytes");
+    check(used <= 3'200'000, "five thousand pods cost at most 3 200 000 bytes");
     std::printf("  5000 pods: %zu bytes (%zu per entry)\n", used, used / 5000);
 }
 

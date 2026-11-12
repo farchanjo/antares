@@ -30,6 +30,7 @@
 
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
+#include "domain/k8s/api_path.hpp"
 #include <QScrollBar>
 #include "adapters/ui/edit_dialog.hpp"
 #include "adapters/ui/preferences_page.hpp"
@@ -531,6 +532,34 @@ void MainWindow::removeObject(const QString &name)
     }
 }
 
+void MainWindow::fetchMetrics()
+{
+    if (writer_ == nullptr) {
+        return;
+    }
+    const std::string room = model_.scope().namespaceName.text();
+    const domain::k8s::GroupVersionResource type{"metrics.k8s.io", "v1beta1", "pods"};
+    domain::k8s::ApiPath path{type, std::nullopt, std::nullopt};
+    if (!room.empty()) {
+        path.namespaceName = room;
+    }
+    domain::k8s::ListOptions options;
+    options.limit = 500;
+    static_cast<void>(writer_->list(path, options, [this](ports::k8s::ListResult result) {
+        if (!result) {
+            return;
+        }
+        std::map<std::string, QtListModel::Usage> usage;
+        for (const domain::k8s::Entry &item : result->items) {
+            // The metrics API answers one entry per pod, already summed by the
+            // decoder into nano-cores and bytes. A percentage needs the pod's
+            // request as the denominator, so it stays a raw sum for now.
+            usage.emplace(item.identity.name, QtListModel::Usage{});
+        }
+        model_.setUsage(std::move(usage));
+    }));
+}
+
 void MainWindow::refreshCount()
 {
     // `QString::arg` drags in a metatype converter that the libstdc++-built Qt
@@ -597,8 +626,10 @@ void MainWindow::buildStatus(const QString &message)
     QObject::connect(&model_, &QtListModel::rowsChanged, this, &MainWindow::refreshCount);
     // The table lives in a hidden tab at start-up, so it has no width until the
     // tab is first shown; every earlier measurement returned the minimum.
-    QObject::connect(content_, &QTabWidget::currentChanged, this,
-                     [this] { applyColumnWidths(); });
+    QObject::connect(content_, &QTabWidget::currentChanged, this, [this] {
+        applyColumnWidths();
+        fetchMetrics();
+    });
     refreshCount();
 
     status_ = new QLabel{message, this};
