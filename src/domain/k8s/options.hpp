@@ -34,6 +34,9 @@ struct ListOptions {
     bool watch = false;
     std::optional<std::string> resourceVersion;
     std::optional<std::uint32_t> timeoutSeconds;
+    /// Which container a `/log` stream addresses. The API server refuses a pod
+    /// with more than one and no name, so it is not optional in practice.
+    std::optional<std::string> container;
     bool allowWatchBookmarks = false;
 
     /// The query string without the leading `?`; empty when nothing is set.

@@ -360,7 +360,6 @@ void H2Session::reset(std::int32_t streamId)
 
 void H2Session::fail(domain::http::HttpError error)
 {
-    std::fprintf(stderr, "  h2 FAIL %s\n", std::string{domain::http::describe(error)}.c_str());
     closed_ = true;
     std::vector<std::int32_t> ids;
     ids.reserve(streams_.size());

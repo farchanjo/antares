@@ -91,6 +91,8 @@ private:
     application::io::EnginePool &pool_;
     domain::http::ClientConfig config_;
     std::unique_ptr<TlsContext> tls_;
+    /// h1-only, for the upgrade path. Never used for ordinary requests.
+    std::unique_ptr<TlsContext> tlsUpgrade_;
     /// Keyed by loop *and* authority: a connection may only be reused from
     /// the loop that owns it.
     std::map<std::pair<ports::io::IoEngine *, std::string>,

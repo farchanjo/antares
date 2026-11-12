@@ -256,11 +256,15 @@ void Connection::onSocketRead(std::expected<ports::io::Buffer, ports::io::IoErro
 
         drainPlaintext();
         drainOutgoing();
+        // Nothing arms the next read on its own: a stream that is still open
+        // would stop at the first chunk, which is every watch and every exec.
+        readSocket();
         return;
     }
 
     plain_.append(reinterpret_cast<const char *>(chunk->data()), chunk->size());
     drainPlaintext();
+    readSocket();
 }
 
 void Connection::drainPlaintext()

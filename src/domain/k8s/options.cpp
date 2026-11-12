@@ -107,6 +107,9 @@ std::string ListOptions::render() const
     if (allowWatchBookmarks) {
         query += query.empty() ? "allowWatchBookmarks=true" : "&allowWatchBookmarks=true";
     }
+    if (container) {
+        appendPair(query, "container", *container);
+    }
     return query;
 }
 

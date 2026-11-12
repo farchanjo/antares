@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -93,14 +94,211 @@ void listContexts(const k8s::Kubeconfig &config)
     std::printf("\n");
 }
 
+/// The collection path under `ns`, or nothing when the name is not a DNS label.
+std::optional<k8s::ApiPath> collection(const std::string &ns)
+{
+    const auto type = k8s::GroupVersionResource::of("", "v1", "pods");
+    if (!type) {
+        step(false, "pods descriptor");
+        return std::nullopt;
+    }
+    auto scoped = k8s::ApiPath{*type, std::nullopt, std::nullopt, k8s::Subresource::none}
+                      .inNamespace(ns);
+    if (!scoped) {
+        step(false, "namespace is not a DNS label: " + ns);
+        return std::nullopt;
+    }
+    return std::optional<k8s::ApiPath>{*scoped};
+}
+
+/// One probe per verb. Each returns false only when the local wait expired, which
+/// is a stall; a server answer is reported and returns true either way.
+bool probeVersion(ports::k8s::Reader &reader)
+{
+    Gate gate;
+    static_cast<void>(reader.serverVersion([&](ports::k8s::VersionResult result) {
+        if (result) {
+            step(true, "GET /version  " + result->gitVersion + "  (" + result->platform + ")");
+        } else {
+            step(false, "GET /version  " + std::string{result.error().name()} + ": " +
+                            result.error().message);
+        }
+        gate.open();
+    }));
+    if (!gate.wait(std::chrono::seconds{20})) {
+        step(false, "GET /version  timed out");
+        return false;
+    }
+    return true;
+}
+
+bool probeNamespaces(ports::k8s::Reader &reader)
+{
+    const auto type = k8s::GroupVersionResource::of("", "v1", "namespaces");
+    if (!type) {
+        step(false, "namespaces descriptor");
+        return true;
+    }
+
+    Gate gate;
+    k8s::ListOptions options;
+    options.limit = 5;
+    const k8s::ApiPath path{*type, std::nullopt, std::nullopt, k8s::Subresource::none};
+    static_cast<void>(reader.list(path, options, [&](ports::k8s::ListResult result) {
+        if (result) {
+            step(true, "GET /api/v1/namespaces  " + std::to_string(result->items.size()) +
+                           " visible (limit 5)");
+        } else {
+            step(false, "GET /api/v1/namespaces  " + std::string{result.error().name()} + ": " +
+                            result.error().message);
+        }
+        gate.open();
+    }));
+    if (!gate.wait(std::chrono::seconds{20})) {
+        step(false, "GET /api/v1/namespaces  timed out");
+        return false;
+    }
+    return true;
+}
+
+bool probeWatch(ports::k8s::Reader &reader, const std::string &ns)
+{
+    const auto scoped = collection(ns);
+    if (!scoped) {
+        return true;
+    }
+
+    Gate gate;
+    k8s::ListOptions options;
+    options.watch = true;
+    options.timeoutSeconds = 5;
+
+    std::atomic<int> seen{0};
+    ports::k8s::WatchHandler handler;
+    handler.onEvent = [&](const k8s::WatchEvent &event) {
+        if (event.produces()) {
+            seen.fetch_add(1);
+        }
+    };
+    static_cast<void>(reader.watch(
+        *scoped, options, handler, [&](ports::k8s::StatusResult result) {
+            if (!result) {
+                step(false, "WATCH  " + std::string{result.error().name()} + ": " +
+                                result.error().message);
+            } else {
+                step(true, "WATCH pods/" + ns + "  " + std::to_string(seen.load()) + " object(s)");
+            }
+            gate.open();
+        }));
+    // The server honours timeoutSeconds; the wait is the backstop.
+    if (!gate.wait(std::chrono::seconds{25})) {
+        step(false, "WATCH  timed out locally");
+        return false;
+    }
+    return true;
+}
+
+bool probeLogs(ports::k8s::Reader &reader, const std::string &ns, const std::string &pod,
+               const std::string &container)
+{
+    const auto scoped = collection(ns);
+    if (!scoped) {
+        return true;
+    }
+    auto target = scoped->named(pod);
+    if (!target) {
+        step(false, "pod name is not a DNS label: " + pod);
+        return true;
+    }
+
+    Gate gate;
+    k8s::ListOptions options;
+    options.timeoutSeconds = 5;
+    if (!container.empty()) {
+        options.container = container;
+    }
+
+    std::atomic<std::size_t> bytes{0};
+    std::atomic<int> lines{0};
+    static_cast<void>(reader.logs(
+        *target, options,
+        [&](std::string_view line) {
+            bytes.fetch_add(line.size());
+            lines.fetch_add(1);
+        },
+        [&](ports::k8s::StatusResult result) {
+            if (!result) {
+                step(false, "LOGS  " + std::string{result.error().name()} + ": " +
+                                result.error().message);
+            } else {
+                step(true, "LOGS " + pod + "  " + std::to_string(lines.load()) + " line(s), " +
+                               std::to_string(bytes.load()) + " byte(s)");
+            }
+            gate.open();
+        }));
+    if (!gate.wait(std::chrono::seconds{20})) {
+        step(false, "LOGS  timed out locally");
+        return false;
+    }
+    return true;
+}
+
+/// The upgrade path, which no other probe reaches. The marker on stdout is the
+/// proof: the exit path carries no code, and a clean close says nothing.
+bool probeExec(ports::k8s::KubeClient &client, const std::string &ns, const std::string &pod,
+               const std::string &container)
+{
+    const auto scoped = collection(ns);
+    if (!scoped) {
+        return true;
+    }
+    auto target = scoped->named(pod);
+    if (!target) {
+        step(false, "pod name is not a DNS label: " + pod);
+        return true;
+    }
+
+    Gate gate;
+    ports::k8s::ExecOptions options;
+    options.container = container;
+    options.command = {"/bin/echo", "antares-exec-ok"};
+
+    std::string collected;
+    auto session = client.exec(
+        *target, options,
+        [&](k8s::ExecChannel channel, std::string_view data) {
+            if (channel == k8s::ExecChannel::stdout) {
+                collected.append(data);
+            }
+        },
+        [&](const k8s::ApiError &failure) {
+            if (collected.find("antares-exec-ok") != std::string::npos) {
+                step(true, "EXEC " + pod + "  said=yes");
+            } else {
+                step(false, "EXEC  " + std::string{failure.name()} + ": " + failure.message +
+                                "  got=[" + collected + "]");
+            }
+            gate.open();
+        });
+    if (!session) {
+        step(false, "EXEC  " + std::string{session.error().name()});
+        return true;
+    }
+    if (!gate.wait(std::chrono::seconds{20})) {
+        step(false, "EXEC  timed out locally");
+        return false;
+    }
+    return true;
+}
+
 /// The full reading slice against one context.
 int smoke(const std::string &contextName, const std::string &namespaceOverride,
+          const std::string &podArg, const std::string &containerArg,
           const std::vector<std::string> &paths)
 {
     auto config = adapters::k8s::KubeconfigLoader::load(paths);
     if (!config) {
-        std::printf("FAIL  kubeconfig: %s\n",
-                    std::string{k8s::describe(config.error())}.c_str());
+        std::printf("FAIL  kubeconfig: %s\n", std::string{k8s::describe(config.error())}.c_str());
         return 1;
     }
     listContexts(*config);
@@ -108,8 +306,7 @@ int smoke(const std::string &contextName, const std::string &namespaceOverride,
     const std::string wanted = contextName.empty() ? config->currentContext : contextName;
     auto binding = adapters::k8s::ClusterBinding::resolve(*config, wanted);
     if (!binding) {
-        std::printf("FAIL  binding: %s\n",
-                    std::string{k8s::describe(binding.error())}.c_str());
+        std::printf("FAIL  binding: %s\n", std::string{k8s::describe(binding.error())}.c_str());
         return 1;
     }
 
@@ -121,8 +318,7 @@ int smoke(const std::string &contextName, const std::string &namespaceOverride,
     }
     std::printf("binding: context=%s base=%s auth=%s ca=%zu bytes verify=%s\n",
                 binding->context.name.c_str(), binding->base.c_str(), kind,
-                binding->http.trustBundlePem.size(),
-                binding->http.verifyPeer ? "on" : "off");
+                binding->http.trustBundlePem.size(), binding->http.verifyPeer ? "on" : "off");
 
     adapters::log::ConsoleLogger logger;
     binding->http.logger = &logger;
@@ -144,95 +340,15 @@ int smoke(const std::string &contextName, const std::string &namespaceOverride,
 
     std::printf("\n");
 
-    {
-        Gate gate;
-        static_cast<void>(reader.serverVersion([&](ports::k8s::VersionResult result) {
-            if (result) {
-                step(true, "GET /version  " + result->gitVersion + "  (" + result->platform + ")");
-            } else {
-                step(false, "GET /version  " + std::string{result.error().name()} + ": " +
-                                result.error().message);
-            }
-            gate.open();
-        }));
-        if (!gate.wait(std::chrono::seconds{20})) {
-            step(false, "GET /version  timed out");
-            stalled = true;
-        }
+    bool ok = probeVersion(reader);
+    ok = probeNamespaces(reader) && ok;
+    ok = probeWatch(reader, ns) && ok;
+    if (!podArg.empty()) {
+        ok = probeLogs(reader, ns, podArg, containerArg) && ok;
+        ok = probeExec(*client, ns, podArg, containerArg) && ok;
     }
-
-    {
-        Gate gate;
-        auto namespaceType = k8s::GroupVersionResource::of("", "v1", "namespaces");
-        if (!namespaceType) {
-            step(false, "namespaces descriptor");
-        } else {
-            const k8s::ApiPath path{*namespaceType, std::nullopt, std::nullopt, k8s::Subresource::none};
-            k8s::ListOptions options;
-            options.limit = 5;
-            static_cast<void>(reader.list(path, options, [&](ports::k8s::ListResult result) {
-                if (result) {
-                    step(true, "GET /api/v1/namespaces  " + std::to_string(result->items.size()) +
-                                   " visible (limit 5)");
-                } else {
-                    step(false, "GET /api/v1/namespaces  " +
-                                    std::string{result.error().name()} + ": " +
-                                    result.error().message);
-                }
-                gate.open();
-            }));
-            if (!gate.wait(std::chrono::seconds{20})) {
-                step(false, "GET /api/v1/namespaces  timed out");
-                stalled = true;
-            }
-        }
-    }
-
-    {
-        Gate gate;
-        auto podType = k8s::GroupVersionResource::of("", "v1", "pods");
-        if (!podType) {
-            step(false, "pods descriptor");
-        } else {
-            auto scoped = k8s::ApiPath{*podType, std::nullopt, std::nullopt, k8s::Subresource::none}
-                              .inNamespace(ns);
-            if (!scoped) {
-                step(false, "namespace is not a DNS label: " + ns);
-            } else {
-                k8s::ListOptions options;
-                options.watch = true;
-                options.timeoutSeconds = 5;
-
-                std::atomic<int> seen{0};
-                ports::k8s::WatchHandler handler;
-                handler.onEvent = [&](const k8s::WatchEvent &event) {
-                    if (event.produces()) {
-                        seen.fetch_add(1);
-                    }
-                };
-                static_cast<void>(reader.watch(*scoped, options, handler,
-                                   [&](ports::k8s::StatusResult result) {
-                                       if (result) {
-                                           step(true, "WATCH pods/" +
-                                                          ns + "  " +
-                                                          std::to_string(seen.load()) +
-                                                          " object(s)");
-                                       } else if (result.error().reason == k8s::Reason::timeout) {
-                                           step(true, "WATCH ended by the server timeout");
-                                       } else {
-                                           step(false, "WATCH  " +
-                                                           std::string{result.error().name()} +
-                                                           ": " + result.error().message);
-                                       }
-                                       gate.open();
-                                   }));
-                // The server honours timeoutSeconds; the wait is the backstop.
-                if (!gate.wait(std::chrono::seconds{25})) {
-                    step(false, "WATCH  timed out locally");
-                    stalled = true;
-                }
-            }
-        }
+    if (!ok) {
+        stalled = true;
     }
 
     const ports::k8s::ClientStats stats = reader.stats();
@@ -245,9 +361,9 @@ int smoke(const std::string &contextName, const std::string &namespaceOverride,
 
     http.reset();
     if (stalled) {
-        // A stuck resolve blocks the loop thread inside getaddrinfo, and there
-        // is no way to interrupt it. Joining would hang the tool forever, which
-        // is the opposite of what a diagnostic is for.
+        // A stuck resolve blocks the loop thread inside getaddrinfo, and there is
+        // no way to interrupt it. Joining would hang the tool forever, which is
+        // the opposite of what a diagnostic is for.
         std::printf("\nstalled: a step never completed, skipping the clean shutdown\n");
         std::fflush(stdout);
         std::_Exit(1);
@@ -266,6 +382,8 @@ int main(int argc, char **argv)
 
     std::string context;
     std::string nsArg;
+    std::string podArg;
+    std::string containerArg;
     std::vector<std::string> paths;
 
     for (int index = 1; index < argc; ++index) {
@@ -277,21 +395,30 @@ int main(int argc, char **argv)
             nsArg = argv[++index];
             continue;
         }
+        if (std::strcmp(argv[index], "--log") == 0 && index + 1 < argc) {
+            podArg = argv[++index];
+            continue;
+        }
+        if (std::strcmp(argv[index], "--container") == 0 && index + 1 < argc) {
+            containerArg = argv[++index];
+            continue;
+        }
         if (std::strcmp(argv[index], "--kubeconfig") == 0 && index + 1 < argc) {
             paths.emplace_back(argv[++index]);
             continue;
         }
         if (std::strcmp(argv[index], "--help") == 0) {
-            std::printf(
-                "usage: antares_k8s_live [--context NAME] [--namespace NS] [--kubeconfig PATH]...\n"
-                "  Reads a kubeconfig, resolves one context and exercises only:\n"
-                "    GET /version, GET /api/v1/namespaces, WATCH pods/<namespace>\n"
-                "  It never writes. There is no verb to write with.\n");
+            std::printf("usage: antares_k8s_live [--context NAME] [--namespace NS] [--log POD]"
+                        " [--container NAME] [--kubeconfig PATH]...\n"
+                        "  Reads a kubeconfig, resolves one context and exercises only:\n"
+                        "    GET /version, GET /api/v1/namespaces, WATCH pods/<ns>,\n"
+                        "    LOGS and EXEC when a pod is named.\n"
+                        "  It never writes. There is no verb to write with.\n");
             return 0;
         }
         std::printf("unknown argument: %s\n", argv[index]);
         return 2;
     }
 
-    return smoke(context, nsArg, paths);
+    return smoke(context, nsArg, podArg, containerArg, paths);
 }

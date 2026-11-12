@@ -406,7 +406,9 @@ HttpKubeClient::logs(const domain::k8s::ApiPath &path,
 
     ++stats_.submitted;
     auto ticket = http_->submitStreaming(
-        request(domain::http::Method::get, path.render(), options.render()), std::move(streaming),
+        request(domain::http::Method::get,
+                path.with(domain::k8s::Subresource::log).render(), options.render()),
+        std::move(streaming),
         std::move(completion));
     if (!ticket) {
         --stats_.submitted;

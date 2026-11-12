@@ -77,6 +77,11 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
 {
     tls_ = TlsContext::create(config_.verifyPeer, /*http2=*/true, config_.auth,
                               config_.trustBundlePem);
+    // A WebSocket upgrade is an HTTP/1.1 exchange with no h2 equivalent, so it
+    // needs a context that never offers h2 in ALPN. Sharing one context meant the
+    // server picked h2 and answered the hand-written upgrade with SETTINGS frames.
+    tlsUpgrade_ = TlsContext::create(config_.verifyPeer, /*http2=*/false, config_.auth,
+                                     config_.trustBundlePem);
 }
 
 HttpClient::~HttpClient()
@@ -285,7 +290,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                                SocketFailed failed)
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    auto connection = std::make_shared<Connection>(pool_.next(), *tls_);
+    auto connection = std::make_shared<Connection>(pool_.next(), *tlsUpgrade_);
     auto* engine = &connection->engine();
 
     engine->post([self, connection, url = std::move(url), subprotocol = std::move(subprotocol),
@@ -312,7 +317,6 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                         socket->receive(data, length);
                         return;
                     }
-
                     pending->append(reinterpret_cast<const char *>(data), length);
                     const std::size_t end = pending->find("\r\n\r\n");
                     if (end == std::string::npos) {
