@@ -142,11 +142,13 @@ void RowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
         base.text.clear();
         QStyledItemDelegate::paint(painter, base, index);
         painter->save();
-        // The text colour, not the mid grey: on a dark theme `mid` is the\n        // shade of the background and the dots vanish into it.\n        painter->setPen(Qt::NoPen);
-        painter->setBrush(option.palette.text().color());
+        // The text colour, not the mid grey: on a dark theme `mid` is the shade
+        // of the background and the mark vanishes into it.
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor{0xFF, 0x00, 0x00});
         QRect marco = option.rect;
         marco.setWidth(12);
-        marco.setHeight(2);
+        marco.setHeight(6);
         marco.moveCenter(option.rect.center());
         painter->drawRect(marco);
         painter->restore();
