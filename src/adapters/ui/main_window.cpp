@@ -26,6 +26,7 @@
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
 #include "adapters/ui/preferences_page.hpp"
+#include "adapters/ui/row_delegate.hpp"
 #include "adapters/ui/family.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
@@ -287,6 +288,8 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
+    delegate_ = new RowDelegate{model_, this};
+    view_->setItemDelegate(delegate_);
     // A reset recreates the header sections at the default width; the widths are
     // a property of the family, so they are re-applied whenever it changes.
     QObject::connect(&model_, &QAbstractItemModel::modelReset, this,

@@ -21,6 +21,7 @@ class QTreeWidgetItem;
 namespace antares::adapters::ui {
 
 class DetailPane;
+class RowDelegate;
 
 class QtListModel;
 
@@ -80,6 +81,7 @@ private:
     QLabel *count_ = nullptr;
     QLabel *emptyState_ = nullptr;
     QTabWidget *content_ = nullptr;
+    RowDelegate *delegate_ = nullptr;
     /// Index of the resource tab; the Preferences tab sits before it.
     int tableTab_ = 0;
     QStackedWidget *pages_ = nullptr;
