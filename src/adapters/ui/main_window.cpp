@@ -273,7 +273,7 @@ QWidget *MainWindow::buildTablePage()
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
     view_->setAlternatingRowColors(true);
     view_->header()->setStretchLastSection(false);
-    view_->header()->setSectionResizeMode(QHeaderView::Interactive);
+    view_->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     view_->header()->setMinimumSectionSize(60);
     view_->header()->setDefaultSectionSize(160);
     applyColumnWidths();
