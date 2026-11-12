@@ -269,3 +269,16 @@ The table has no alternating stripe; the selected row is the only fill.
 
 The window maximises to the full display and remembers that across a restart. The
 navigator, the rail and the status bar keep their widths; only the table grows.
+
+## Flexibility
+
+Nothing in the table is fixed. Every column is resizable by dragging its header
+divider; the header shows the resize cursor on hover. The table fills whatever
+the splitter gives it, and the columns keep their widths when the window grows —
+the surplus goes to the last column, which is the action column.
+
+The navigator and the rail are resizable by the splitter between them; the status
+bar and the toolbars are fixed height. A layout that hard-codes a column width,
+or that refuses to shrink, is wrong.
+
+The same holds for the detail pane: it collapses to nothing and reopens.
