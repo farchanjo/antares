@@ -56,7 +56,7 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     , model_(model)
 {
     setWindowTitle(context.isEmpty() ? tr("antares") : tr("antares — %1").arg(context));
-    resize(1500, 860);
+    resize(1640, 980);
 
     auto *central = new QWidget{this};
     auto *layout = new QVBoxLayout{central};
