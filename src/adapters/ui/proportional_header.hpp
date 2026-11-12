@@ -21,6 +21,8 @@ public:
     void setWeight(int section, int weight, int floor);
     /// Forget every weight; the sections then keep their own size.
     void clearWeights();
+    /// Re-share the width now, without waiting for a resize.
+    void shareNow();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

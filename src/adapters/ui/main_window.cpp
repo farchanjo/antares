@@ -607,22 +607,25 @@ void MainWindow::buildStatus(const QString &message)
 
 void MainWindow::applyColumnWidths()
 {
-    // A role is a stable id, not a position: the width is looked up by role and
-    // applied at the column index the family gives it. Applied again on show,
-    // because a model reset recreates the sections at the default width.
+    // A role is a stable id, not a position: the weight is looked up by role and
+    // handed to the header at the column index the family gives it. The saved
+    // width is the weight, so a column the reader widened keeps the larger share.
+    auto *header = dynamic_cast<ProportionalHeader *>(view_->header());
+    if (header == nullptr) {
+        return;
+    }
     const ViewConfig config;
+    header->clearWeights();
     const std::span<const RowRole> shown = familyColumns(model_.family());
     for (std::size_t at = 0; at < shown.size(); ++at) {
+        const RowRole role = shown[at];
         const auto wanted = std::find_if(
             config.columns().begin(), config.columns().end(),
-            [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
-        if (wanted != config.columns().end()) {
-            view_->setColumnWidth(static_cast<int>(at), static_cast<int>(wanted->width));
-        }
+            [role](const ColumnWidth &column) { return column.role == role; });
+        const int weight = wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
+        header->setWeight(static_cast<int>(at), weight, role == RowRole::actions ? 28 : 48);
     }
-    std::fprintf(stderr, "  [larg] modelo_cols=%d view_cols=%d c0=%d c1=%d c9=%d\n",
-                 model_.columnCount(QModelIndex{}), view_->header()->count(), view_->columnWidth(0),
-                 view_->columnWidth(1), view_->columnWidth(9));
+    header->shareNow();
 }
 
 void MainWindow::showEvent(QShowEvent *event)

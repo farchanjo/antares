@@ -40,6 +40,8 @@ void ProportionalHeader::clearWeights()
     floors_.clear();
 }
 
+void ProportionalHeader::shareNow() { share(); }
+
 void ProportionalHeader::resizeEvent(QResizeEvent *event)
 {
     QHeaderView::resizeEvent(event);
