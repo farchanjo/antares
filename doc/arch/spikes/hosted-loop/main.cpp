@@ -440,22 +440,28 @@ void fr002(Harness &host)
 {
     std::printf("FR-002 the turn does not block the paint\n");
     const long baselineStart = host.frames();
-    runFor(host, std::chrono::milliseconds{5000}, false);
+    const std::size_t idleTurnStart = host.turns().size();
+    runFor(host, std::chrono::milliseconds{30000}, false);
     const long idleFrames = host.frames() - baselineStart;
+    const std::size_t idleTurns = host.turns().size() - idleTurnStart;
 
     if (!openLoopback(host)) {
         expect(false, "FR-002 loopback");
         return;
     }
     const long saturatedStart = host.frames();
-    runFor(host, std::chrono::milliseconds{5000}, true);
+    const std::size_t saturatedTurnStart = host.turns().size();
+    runFor(host, std::chrono::milliseconds{30000}, true);
     const long saturatedFrames = host.frames() - saturatedStart;
+    const std::size_t saturatedTurns = host.turns().size() - saturatedTurnStart;
 
     const double ratio = idleFrames == 0 ? 0.0 : static_cast<double>(saturatedFrames) /
                                                   static_cast<double>(idleFrames);
-    result("FR-002", "idle_fps=" + std::to_string(idleFrames / 5.0) + " saturated_fps=" +
-                         std::to_string(saturatedFrames / 5.0) + " ratio=" +
-                         std::to_string(ratio) + " bytes=" + std::to_string(bytesRead));
+    result("FR-002", "idle_fps=" + std::to_string(idleFrames / 30.0) + " saturated_fps=" +
+                         std::to_string(saturatedFrames / 30.0) + " ratio=" +
+                         std::to_string(ratio) + " idle_turns=" + std::to_string(idleTurns) +
+                         " saturated_turns=" + std::to_string(saturatedTurns) + " bytes=" +
+                         std::to_string(bytesRead));
     reportTurns(host, "FR-002");
     expect(ratio >= 0.80, "FR-002 painted frames stay at or above 80% of idle");
 }
@@ -511,7 +517,7 @@ void fr004(Harness &host)
                       window.height() + (shrink < 40 ? 1 : -1));
     });
     resizer.start(16);
-    runFor(host, std::chrono::milliseconds{3000}, true);
+    runFor(host, std::chrono::milliseconds{10000}, true);
     resizer.stop();
     const std::size_t afterResize = bytesRead;
 
@@ -520,10 +526,10 @@ void fr004(Harness &host)
     QTimer::singleShot(0, &window, [&window] {
         QMenu menu{&window};
         menu.addAction("held");
-        QTimer::singleShot(3000, &menu, [&menu] { menu.close(); });
+        QTimer::singleShot(10000, &menu, [&menu] { menu.close(); });
         menu.exec(window.mapToGlobal(QPoint(20, 20)));
     });
-    runFor(host, std::chrono::milliseconds{3500}, true);
+    runFor(host, std::chrono::milliseconds{10500}, true);
 
     result("FR-004", "resize_bytes=" + std::to_string(afterResize - startBytes) +
                          " menu_bytes=" + std::to_string(bytesRead - afterResize) +
@@ -649,11 +655,11 @@ void fr007(Harness &host)
         host.window().show();
     };
 
-    measure(std::chrono::milliseconds{5000}, false);
+    measure(std::chrono::milliseconds{60000}, false);
     const double withoutWorst = percentile(intervals, 1.0);
     const double withoutP99 = percentile(intervals, 0.99);
 
-    measure(std::chrono::milliseconds{5000}, true);
+    measure(std::chrono::milliseconds{60000}, true);
     const double withWorst = percentile(intervals, 1.0);
     const double withP99 = percentile(intervals, 0.99);
 
@@ -678,11 +684,11 @@ void fr008(Harness &host)
     }
 
     const long startFrames = host.frames();
-    runFor(host, std::chrono::milliseconds{5000}, true);
+    runFor(host, std::chrono::milliseconds{30000}, true);
     const long frames = host.frames() - startFrames;
 
     result("FR-008", "watches=" + std::to_string(WATCHES) + " fps=" +
-                         std::to_string(frames / 5.0) + " bytes=" + std::to_string(bytesRead));
+                         std::to_string(frames / 30.0) + " bytes=" + std::to_string(bytesRead));
     reportTurns(host, "FR-008");
     expect(bytesRead > 0, "FR-008 every watch is served");
     expect(frames > 0, "FR-008 the window kept painting");
@@ -703,6 +709,8 @@ constexpr Case CASES[] = {
 int main(int argc, char **argv)
 {
     QApplication app{argc, argv};
+    // Unbuffered: the run is long and it is read while it happens.
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
 
     QWidget window;
     window.setWindowTitle(QStringLiteral("hosted-loop spike"));
