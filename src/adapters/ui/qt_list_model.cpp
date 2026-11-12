@@ -53,9 +53,12 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
         return {};
     }
     // A view may ask by role (the registered 257..260) or, as a table view does
-    // for the default role, by column. Both resolve to the same field.
+    // for the default role, by column. Only `DisplayRole` takes the column: any
+    // other role is answered by a registered one, or not at all — returning text
+    // for `SizeHintRole` gives the row a zero height and nothing draws.
     std::optional<RowRole> wanted = roleForIndex(static_cast<std::uint32_t>(role));
-    if (!wanted && index.column() >= 0 && index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
+    if (!wanted && role == Qt::DisplayRole && index.column() >= 0 &&
+        index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
         wanted = static_cast<RowRole>(index.column());
     }
     if (!wanted) {
@@ -82,8 +85,9 @@ void QtListModel::multiData(const QModelIndex &index, QModelRoleDataSpan span) c
     std::size_t count = 0;
     for (const QModelRoleData &entry : span) {
         std::optional<RowRole> role = roleForIndex(static_cast<std::uint32_t>(entry.role()));
-        // Same rule as `data`: a column stands in for an unregistered role.
-        if (!role && index.column() >= 0 && index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
+        // Same rule as `data`: only `DisplayRole` takes the column.
+        if (!role && entry.role() == Qt::DisplayRole && index.column() >= 0 &&
+            index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
             role = static_cast<RowRole>(index.column());
         }
         if (!role || count >= ROW_ROLE_COUNT) {
