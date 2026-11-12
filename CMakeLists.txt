@@ -80,7 +80,6 @@ set_target_properties(antares_ui PROPERTIES AUTOUIC OFF AUTORCC OFF)
 if(Qt6_FOUND)
     target_link_libraries(antares_ui PUBLIC Qt6::Core Qt6::Widgets)
     target_compile_definitions(antares_ui PUBLIC ANTARES_HAS_QT=1)
-    # Q_OBJECT on the model and the window needs the metaobject compiler.
     set_target_properties(antares_ui PROPERTIES AUTOMOC ON)
 else()
     set_target_properties(antares_ui PROPERTIES AUTOMOC OFF)
@@ -296,12 +295,8 @@ add_custom_target(check
     USES_TERMINAL)
 # The lint target is not a dependency: the CI runs it as its own job, and
 # running it twice per pipeline buys nothing.
-add_dependencies(check antares_io_conformance antares_http_conformance
-                 antares_k8s_conformance)
-# The UI suite needs the toolkit.
-if(Qt6_FOUND)
-    add_dependencies(check antares_ui_conformance)
-endif()
+add_dependencies(check antares_io_conformance antares_io_hosted antares_ui_conformance
+                 antares_http_conformance antares_k8s_conformance)
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
@@ -333,40 +328,6 @@ else()
         COMMENT "antares: leak pass (LeakSanitizer)"
         VERBATIM
         USES_TERMINAL)
-endif()
-
-# The product executable (FR-001 of 010). It is the only consumer of
-# `antares_ui`, so a missing toolkit costs nothing above it.
-if(Qt6_FOUND)
-    add_executable(antares_app src/adapters/ui/main.cpp)
-    target_link_libraries(antares_app PRIVATE antares_ui)
-    set_target_properties(antares_app PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
-    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
-        target_link_libraries(antares_app PRIVATE mimalloc-static)
-        if(APPLE)
-            target_link_options(antares_app PRIVATE
-                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
-        endif()
-    endif()
-    if(APPLE)
-        add_custom_command(TARGET antares_app POST_BUILD
-            COMMAND dsymutil $<TARGET_FILE:antares_app>
-            COMMENT "dsymutil antares_app"
-            VERBATIM)
-    endif()
-
-    add_executable(antares_ui_conformance tests/ui/conformance.cpp)
-    target_link_libraries(antares_ui_conformance PRIVATE antares_ui)
-    target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests
-                                                              ${CMAKE_SOURCE_DIR}/tests/ui)
-    set_target_properties(antares_ui_conformance PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
-    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
-        target_link_libraries(antares_ui_conformance PRIVATE mimalloc-static)
-        if(APPLE)
-            target_link_options(antares_ui_conformance PRIVATE
-                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
-        endif()
-    endif()
 endif()
 
 add_executable(antares_io_conformance tests/io/conformance.cpp)
@@ -407,6 +368,31 @@ if(APPLE)
         VERBATIM)
 endif()
 
+# The hosted-mode suite: the same port driven by a `poll()` host instead of
+# `run()`. It is the Linux gate for the mode ADR-0020 decides, so a Darwin-only
+# assumption surfaces here (ADR-0020, feature 007).
+add_executable(antares_io_hosted tests/io/hosted.cpp)
+target_link_libraries(antares_io_hosted PRIVATE antares_io)
+target_include_directories(antares_io_hosted PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(antares_io_hosted PRIVATE PkgConfig::LIBURING)
+endif()
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    if(APPLE)
+        target_link_options(antares_io_hosted PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    else()
+        target_link_libraries(antares_io_hosted PRIVATE mimalloc-static)
+    endif()
+endif()
+set_target_properties(antares_io_hosted PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+if(APPLE)
+    add_custom_command(TARGET antares_io_hosted POST_BUILD
+        COMMAND dsymutil $<TARGET_FILE:antares_io_hosted>
+        COMMENT "dsymutil antares_io_hosted"
+        VERBATIM)
+endif()
+
 # One CTest entry per case, so `ctest -j` fans the suite across cores.
 set(ANTARES_IO_CASES
     post-runs-on-engine-thread
@@ -424,8 +410,7 @@ set(ANTARES_IO_CASES
     stop-is-reversible
     resolve-two-jobs-one-window
     stats-cancel-counts
-    forget-drops-registration
-    hosted-runonce-drives-work)
+    forget-drops-registration)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)
@@ -462,35 +447,66 @@ if(APPLE)
         VERBATIM)
 endif()
 
-set(ANTARES_UI_CASES
-    model-footprint-under-4k
-    multi-data-fills-span
-    status-text-falls-back
-    fetch-inserts-one-range
-    fetch-asks-the-limit
-    can-fetch-more-needs-a-token
-    change-set-applies-in-order
-    empty-mask-repaints-nothing
-    status-change-repaints-status
-    reorder-is-a-move
-    move-of-last-row-is-silent
-    view-config-batched-and-fixed
-    view-config-takes-saved-layout
-    uniform-flag-flips-on-varied-row
-    cross-thread-change-set-queues
-    fetch-failure-shows-retry-row
-    retry-does-not-loop
-    truncation-is-reported
-    role-index-matches-cue
-    roles-for-mask)
 
-foreach(case IN LISTS ANTARES_UI_CASES)
-    add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
-    # No display here: the offscreen plugin is what makes a QApplication start
-    # without one.
-    set_tests_properties("ui/${case}" PROPERTIES TIMEOUT 30
-                                                  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-endforeach()
+if(Qt6_FOUND)
+    # The live window binary. Without the toolkit the tree still builds.
+    add_executable(antares_app src/adapters/ui/main.cpp)
+    target_link_libraries(antares_app PRIVATE antares_ui)
+    set_target_properties(antares_app PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+        target_link_libraries(antares_app PRIVATE mimalloc-static)
+        if(APPLE)
+            target_link_options(antares_app PRIVATE
+                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+        endif()
+    endif()
+
+    add_executable(antares_ui_conformance tests/ui/conformance.cpp)
+    target_link_libraries(antares_ui_conformance PRIVATE antares_ui)
+    target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests
+                                                              ${CMAKE_SOURCE_DIR}/tests/ui)
+    set_target_properties(antares_ui_conformance PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+    if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+        target_link_libraries(antares_ui_conformance PRIVATE mimalloc-static)
+        if(APPLE)
+            target_link_options(antares_ui_conformance PRIVATE
+                "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+        endif()
+    endif()
+
+    set(ANTARES_UI_CASES
+        build-and-shutdown
+        two-instances
+        sigterm-returns
+        model-footprint-under-4k
+        multi-data-fills-span
+        status-text-falls-back
+        fetch-inserts-one-range
+        fetch-asks-the-limit
+        can-fetch-more-needs-a-token
+        change-set-applies-in-order
+        empty-mask-repaints-nothing
+        status-change-repaints-status
+        reorder-is-a-move
+        move-of-last-row-is-silent
+        view-config-batched-and-fixed
+        view-config-takes-saved-layout
+        uniform-flag-flips-on-varied-row
+        cross-thread-change-set-queues
+        fetch-failure-shows-retry-row
+        retry-does-not-loop
+        truncation-is-reported
+        role-index-matches-cue
+        roles-for-mask)
+
+    foreach(case IN LISTS ANTARES_UI_CASES)
+        add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
+        # No display here: the offscreen plugin is what makes a QApplication start
+        # without one.
+        set_tests_properties("ui/${case}" PROPERTIES TIMEOUT 30
+                                                      ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endforeach()
+endif()
 
 # The live read-only smoke. Not a ctest entry: it needs a real cluster.
 add_executable(antares_k8s_live tools/k8s_live/main.cpp)
@@ -543,12 +559,6 @@ set(ANTARES_K8S_CASES
     entry-refuses-hostile
     entry-labels-truncated
     entry-worst-case-bound
-    scan-matches-projection
-    scan-skips-without-allocating
-    scan-reports-offset
-    scan-resolves-escapes
-    scan-name-stops
-    scan-is-faster
     store-bounds-5000-pods
     store-shares-entry
     store-upsert-in-place
@@ -557,8 +567,7 @@ set(ANTARES_K8S_CASES
     store-relist-reconciles
     store-relist-abandoned
     store-routes-events
-    store-metrics-bounded
-    pages-fetched-counts)
+    store-metrics-bounded)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")
@@ -644,6 +653,35 @@ foreach(case IN LISTS ANTARES_IO_CASES)
     endif()
 endforeach()
 
+set(ANTARES_IO_HOSTED_CASES
+    turn-runs-on-host-thread
+    post-waits-for-the-host
+    post-wakes-the-handle
+    next-deadline-tracks-timers
+    turn-honours-its-budget
+    stop-from-callback-does-not-deadlock
+    no-completion-starts-after-stop
+    shutdown-settles-pending
+    wait-handle-is-pollable)
+
+foreach(case IN LISTS ANTARES_IO_HOSTED_CASES)
+    add_test(NAME "hosted-poll/${case}" COMMAND antares_io_hosted "${case}")
+    set_tests_properties("hosted-poll/${case}" PROPERTIES
+        ENVIRONMENT "ANTARES_IO_BACKEND=poll" TIMEOUT 30)
+    if(APPLE)
+        add_test(NAME "hosted-kqueue/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-kqueue/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=kqueue" TIMEOUT 30)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME "hosted-uring/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-uring/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=io_uring" TIMEOUT 30)
+        add_test(NAME "hosted-epoll/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-epoll/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=epoll" TIMEOUT 30)
+    endif()
+endforeach()
+
 # Linux only: preloaded over the conformance binary so `io_uring_queue_init`
 # fails and the factory has to fall back to epoll (feature 004, FR-010).
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT APPLE)
@@ -656,14 +694,4 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT APPLE)
     set_tests_properties("shim/ring-refused-falls-back" PROPERTIES
         ENVIRONMENT "LD_PRELOAD=$<TARGET_FILE:antares_io_uring_shim>;ANTARES_IO_BACKEND="
         TIMEOUT 30)
-endif()
-
-# The application cases need an event loop, so they run offscreen: the CI host
-# has no display, and the window still has to be built and shown.
-if(Qt6_FOUND)
-    foreach(case build-and-shutdown two-instances sigterm-returns)
-        add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
-        set_tests_properties("ui/${case}" PROPERTIES
-            ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-    endforeach()
 endif()

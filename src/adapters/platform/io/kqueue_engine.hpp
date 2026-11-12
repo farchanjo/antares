@@ -17,10 +17,12 @@ public:
     [[nodiscard]] std::string_view name() const noexcept override;
 
     /// The queue itself: kqueue becomes readable while an event is pending.
-    [[nodiscard]] int waitHandle() const noexcept override;
 
     /// False when the kernel refused the queue; the factory then falls back.
     [[nodiscard]] bool ready() const noexcept;
+
+    /// The queue itself: readable while any registered filter is pending.
+    [[nodiscard]] int waitHandle() const noexcept override;
 
 protected:
     bool waitReady(int timeoutMilliseconds) override;

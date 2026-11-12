@@ -28,10 +28,12 @@ public:
     [[nodiscard]] std::string_view name() const noexcept override;
 
     /// The ring descriptor: a pending completion makes it readable.
-    [[nodiscard]] int waitHandle() const noexcept override;
 
     /// False when the kernel refused the ring; the factory then falls back.
     [[nodiscard]] bool ready() const noexcept;
+
+    /// The ring descriptor, readable while a completion is pending.
+    [[nodiscard]] int waitHandle() const noexcept override;
 
 protected:
     bool waitReady(int timeoutMilliseconds) override;
@@ -53,6 +55,10 @@ private:
     /// Assumes `ringMutex_` is held.
     void rearmWake();
 
+    /// Rearm and flush after a hosted turn. A poll request fires once, so
+    /// without this the host's next sleep has nothing armed to wake it.
+    void turnEnded() override;
+
     /// Submit everything queued, looping over a short submit. Assumes the lock.
     bool flushLocked();
 
@@ -60,6 +66,10 @@ private:
     [[nodiscard]] struct io_uring_sqe *nextSlot();
 
     io_uring *ring_ = nullptr;
+
+    /// Captured once: the ring is freed before the descriptor is used again, and
+    /// `ring_->ring_fd` would need the definition in this header.
+    int ringFd_ = -1;
 
     /// kqueue and epoll arm through a syscall, which is thread-safe on its own.
     /// The ring is memory both threads touch, so every SQ access takes this.

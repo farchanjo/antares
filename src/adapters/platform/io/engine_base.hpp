@@ -11,6 +11,7 @@
 #include <mutex>
 #include <string>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "domain/units/instant.hpp"
@@ -101,13 +102,11 @@ public:
     /// Idempotent. After it returns, no completion fires until `run()` again.
     void stop() override;
 
-    // Hosted mode (ADR 0020). `attach()` records this thread as the loop and
-    // arms the wakeup, so `post()` queues instead of running inline; the host
-    // then calls `runOnce()` for as long as it is willing to process.
+    // Hosted mode (ADR-0020). The host owns the sleep; these only turn.
     void attach() override;
     void runOnce(domain::Duration budget) override;
     [[nodiscard]] int waitHandle() const noexcept override;
-    [[nodiscard]] std::optional<domain::Instant> nextDeadline() const override;
+    [[nodiscard]] std::optional<domain::Instant> nextDeadline() const noexcept override;
     void shutdown() override;
 
 protected:
@@ -129,6 +128,12 @@ protected:
     /// Drop any interest the backend still holds for `op`. Called before the op
     /// is released, so a queued readiness event cannot land on freed memory.
     virtual void forget(PendingOp &op);
+
+    /// End-of-turn hook. A backend whose readiness is queued rather than
+    /// registered (io_uring) rearms and flushes here, so the wakeup is still
+    /// armed when the host comes back from its own sleep. The default is the
+    /// registered-interest backends, for which there is nothing to do.
+    virtual void turnEnded();
 
     void countCompletion(const IoError *failure) noexcept;
 
@@ -183,10 +188,6 @@ private:
     void fireDueTimers();
     [[nodiscard]] int nextWaitMilliseconds() const;
     void drainUntil(std::chrono::steady_clock::time_point deadline);
-
-    /// Signal the resolver thread to finish and reap it. Split out of `stop()`
-    /// because `shutdown()` also needs it and runs on the host thread.
-    void stopResolver();
 
     /// Settle one op as cancelled: the shared tail of `cancelPending` and `stop`.
     void completeCancelled(PendingOp &op);
