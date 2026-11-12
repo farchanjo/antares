@@ -459,3 +459,16 @@ Columns: `☐` · `Name` · `Namespace` · `Age` · `⋮`. `0 items` in this nam
 
 A scope with nothing in it shows, centred and grey, **`Item list is empty`**. No
 icon, no action, no scope name. The `+` stays available above it.
+
+## Table view (Horizontal Pod Autoscalers)
+
+Columns: `☐` · `Name` · `Namespace` · `Metrics` · `Min Pods` · `Max Pods` ·
+`Replicas` · `Age` · `Status` · `⋮`
+
+`Metrics` renders `current / target` (`3% / 80%`). `Status` is a **row of pills**,
+one per condition, each its own colour: `AbleToScale` green, `Scaling` blue.
+
+Pills are the general answer for a multi-valued status cell — nodes use the same
+shape for `Conditions`. Amber marks a degraded one (`SchedulingDisab`).
+
+Empty families in this namespace: Resource Quotas, Limit Ranges.
