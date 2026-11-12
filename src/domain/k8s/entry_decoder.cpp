@@ -112,6 +112,50 @@ struct LabelRef {
     }
 }
 
+/// Sum `restartCount` over a pod's container statuses. A pod shows one number and
+/// an operator reads it as a whole, so the sum is kept rather than each count.
+[[nodiscard]] std::expected<void, json::ScanError> scanRestarts(json::ScalarScan &scan,
+                                                               std::uint32_t &total)
+{
+    if (!scan.begin('[')) {
+        return std::unexpected(scan.error());
+    }
+    bool first = true;
+    while (true) {
+        const auto state = scan.nextEntry(']', first);
+        if (state != json::ScalarScan::EntryState::more) {
+            return {};
+        }
+        first = false;
+        if (!scan.begin('{')) {
+            return std::unexpected(scan.error());
+        }
+        bool firstMember = true;
+        while (true) {
+            const auto member = scan.nextEntry('}', firstMember);
+            if (member != json::ScalarScan::EntryState::more) {
+                break;
+            }
+            firstMember = false;
+            std::string_view key;
+            if (!scan.memberName(key)) {
+                return std::unexpected(scan.error());
+            }
+            if (key == "restartCount") {
+                std::optional<std::int64_t> count;
+                if (!scan.intValue(count)) {
+                    return std::unexpected(scan.error());
+                }
+                total += static_cast<std::uint32_t>(std::max<std::int64_t>(count.value_or(0), 0));
+                continue;
+            }
+            if (!scan.skipValue(META_DEPTH)) {
+                return std::unexpected(scan.error());
+            }
+        }
+    }
+}
+
 [[nodiscard]] std::expected<void, json::ScanError> scanLabels(json::ScalarScan &scan, Labels &labels)
 {
     if (!scan.begin('{')) {
@@ -245,6 +289,13 @@ scanCount(json::ScalarScan &scan, std::optional<std::uint32_t> &out)
             auto counted = scanCount(scan, summary.total);
             if (!counted) {
                 return counted;
+            }
+            continue;
+        }
+        if (key == "containerStatuses") {
+            auto summed = scanRestarts(scan, summary.restarts);
+            if (!summed) {
+                return summed;
             }
             continue;
         }
