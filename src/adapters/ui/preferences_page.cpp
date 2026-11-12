@@ -140,7 +140,11 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
 
     if (!description.isEmpty()) {
         auto *hint = new QLabel{description, section};
+        // A wrapped label inside a scroll area measures zero high before its
+        // width settles, so the policy is explicit and the height is floored.
         hint->setWordWrap(true);
+        hint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+        hint->setMinimumHeight(hint->fontMetrics().lineSpacing() * 2);
         hint->setStyleSheet(QStringLiteral("color: palette(mid);"));
         sectionLayout->addWidget(hint);
     }
