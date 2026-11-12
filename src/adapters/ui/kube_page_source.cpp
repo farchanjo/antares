@@ -41,8 +41,7 @@ void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view con
         path, options,
         [this, shared, done = std::move(done)](ports::k8s::ListResult result) {
             if (!result) {
-                std::fprintf(stderr, "  [page] %s: %s\n",
-                             domain::k8s::describe(result.error().reason).data(),
+                std::fprintf(stderr, "  [page] code=%u %s\n", result.error().code,
                              result.error().message.c_str());
                 done(std::unexpected(PageError::transport));
                 return;
