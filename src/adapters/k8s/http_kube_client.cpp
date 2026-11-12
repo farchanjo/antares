@@ -327,7 +327,10 @@ HttpKubeClient::list(const domain::k8s::ApiPath &path, const domain::k8s::ListOp
             ++self->stats_.succeeded;
         }
         ports::k8s::ListPage page;
+        std::fprintf(stderr, "  [list] status=%d body=%zu\n", result->status,
+                     toText(result->body).size());
         scanListPage(toText(result->body), page, self ? &self->stats_.scanFailures : nullptr);
+        std::fprintf(stderr, "  [list] items=%zu\n", page.items.size());
         done(ports::k8s::ListResult{std::move(page)});
     };
 
