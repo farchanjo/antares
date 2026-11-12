@@ -1,7 +1,10 @@
 #pragma once
+#include <array>
 
 #include <QWidget>
 
+class QButtonGroup;
+class QToolButton;
 class QListWidget;
 class QStackedWidget;
 
@@ -20,7 +23,8 @@ public:
     explicit PreferencesPage(QWidget *parent = nullptr);
 
 private:
-    QListWidget *rail_ = nullptr;
+    QButtonGroup *rail_ = nullptr;
+    std::array<QToolButton *, 10> rail_hat_{};
     QStackedWidget *pages_ = nullptr;
 
     /// A settings page: a title, then sections of title, description and control.

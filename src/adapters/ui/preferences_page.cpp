@@ -2,6 +2,7 @@
 
 #include <QCheckBox>
 #include <QTimer>
+#include <QToolButton>
 
 #include <cstdio>
 #include <QComboBox>
@@ -9,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QButtonGroup>
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QPushButton>
@@ -50,16 +52,19 @@ QSpinBox *number(int value, int maximum)
 
 PreferencesPage::PreferencesPage(QWidget *parent)
     : QWidget(parent)
-    , rail_(new QListWidget{this})
+    , rail_(new QButtonGroup{this})
     , pages_(new QStackedWidget{this})
 {
     auto *layout = new QHBoxLayout{this};
     layout->setContentsMargins({});
     layout->setSpacing(0);
 
-    rail_->setFixedWidth(160);
-    rail_->setFrameShape(QFrame::NoFrame);
-    layout->addWidget(rail_);
+    auto *railColumn = new QWidget{this};
+    railColumn->setFixedWidth(160);
+    auto *railLayout = new QVBoxLayout{railColumn};
+    railLayout->setContentsMargins(8, 8, 8, 8);
+    railLayout->setSpacing(2);
+    layout->addWidget(railColumn);
 
     layout->addWidget(pages_, 1);
 
@@ -84,22 +89,25 @@ PreferencesPage::PreferencesPage(QWidget *parent)
             entry.build(page);
         }
         pages_->addWidget(page);
-        rail_->addItem(QString::fromUtf8(entry.label));
+        const int index = pages_->count() - 1;
+        auto *button = new QToolButton{railColumn};
+        button->setText(QString::fromUtf8(entry.label));
+        button->setCheckable(true);
+        button->setAutoRaise(true);
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        button->setChecked(index == 0);
+        rail_hat_[static_cast<std::size_t>(index)] = button;
+        rail_->addButton(button, index);
+        railLayout->addWidget(button);
     }
+    railLayout->addStretch(1);
 
-    QObject::connect(rail_, &QListWidget::itemSelectionChanged, this, [this] {
-        const int row = rail_->currentRow();
-        std::fprintf(stderr, "  [rail] sel=%d\n", row);
-        pages_->setCurrentIndex(row);
+    QObject::connect(rail_, &QButtonGroup::idClicked, this, [this](int id) {
+        std::fprintf(stderr, "  [rail] botao=%d\n", id);
+        pages_->setCurrentIndex(id);
     });
-    QObject::connect(rail_, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
-        pages_->setCurrentIndex(rail_->row(item));
-    });
-    rail_->setCurrentRow(0);
-    QTimer::singleShot(0, this, [this] {
-        std::fprintf(stderr, "  [geo] rail %dx%d visivel=%d ativo=%d\n", rail_->width(),
-                     rail_->height(), rail_->isVisible(), rail_->isEnabled());
-    });
+
 }
 
 QWidget *PreferencesPage::buildPage(const QString &title)
