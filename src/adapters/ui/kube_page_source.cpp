@@ -27,6 +27,13 @@ void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view con
                  scope.type.resource.c_str());
     const domain::k8s::ApiPath path{scope.type, std::nullopt, std::nullopt,
                                     domain::k8s::Subresource::none};
+    // Opening is idempotent: a second page of the same scope gets the open one
+    // back. Without it `apply` has nowhere to write and the page is dropped.
+    if (auto opened = store_.open(scope); !opened) {
+        done(std::unexpected(PageError::unknownScope));
+        return;
+    }
+
     domain::k8s::ListOptions options;
     options.limit = limit;
     if (!continueToken.empty()) {
