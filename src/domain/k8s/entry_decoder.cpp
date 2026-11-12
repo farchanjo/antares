@@ -429,7 +429,9 @@ std::expected<Entry, json::ScanError> scanEntry(json::ScalarScan &scan)
     if (!haveName) {
         return std::unexpected(json::ScanError{json::ScanReason::refusedName, scan.offset()});
     }
-    if (kind.empty() || kind.size() > TEXT_CEILING) {
+    // An item of a list carries no `kind`; the scope around it already names the
+    // resource, so only an over-long one is refused here.
+    if (kind.size() > TEXT_CEILING) {
         return std::unexpected(json::ScanError{json::ScanReason::refusedKind, scan.offset()});
     }
     if (entry.resourceVersion.size() > TEXT_CEILING) {
@@ -576,8 +578,9 @@ std::expected<Entry, StoreError> decodeEntry(const json::Value &object)
         return std::unexpected(name.error());
     }
 
+    // Same rule as the scanner path: a list item has no `kind` of its own.
     const std::string_view kind = object.textAt("kind");
-    if (kind.empty() || kind.size() > TEXT_CEILING) {
+    if (kind.size() > TEXT_CEILING) {
         return std::unexpected(StoreError::invalidKind);
     }
 
