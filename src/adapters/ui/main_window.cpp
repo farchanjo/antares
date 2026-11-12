@@ -24,6 +24,7 @@
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
+#include "adapters/ui/detail_pane.hpp"
 #include "adapters/ui/family.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
@@ -327,11 +328,7 @@ QWidget *MainWindow::buildDetail()
     heading->setFont(headingFont);
     paneLayout->addWidget(heading);
 
-    detail_ = new QLabel{tr("Select a row."), pane};
-    detail_->setWordWrap(true);
-    detail_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
-    detail_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-    detail_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    detail_ = new DetailPane{pane};
     paneLayout->addWidget(detail_, 1);
 
     return pane;
@@ -411,7 +408,7 @@ void MainWindow::buildTree()
 void MainWindow::showDetail(const QModelIndex &index)
 {
     if (!index.isValid()) {
-        detail_->setText(tr("Select a row."));
+        detail_->clear();
         return;
     }
     // Every column of the row, labelled, so the pane is useful without a
@@ -427,7 +424,8 @@ void MainWindow::showDetail(const QModelIndex &index)
         lines.append(QStringLiteral("%1: %2")
                          .arg(QString::fromUtf8(rowRoleName(columns[at])), value));
     }
-    detail_->setText(lines.isEmpty() ? tr("No detail.") : lines.join(QLatin1Char('\n')));
+    detail_->show(QString::fromUtf8(familyLabel(model_.family())),
+                  model_.data(model_.index(index.row(), 0), Qt::DisplayRole).toString(), lines);
 }
 
 void MainWindow::openFamily(QTreeWidgetItem *item)
@@ -442,7 +440,7 @@ void MainWindow::openFamily(QTreeWidgetItem *item)
     }
     const auto family = static_cast<Family>(index.toInt());
     model_.setFamily(family);
-    detail_->setText(tr("Select a row."));
+    detail_->clear();
     // The tab is named `<Family> - <cluster>`, like the reference.
     const QString label = QString::fromUtf8(familyLabel(family));
     const QString title = tr("%1 - %2").arg(label, contextBox_->currentText());

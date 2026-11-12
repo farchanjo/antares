@@ -20,6 +20,8 @@ class QTreeWidgetItem;
 
 namespace antares::adapters::ui {
 
+class DetailPane;
+
 class QtListModel;
 
 /// The window. Six regions, in the order the reference lays them out:
@@ -72,7 +74,7 @@ private:
     QLineEdit *filterBox_ = nullptr;
     QTreeWidget *navigator_ = nullptr;
     QTreeView *view_ = nullptr;
-    QLabel *detail_ = nullptr;
+    DetailPane *detail_ = nullptr;
     QLabel *status_ = nullptr;
     QLabel *region_ = nullptr;
     QLabel *count_ = nullptr;
