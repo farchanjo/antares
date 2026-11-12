@@ -61,9 +61,10 @@ constexpr std::array<RowRole, 6> LEASES{RowRole::name, RowRole::namespaceName, R
                                         RowRole::age, RowRole::status, RowRole::actions};
 constexpr std::array<RowRole, 7> CLAIMS{RowRole::name, RowRole::namespaceName, RowRole::status,
                                         RowRole::age,  RowRole::labels,        RowRole::conditions, RowRole::actions};
-constexpr std::array<RowRole, 9> VOLUMES{RowRole::name,   RowRole::status, RowRole::age,
-                                         RowRole::labels, RowRole::age,    RowRole::conditions,
-                                         RowRole::type,   RowRole::node, RowRole::actions};
+// Eight: the second `age` was a repeat and cost a column.
+constexpr std::array<RowRole, 8> VOLUMES{RowRole::name, RowRole::status, RowRole::age,
+                                         RowRole::type, RowRole::node,   RowRole::conditions,
+                                         RowRole::labels, RowRole::actions};
 constexpr std::array<RowRole, 6> CLASSES{RowRole::name, RowRole::type, RowRole::globalDefault,
                                          RowRole::age, RowRole::labels, RowRole::actions};
 constexpr std::array<RowRole, 4> ACCOUNTS{RowRole::name, RowRole::namespaceName, RowRole::age, RowRole::actions};
