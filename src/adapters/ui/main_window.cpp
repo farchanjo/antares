@@ -300,6 +300,9 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
+    // The shares are computed here, so the header must not also stretch the last
+    // section: it would swallow the room the menu column is meant to get.
+    view_->header()->setStretchLastSection(false);
     delegate_ = new RowDelegate{model_, this};
     view_->setItemDelegate(delegate_);
     // A reset recreates the header sections at the default width; the widths are
