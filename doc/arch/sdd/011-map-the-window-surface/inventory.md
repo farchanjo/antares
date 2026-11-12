@@ -325,3 +325,22 @@ The navigator truncates a long label with an ellipsis (`Horizontal Pod Autoscal�
 `Mutating Webhook Con…`) rather than widening. The full text is the tooltip. This
 is the flexibility rule applied to the tree: the column is the splitter's, and a
 label that does not fit loses its tail, not the layout.
+
+## Table view (Validating Webhook Configurations)
+
+Tab `Validating Webhook Configurati…` — the tab label truncates too.
+
+Columns: `☐` · `Name` · `Webhooks` · `Age` · `⋮`
+
+`Webhooks` is a plain count. No namespace column: the resource is cluster-scoped.
+A page opens with a hero band carrying the title and the cluster, then the table.
+
+## The blue `+`
+
+Every table carries a round accent `+` pinned to the bottom right, above the
+status bar. It is the create action for the family.
+
+## `Age`
+
+A compact duration: `3y198d`, `2y232d`, `685d`, `25d`, `53d`. Years and days are
+concatenated without a separator and without a space.
