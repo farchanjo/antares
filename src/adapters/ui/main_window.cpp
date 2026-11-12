@@ -449,8 +449,7 @@ void MainWindow::refreshCount()
     // `QString::arg` drags in a metatype converter that the libstdc++-built Qt
     // cannot resolve against this libc++ tree, so the number is glued.
     const QString shown = QString::number(model_.rowCount(QModelIndex{}));
-    std::fprintf(stderr, "  [conta] %s vis=%zu\n", shown.toUtf8().constData(),
-                 model_.storedRows());
+    std::fprintf(stderr, "  [conta] %s\n", shown.toUtf8().constData());
     const std::size_t ticked = model_.tickedCount();
     count_->setText(ticked == 0 ? tr("items: ") + shown
                                 : tr("selected: ") + QString::number(static_cast<int>(ticked)) +
