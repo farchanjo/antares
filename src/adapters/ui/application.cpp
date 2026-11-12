@@ -174,6 +174,7 @@ std::expected<void, StartupError> Application::build()
 
     std::shared_ptr<k8s::HttpKubeClient> kube;
     QString context;
+    std::string initialNamespace;
     if (config) {
         k8s::KubeconfigLoader::hydrate(*config);
         auto binding = k8s::ClusterBinding::resolve(*config);
@@ -187,6 +188,7 @@ std::expected<void, StartupError> Application::build()
             message = QStringLiteral("%1 names no current context").arg(QString::fromUtf8(path.c_str()));
         } else {
             context = QString::fromUtf8(binding->context.name.c_str());
+            initialNamespace = binding->context.defaultNamespace;
             // P-10: the context is logged at `info`, never the credential.
             logger_.write(ports::log::Level::info, "ui",
                           "context " + binding->context.name + " on " + binding->base);
@@ -206,6 +208,20 @@ std::expected<void, StartupError> Application::build()
 
     // FR-001 continues in dependency order: store, model, window. The window
     // takes both by reference, so it must come last.
+    // The initial scope: the current context, its current namespace, and `pods`.
+    // Nothing else names a resource yet, so without this the path is empty and
+    // the first page has nowhere to go.
+    // `toStdString` is an undefined symbol here: Qt is libstdc++ and the tree is
+    // libc++, so the bytes are read through `constData` instead.
+    scope_.cluster = domain::k8s::ClusterName::of(context.toUtf8().constData())
+                         .value_or(domain::k8s::ClusterName{});
+    scope_.type = domain::k8s::GroupVersionResource{"", "v1", "pods"};
+    scope_.kind = "Pod";
+    scope_.namespaceName = initialNamespace.empty()
+                               ? domain::k8s::NamespaceName{}
+                               : domain::k8s::NamespaceName::of(initialNamespace)
+                                     .value_or(domain::k8s::NamespaceName{});
+
     store_ = std::make_unique<application::k8s::ObjectStore>();
     pages_ = std::make_unique<KubePageSource>(*kube_, *store_);
     model_ = std::make_unique<QtListModel>(*store_, scope_, *pages_, &logger_);
