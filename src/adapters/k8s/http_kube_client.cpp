@@ -129,8 +129,9 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
         if (key == "metadata") {
             std::fprintf(stderr, "  [list] metadata ->\n");
             scanPageMetadata(scan, page);
-            std::fprintf(stderr, "  [list] metadata <- token=%zu rv=%zu\n",
-                         page.continueToken.size(), page.resourceVersion.size());
+            std::fprintf(stderr, "  [list] metadata <- token=%zu rv=%zu at=%zu err=%u\n",
+                         page.continueToken.size(), page.resourceVersion.size(), scan.offset(),
+                         static_cast<unsigned>(scan.error().reason));
             continue;
         }
         if (key == "items") {
