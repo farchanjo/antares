@@ -56,7 +56,7 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     , model_(model)
 {
     setWindowTitle(context.isEmpty() ? tr("antares") : tr("antares — %1").arg(context));
-    resize(1100, 680);
+    resize(1500, 860);
 
     auto *central = new QWidget{this};
     auto *layout = new QVBoxLayout{central};
@@ -81,7 +81,7 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     splitter_->setStretchFactor(2, 1);
     splitter_->setStretchFactor(3, 0);
     splitter_->setChildrenCollapsible(false);
-    splitter_->setSizes({RAIL_WIDTH, NAVIGATOR_WIDTH, 420, DETAIL_WIDTH});
+    splitter_->setSizes({RAIL_WIDTH, NAVIGATOR_WIDTH, 900, DETAIL_WIDTH});
     layout->addWidget(splitter_, 1);
 
     buildStatus(message);
