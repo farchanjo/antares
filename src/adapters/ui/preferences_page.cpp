@@ -1,6 +1,8 @@
 #include "adapters/ui/preferences_page.hpp"
 
 #include <QCheckBox>
+
+#include <cstdio>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -132,6 +134,7 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
     }
     sectionLayout->addLayout(row);
 
+    int hintVisible = 0;
     if (!description.isEmpty()) {
         auto *hint = new QLabel{description, section};
         // A wrapped label inside a scroll area measures zero high before its
@@ -141,6 +144,7 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
         hint->setMinimumHeight(hint->fontMetrics().lineSpacing() * 2);
         hint->setStyleSheet(QStringLiteral("color: palette(mid);"));
         sectionLayout->addWidget(hint);
+        hintVisible = 1;
     }
     // A full-width control goes under the text instead of beside it.
     if (control != nullptr && control->property("inline").toBool()) {
@@ -150,6 +154,9 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
 
     // Before the trailing stretch, so the sections stack from the top.
     layout->insertWidget(layout->count() - 1, section);
+    std::fprintf(stderr, "  [sec] %s sec=%zu filho=%d hint=%d\n", qPrintable(title),
+                 static_cast<std::size_t>(sectionLayout->count()), section->isVisible(),
+                 hintVisible);
 }
 
 void PreferencesPage::buildApp(QWidget *page)
