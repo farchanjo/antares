@@ -536,3 +536,7 @@ Columns: `☐` · `Name` · `Namespace` · `Type` · `Cluster IP` · `Ports` ·
 - `Selector` renders the label selector, truncated.
 - `External IP` is empty for a cluster-internal service.
 - `Status` is the green `Active` pill.
+
+## Family sub-tree: Storage
+
+`Persistent Volume Claims`, `Persistent Volumes`, `Storage Classes`.
