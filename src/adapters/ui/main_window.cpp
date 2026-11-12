@@ -305,8 +305,11 @@ QWidget *MainWindow::buildTablePage()
                      [this] { applyColumnWidths(); });
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
     view_->setAlternatingRowColors(true);
+    // The name column absorbs the space and the rest keep their natural width,
+    // so the trailing menu stays reachable without a horizontal scroll.
     view_->header()->setStretchLastSection(false);
-    view_->header()->setSectionResizeMode(QHeaderView::Fixed);
+    view_->header()->setSectionResizeMode(QHeaderView::Interactive);
+    view_->header()->setMinimumSectionSize(28);
     view_->header()->setMinimumSectionSize(60);
     view_->header()->setDefaultSectionSize(160);
     applyColumnWidths();
