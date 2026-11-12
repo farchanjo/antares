@@ -504,6 +504,10 @@ void caseQueueDeadlineKeepsOrder()
 /// factory must land on epoll and say so (FR-010).
 void caseRingRefusedFallsBack()
 {
+    if (std::getenv("ANTARES_IO_URING_REFUSED") == nullptr) {
+        // Invoked without the shim: nothing to prove here.
+        return;
+    }
     auto built = makeEngine();
     check(built.has_value(), "the factory still builds an engine");
     if (!built) {

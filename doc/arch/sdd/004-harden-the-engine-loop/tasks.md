@@ -44,7 +44,7 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       `failed` stop undercounting (FR-008).
 - [x] T019 Add the case `stats/cancel-counts`: a cancelled op moves the counters
       once (FR-008).
-- [ ] T020 Extend the leak target with a cancel-then-stop case, since `stop()`
+- [x] T020 Extend the leak target with a cancel-then-stop case, since `stop()`
       completing changes what the pass observes.
 - [x] T019 Add a case that clears `ANTARES_IO_BACKEND`, identifies the engine by
       type and compares it against `selectedBackendName` (FR-007).

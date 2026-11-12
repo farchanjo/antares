@@ -6,7 +6,15 @@
 // from userspace. Production links the real liburing.
 
 #include <cerrno>
+#include <cstdlib>
 #include <liburing.h>
+
+/// Announced so a case can tell it is running under the shim; the binary can be
+/// invoked without it.
+__attribute__((constructor)) void antaresShimLoaded()
+{
+    (void)::setenv("ANTARES_IO_URING_REFUSED", "1", 1);
+}
 
 extern "C" __attribute__((visibility("default"))) int io_uring_queue_init(unsigned entries, struct io_uring *ring, unsigned flags)
 {
