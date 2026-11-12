@@ -5,10 +5,10 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
 
 ## Task Breakdown
 
-- [ ] T001 Add the failing case `kqueue/forget-drops-registration`: cancel a
+- [x] T001 Add the failing case `kqueue/forget-drops-registration`: cancel a
       read, then make the descriptor readable, and assert no completion reaches
       the freed op (FR-001).
-- [ ] T002 Override `forget` in `KqueueEngine` with `EV_DELETE` for the op's
+- [x] T002 Override `forget` in `KqueueEngine` with `EV_DELETE` for the op's
       descriptor and filter, tolerating `ENOENT` (FR-001).
 - [x] T003 Add `settled` to the shared resolve job and key `claimResolve` on it
       instead of the engine-wide slot (FR-002).

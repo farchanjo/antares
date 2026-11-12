@@ -156,7 +156,10 @@ protected:
 
     /// Guarded: a caller thread allocates while the loop releases, and an
     /// unguarded push_back reallocates under the loop's open iterator.
-    mutable std::mutex opsMutex_;
+    /// Recursive: a `submit*` holds it across arm so a concurrent cancel cannot
+    /// complete the op between publishing it and arming it, and the completion
+    /// itself re-enters `release`.
+    mutable std::recursive_mutex opsMutex_;
     std::list<std::unique_ptr<PendingOp>> ops_;
 
 private:

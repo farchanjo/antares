@@ -101,6 +101,14 @@ private:
     std::map<std::pair<ports::io::IoEngine *, std::string>, std::shared_ptr<H2Session>> sessions_;
     /// Attempts in flight, and the latch the destructor waits on. A completion
     /// captures `this`, so the client may not die while one is still pending.
+    /// Attempts in flight. Without an owner the only references are the
+    /// callbacks the connections hold, and a connection that also pointed back at
+    /// the client closed the cycle (FR-026).
+    std::vector<std::shared_ptr<Attempt>> inflight_;
+
+    /// Drop the attempt and its pending share. Safe to call twice.
+    void retire(const std::shared_ptr<Attempt> &attempt) noexcept;
+
     std::atomic<std::size_t> pending_{0};
     std::mutex drainMutex_;
     std::condition_variable drainCv_;

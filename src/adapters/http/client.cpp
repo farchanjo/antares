@@ -84,7 +84,22 @@ HttpClient::~HttpClient()
     // A completion runs on the loop and captures `this`, so every pending
     // attempt has to settle before the members go. On a loop thread the wait
     // would deadlock, so it is skipped there and the pool owns the lifetime.
-    if (pool_.isLoopThread() || !pool_.isRunning()) {
+    if (pool_.isLoopThread()) {
+        return;
+    }
+    if (!pool_.isRunning()) {
+        // No loop to post to: close in place. The map is moved aside first
+        // because `close` re-enters `release`, which inserts into `idle_` again.
+        auto pending = std::move(idle_);
+        idle_.clear();
+        sessions_.clear();
+        for (auto &[key, bucket] : pending) {
+            for (auto &connection : bucket) {
+                if (connection) {
+                    connection->close();
+                }
+            }
+        }
         return;
     }
     // Hand every socket back to the loop that owns it. The post captures the
@@ -167,6 +182,7 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     // Bind the attempt to one loop for its whole life; hop there now, so every
     // step below runs on that loop (FR-002).
     attempt->engine_ = &pool_.next();
+    inflight_.push_back(attempt);
     armIdleTimer(attempt);
     attempt->engine_->post([this, attempt] {
         // A live session already owns the connection for this origin; opening
@@ -241,16 +257,29 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
     attempt->connection_ = connection;
     ++stats_.opened;
 
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
+    // Weak throughout: `open` stores these on the connection, which the client
+    // owns, so a strong capture would close the cycle on every attempt.
+    auto weak = weak_from_this();
+    // Both captures are weak: the connection is reachable from the attempt and
+    // the attempt is owned by `inflight_`, so a strong capture here would close
+    // the cycle and leak the pair.
+    const std::weak_ptr<Attempt> watched = attempt;
     connection->open(
         attempt->url_,
-        [self, attempt] {
-            if (attempt->cancelled()) {
+        [weak, watched] {
+            const auto attempt = watched.lock();
+            const auto self = weak.lock();
+            if (!attempt || !self || attempt->cancelled()) {
                 return;
             }
             self->onReady(attempt);
         },
-        [self, attempt](domain::http::HttpError error) {
+        [weak, watched](domain::http::HttpError error) {
+            const auto attempt = watched.lock();
+            const auto self = weak.lock();
+            if (!attempt || !self) {
+                return;
+            }
             if (error == domain::http::HttpError::tls) {
                 ++self->stats_.tlsFailures;
                 self->log(ports::log::Level::error, "tls handshake failed");
@@ -366,10 +395,14 @@ std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
 void HttpClient::pump(const std::shared_ptr<H2Session> &session,
                       const std::shared_ptr<Attempt> &attempt)
 {
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    session->connection()->onData([self, session, attempt](const std::byte *data,
+    // Weak: the connection is owned by the client, so a strong capture here would
+    // close the cycle and neither would ever be freed.
+    auto weak = weak_from_this();
+    session->connection()->onData([weak, session, attempt](const std::byte *data,
                                                            std::size_t length) {
-        self->armIdleTimer(attempt);
+        if (const auto self = weak.lock()) {
+            self->armIdleTimer(attempt);
+        }
         session->receive(data, length);
     });
 }
@@ -408,16 +441,15 @@ void HttpClient::startHttp2(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
 {
-    std::fprintf(stderr, "  onReady h2=%d\n",
-                 static_cast<int>(attempt->connection_ && attempt->connection_->isHttp2()));
     if (attempt->connection_ && attempt->connection_->isHttp2()) {
         startHttp2(attempt);
         return;
     }
 
-    auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    attempt->connection_->onData([self, attempt](const std::byte *data, std::size_t length) {
-        if (attempt->cancelled()) {
+    auto weak = weak_from_this();
+    attempt->connection_->onData([weak, attempt](const std::byte *data, std::size_t length) {
+        const auto self = weak.lock();
+        if (!self || attempt->cancelled()) {
             return;
         }
         self->armIdleTimer(attempt);
@@ -431,6 +463,11 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
         }
     });
 
+    const auto self = weak.lock();
+    if (!self) {
+        return;
+    }
+
     std::string wire = H1Session::serialize(attempt->request_, attempt->url_.target,
                                             attempt->url_.authority, config_.userAgent);
 
@@ -438,13 +475,16 @@ void HttpClient::onReady(const std::shared_ptr<Attempt> &attempt)
         reinterpret_cast<const std::byte *>(wire.data()),
         reinterpret_cast<const std::byte *>(wire.data()) + wire.size()};
 
+    // Weak for the same reason as the read handler: the connection outlives the
+    // call and is owned by the client.
+    const auto weakSelf = weak_from_this();
     attempt->connection_->write(
-        std::move(bytes), [self, attempt](WriteOutcome wrote) {
+        std::move(bytes), [weakSelf, attempt](WriteOutcome wrote) {
             if (attempt->cancelled()) {
                 return;
             }
-            if (!wrote.ok) {
-                self->settle(attempt, std::unexpected(wrote.error));
+            if (const auto owner = weakSelf.lock(); !wrote.ok && owner) {
+                owner->settle(attempt, std::unexpected(wrote.error));
             }
         });
 }
@@ -567,6 +607,14 @@ void HttpClient::scheduleRetry(const std::shared_ptr<Attempt> &attempt, domain::
         attempt->engine_->submitTimer(delay, [self, attempt] { self->start(attempt); }));
 }
 
+void HttpClient::retire(const std::shared_ptr<Attempt> &attempt) noexcept
+{
+    const auto slot = std::find(inflight_.begin(), inflight_.end(), attempt);
+    if (slot != inflight_.end()) {
+        inflight_.erase(slot);
+    }
+}
+
 void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
                         std::expected<domain::http::Response, domain::http::HttpError> result)
 {
@@ -607,6 +655,7 @@ void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,
     if (attempt->finished()) {
         return;
     }
+    retire(attempt);
 
     if (result) {
         result->hops = attempt->hops_;

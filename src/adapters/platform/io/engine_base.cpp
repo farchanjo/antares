@@ -47,6 +47,14 @@ EngineBase::EngineBase()
 EngineBase::~EngineBase()
 {
     stop();
+
+    // Whatever was posted after the last drain is still on the stack; its nodes
+    // are ours to free, and dropping them runs no task.
+    for (TaskNode *node = head_.exchange(nullptr); node != nullptr;) {
+        TaskNode *next = node->next;
+        delete node;
+        node = next;
+    }
     if (wake_[0] >= 0) {
         ::close(wake_[0]);
     }
@@ -59,7 +67,7 @@ int EngineBase::wakeReader() const noexcept { return wake_[0]; }
 
 std::size_t EngineBase::pendingCount() const noexcept
 {
-    const std::lock_guard<std::mutex> guard{opsMutex_};
+    const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
     return ops_.size();
 }
 
@@ -77,7 +85,7 @@ std::unique_ptr<PendingOp> EngineBase::allocate(OpKind kind, const IoHandle &han
 
 PendingOp *EngineBase::publish(std::unique_ptr<PendingOp> op)
 {
-    const std::lock_guard<std::mutex> guard{opsMutex_};
+    const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
     ops_.push_back(std::move(op));
     ops_.back()->slot = std::prev(ops_.end());
     return ops_.back().get();
@@ -92,6 +100,7 @@ std::expected<void, IoError> EngineBase::submitRead(const IoHandle &handle,
         return std::unexpected(IoError::system);
     }
 
+    const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
     auto owned = allocate(OpKind::read, handle, !handle.isFile());
     owned->offset = offset.value_or(Bytes{});
     owned->buffer.resize(maxBytes.count());
@@ -354,7 +363,7 @@ void EngineBase::cancelPending(const IoHandle &handle)
         {
             // The walk takes the lock; the completions below do not, because a
             // completion re-enters `release` and would deadlock on a held lock.
-            const std::lock_guard<std::mutex> guard{opsMutex_};
+            const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
             for (const auto &op : ops_) {
                 if (op->handle != nullptr && op->handle->native() == descriptor) {
                     doomed.push_back(op.get());
@@ -422,7 +431,7 @@ void EngineBase::cancelAll()
 {
     std::vector<PendingOp *> doomed;
     {
-        const std::lock_guard<std::mutex> guard{opsMutex_};
+        const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
         doomed.reserve(ops_.size());
         for (const auto &op : ops_) {
             doomed.push_back(op.get());
@@ -706,7 +715,7 @@ void EngineBase::completeFileWrite(PendingOp &op)
 
 void EngineBase::releaseLast()
 {
-    const std::lock_guard<std::mutex> guard{opsMutex_};
+    const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
     ops_.pop_back();
 }
 
@@ -714,7 +723,7 @@ void EngineBase::release(const PendingOp *op)
 {
     // The slot makes this O(1): with a few thousand watches open, a scan per
     // completion is quadratic on the loop.
-    const std::lock_guard<std::mutex> guard{opsMutex_};
+    const std::lock_guard<std::recursive_mutex> guard{opsMutex_};
     ops_.erase(op->slot);
 }
 
