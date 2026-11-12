@@ -39,8 +39,13 @@ Feature: Harden The Engine Loop
 
   Scenario: FR-007 the reported backend is the chosen one
     Given the feature specification mandates "FR-007 the reported backend is the chosen one"
-    When the implementation satisfies: the factory selects io_uring
-    Then the observable contract holds: the reported backend name is io_uring
+    When the implementation satisfies: each backend is forced in turn
+    Then the observable contract holds: the reported name matches the concrete type
+
+  Scenario: FR-010 a ring that cannot open falls back to epoll
+    Given the feature specification mandates "FR-010 a ring that cannot open falls back to epoll"
+    When the implementation satisfies: io_uring_setup returns ENOSYS and no backend is forced
+    Then the observable contract holds: the engine is epoll and the run completes
 
   Scenario: FR-008 counters move once per event
     Given the feature specification mandates "FR-008 counters move once per event"

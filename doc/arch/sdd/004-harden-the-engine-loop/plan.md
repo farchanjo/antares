@@ -56,8 +56,11 @@ completion is terminal and the pending counter reaches zero.
 `run()`'s entry instead of an exchange that never resets. The guard against a
 double `stop()` moves to a separate one-shot.
 
-**FR-007 and FR-008 — the truthful name and the counters.** `selectedBackendName`
-follows the same branch the factory takes. `countCompletion` runs on the
+**FR-007, FR-010 and FR-008 — the honest name, the fallback and the counters.**
+`selectedBackendName` follows the same branch `makeEngine` takes, so the two
+cannot disagree; today the default path reports `epoll` while the ring is what
+runs. A shim preloaded over `io_uring_setup` returning `ENOSYS` proves the epoll
+fallback without touching the sysctl, and it is wired for Linux only. `countCompletion` runs on the
 cancellation path too, so `completed` and `failed` stop undercounting.
 
 ### Test strategy

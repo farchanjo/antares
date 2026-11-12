@@ -82,6 +82,22 @@ contract in `engine_base.hpp` says "until `run()`" and must be true.
 `selectedBackendName` reports `io_uring` when the ring is the engine in use, and
 `epoll` only when it is. The name feeds the log and the conformance report.
 
+Today it reports `epoll` on the default path even when the ring was built, which
+was proved by constructing the factory and comparing the reported name against
+the concrete type: the two diverge. A case asserts they agree for each forced
+value, so the name can never drift from the engine again.
+
+### FR-010 A ring that cannot open falls back to epoll
+
+On Linux the factory tries `io_uring` first and `epoll` second, and lands on
+`epoll` when the ring cannot be set up — a kernel with `io_uring_disabled`, or a
+seccomp profile that blocks `io_uring_setup`. The run continues; it does not fail
+and it does not silently drop to `poll`.
+
+A preloaded shim makes `io_uring_setup` return `ENOSYS`, and the case asserts the
+engine is an `EpollEngine` and that the run completes. The shim is test-only, so
+production keeps no switch for it.
+
 ### FR-009 A drain stops at the turn deadline
 
 `drainTasks` takes the deadline of the turn, runs tasks until it is reached, and

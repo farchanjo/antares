@@ -53,3 +53,7 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
 None external. Every task is inside `src/adapters/platform/io/` and
 `tests/io/`; the port contract does not move. T009 and T012 are the pair
 ADR-0020 depends on, so they must land before the hosted loop is planned.
+
+T021 depends on nothing and should land early: it is the case that proves the
+name honest, and it fails today. T022 and T023 are Linux-only, so a Darwin run
+skips them and the shim is not loaded there.
