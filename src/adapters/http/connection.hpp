@@ -17,6 +17,7 @@
 #include "domain/http/url.hpp"
 #include "domain/units/bytes.hpp"
 #include "ports/io/io_engine.hpp"
+#include "ports/log/logger.hpp"
 #include "ports/io/io_handle.hpp"
 
 namespace antares::adapters::http {
@@ -47,7 +48,9 @@ public:
     /// What ALPN negotiated. `none` means the URL was plaintext.
     enum class Protocol : std::uint8_t { none, http1, http2 };
 
-    Connection(ports::io::IoEngine &engine, const TlsContext &tls);
+    /// `logger` is optional; a null one keeps the connection quiet.
+    Connection(ports::io::IoEngine &engine, const TlsContext &tls,
+               ports::log::Logger *logger = nullptr);
     ~Connection();
 
     Connection(const Connection &) = delete;
@@ -57,6 +60,8 @@ public:
 
     [[nodiscard]] Protocol protocol() const noexcept { return protocol_; }
     [[nodiscard]] bool isHttp2() const noexcept { return protocol_ == Protocol::http2; }
+    void note(ports::log::Level level, std::string_view message) const;
+
     [[nodiscard]] bool isReady() const noexcept { return state_ == State::ready; }
     [[nodiscard]] const domain::http::Url &url() const noexcept { return url_; }
     [[nodiscard]] ports::io::IoEngine &engine() const noexcept { return engine_; }
@@ -93,6 +98,7 @@ private:
     BIO *incoming_ = nullptr;
     BIO *outgoing_ = nullptr;
     domain::http::Url url_;
+    ports::log::Logger *logger_ = nullptr;
     State state_ = State::idle;
     Protocol protocol_ = Protocol::none;
     std::string plain_;

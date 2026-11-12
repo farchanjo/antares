@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ports/io/io_engine.hpp"
+#include "ports/log/logger.hpp"
 
 namespace antares::application::io {
 
@@ -31,6 +32,9 @@ public:
     /// The loop the next unit of work should use. Round-robin, never the same
     /// one twice in a row while another is free.
     [[nodiscard]] ports::io::IoEngine &next() noexcept;
+
+    /// Hand the logger to every engine. Null silences them.
+    void setLogger(ports::log::Logger *logger) noexcept;
 
     /// True when the caller is any loop thread of this pool (FR-008).
     [[nodiscard]] bool isLoopThread() const noexcept;

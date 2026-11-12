@@ -16,6 +16,7 @@
 #include "domain/units/instant.hpp"
 
 #include "ports/io/io_engine.hpp"
+#include "ports/log/logger.hpp"
 
 namespace antares::adapters::platform::io {
 
@@ -65,6 +66,10 @@ struct PendingOp {
 /// task queue and the loop. A backend supplies only how it waits.
 class EngineBase : public IoEngine {
 public:
+    /// The logger is optional and set once by the owner; an engine without one
+    /// stays silent rather than writing to the console behind its back.
+    void setLogger(ports::log::Logger *logger) noexcept override { logger_ = logger; }
+
     EngineBase();
     ~EngineBase() override;
 
@@ -159,6 +164,8 @@ protected:
     /// Recursive: a `submit*` holds it across arm so a concurrent cancel cannot
     /// complete the op between publishing it and arming it, and the completion
     /// itself re-enters `release`.
+    ports::log::Logger *logger_ = nullptr;
+
     mutable std::recursive_mutex opsMutex_;
     std::list<std::unique_ptr<PendingOp>> ops_;
 

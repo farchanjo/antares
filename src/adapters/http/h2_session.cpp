@@ -289,7 +289,7 @@ void H2Session::flush()
 
     std::string frame;
     frame.swap(outgoing_);
-    std::fprintf(stderr, "  h2 flush %zu\n", frame.size());
+    connection_->note(ports::log::Level::trace, "h2 flush " + std::to_string(frame.size()));
     connection_->write(
         ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
                           reinterpret_cast<const std::byte *>(frame.data()) + frame.size()},

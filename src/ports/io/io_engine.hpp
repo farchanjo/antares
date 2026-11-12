@@ -9,6 +9,8 @@
 #include <functional>
 #include <span>
 #include <string_view>
+
+#include "ports/log/logger.hpp"
 #include <vector>
 
 #include "domain/units/bytes.hpp"
@@ -50,6 +52,10 @@ public:
 
     /// Backend name, for logs and the conformance report. Never branched on.
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+
+    /// Optional diagnostics sink. The default is silence, so a backend that does
+    /// not care needs no code.
+    virtual void setLogger(ports::log::Logger * /*logger*/) noexcept {}
 
     /// Snapshot the counters named in the spec's Observability section.
     [[nodiscard]] virtual EngineStats stats() const noexcept = 0;

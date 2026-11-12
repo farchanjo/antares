@@ -62,10 +62,19 @@ constexpr domain::Bytes SOCKET_CHUNK{std::size_t{16} * 1024};
 
 } // namespace
 
-Connection::Connection(ports::io::IoEngine &engine, const TlsContext &tls)
+Connection::Connection(ports::io::IoEngine &engine, const TlsContext &tls,
+                       ports::log::Logger *logger)
     : engine_(engine)
     , tls_(tls)
+    , logger_(logger)
 {
+}
+
+void Connection::note(ports::log::Level level, std::string_view message) const
+{
+    if (logger_ != nullptr) {
+        logger_->write(level, "http", message);
+    }
 }
 
 Connection::~Connection()
@@ -187,8 +196,9 @@ void Connection::driveHandshake()
 
     const int error = SSL_get_error(ssl_, result);
     if (error != SSL_ERROR_WANT_READ && error != SSL_ERROR_WANT_WRITE) {
-        std::fprintf(
-            stderr, "  handshake fail err=%d verify=%ld\n", error, SSL_get_verify_result(ssl_));
+        note(ports::log::Level::warn,
+             "handshake failed err=" + std::to_string(error) +
+                 " verify=" + std::to_string(SSL_get_verify_result(ssl_)));
     }
     if (error == SSL_ERROR_WANT_READ) {
         readSocket();
@@ -286,7 +296,8 @@ void Connection::drainPlaintext()
         return;
     }
 
-    std::fprintf(stderr, "  plaintext handler=%d\n", static_cast<int>(handler_ != nullptr));
+    note(ports::log::Level::trace,
+         "plaintext handler=" + std::to_string(static_cast<int>(handler_ != nullptr)));
     std::uint8_t buffer[16 * 1024];
     while (true) {
         const int got = SSL_read(ssl_, buffer, sizeof buffer);
@@ -297,11 +308,9 @@ void Connection::drainPlaintext()
             continue;
         }
         const int error = SSL_get_error(ssl_, got);
-        std::fprintf(stderr,
-                     "  [c] ssl_read got=%d err=%d init=%d\n",
-                     got,
-                     error,
-                     SSL_is_init_finished(ssl_));
+        note(ports::log::Level::trace,
+             "ssl_read got=" + std::to_string(got) + " err=" + std::to_string(error) +
+                 " init=" + std::to_string(SSL_is_init_finished(ssl_)));
         if (error == SSL_ERROR_WANT_READ) {
             readSocket();
             return;
@@ -347,14 +356,17 @@ void Connection::write(ports::io::Buffer bytes, WriteDone done)
 
     writeQueue_.push_back(std::move(done));
     const int put = SSL_write(ssl_, bytes.data(), static_cast<int>(bytes.size()));
-    std::fprintf(stderr, "  ssl_write %d of %zu\n", put, bytes.size());
+    note(ports::log::Level::trace, "ssl_write " + std::to_string(put) + " of " +
+                                       std::to_string(bytes.size()));
     drainOutgoing();
 }
 
 void Connection::drainOutgoing()
 {
-    std::fprintf(stderr, "  drain writing=%d pending=%ld\n", static_cast<int>(writing_),
-                 outgoing_ == nullptr ? -1L : static_cast<long>(BIO_ctrl_pending(outgoing_)));
+    note(ports::log::Level::trace,
+         "drain writing=" + std::to_string(static_cast<int>(writing_)) + " pending=" +
+             std::to_string(outgoing_ == nullptr ? -1L
+                                                 : static_cast<long>(BIO_ctrl_pending(outgoing_))));
     if (outgoing_ == nullptr || writing_) {
         return;
     }
@@ -389,7 +401,7 @@ void Connection::drainOutgoing()
 
 void Connection::onSocketWritten(std::expected<std::size_t, ports::io::IoError> wrote)
 {
-    std::fprintf(stderr, "  wrote ok=%d\n", static_cast<int>(wrote.has_value()));
+    note(ports::log::Level::trace, wrote.has_value() ? "wrote ok" : "write failed");
     writing_ = false;
     if (!wrote) {
         fail(domain::http::HttpError::closed);

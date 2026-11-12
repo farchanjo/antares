@@ -66,6 +66,15 @@ ports::io::IoEngine &EnginePool::next() noexcept
     return *engines_[index];
 }
 
+void EnginePool::setLogger(ports::log::Logger *logger) noexcept
+{
+    for (auto &engine : engines_) {
+        if (engine) {
+            engine->setLogger(logger);
+        }
+    }
+}
+
 bool EnginePool::isRunning() const noexcept
 {
     return running_.load(std::memory_order_acquire);

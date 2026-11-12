@@ -82,6 +82,7 @@ HttpClient::HttpClient(application::io::EnginePool &pool, domain::http::ClientCo
     // server picked h2 and answered the hand-written upgrade with SETTINGS frames.
     tlsUpgrade_ = TlsContext::create(config_.verifyPeer, /*http2=*/false, config_.auth,
                                      config_.trustBundlePem);
+    pool_.setLogger(config_.logger);
 }
 
 HttpClient::~HttpClient()
@@ -251,7 +252,7 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
         return;
     }
 
-    auto connection = std::make_shared<Connection>(*attempt->engine_, *tls_);
+    auto connection = std::make_shared<Connection>(*attempt->engine_, *tls_, config_.logger);
     attempt->connection_ = connection;
     ++stats_.opened;
 
@@ -290,7 +291,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                                SocketFailed failed)
 {
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
-    auto connection = std::make_shared<Connection>(pool_.next(), *tlsUpgrade_);
+    auto connection = std::make_shared<Connection>(pool_.next(), *tlsUpgrade_, config_.logger);
     auto* engine = &connection->engine();
 
     engine->post([self, connection, url = std::move(url), subprotocol = std::move(subprotocol),
@@ -382,7 +383,7 @@ std::shared_ptr<H2Session> HttpClient::sessionFor(ports::io::IoEngine &engine,
     }
 
     if (!connection) {
-        connection = std::make_shared<Connection>(engine, *tls_);
+        connection = std::make_shared<Connection>(engine, *tls_, config_.logger);
     }
     slot = std::make_shared<H2Session>(connection, config_.limits.maxHeaderBytes,
                                        config_.limits.maxBodyBytes);
