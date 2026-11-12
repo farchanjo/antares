@@ -102,6 +102,11 @@ void RowDelegate::paintMeter(QPainter *painter, const QStyleOptionViewItem &opti
         painter->setBrush(fill);
         painter->drawRoundedRect(filled, HALF_HEIGHT, HALF_HEIGHT);
     }
+    // The bar alone says nothing exact; the value rides on top of it.
+    if (!text.isEmpty()) {
+        painter->setPen(QColor{0xE0, 0xE0, 0xE0});
+        painter->drawText(option.rect, Qt::AlignCenter, text);
+    }
     painter->restore();
 }
 
