@@ -2,8 +2,6 @@
 
 #include <QResizeEvent>
 
-#include <cstdio>
-
 namespace antares::adapters::ui {
 
 namespace {
@@ -40,25 +38,25 @@ void ProportionalHeader::clearWeights()
     floors_.clear();
 }
 
-void ProportionalHeader::shareNow() { share(); }
+void ProportionalHeader::shareNow(int room)
+{
+    share(room);
+}
 
 void ProportionalHeader::resizeEvent(QResizeEvent *event)
 {
     QHeaderView::resizeEvent(event);
-    share();
+    share(event->size().width());
 }
 
-void ProportionalHeader::share()
+void ProportionalHeader::share(int room)
 {
     const int sections = count();
     if (sections == 0 || weights_.isEmpty()) {
         return;
     }
-    // The header is as wide as its sections want, not as wide as the pane, so
-    // measuring it would hand the last section a negative share. The viewport is
-    // the width that actually exists.
-    const QWidget *port = parentWidget() != nullptr ? parentWidget() : this;
-    const int room = port->width();
+    // The caller passes the viewport width: the header is as wide as its sections
+    // want, and its parent is an internal widget, so neither measures the pane.
     if (room <= 0) {
         return;
     }
@@ -75,7 +73,7 @@ void ProportionalHeader::share()
         return;
     }
     const int spare = room > floorTotal ? room - floorTotal : 0;
-    std::fprintf(stderr, "  [share] room=%d pisos=%d secoes=%d\n", room, floorTotal, sections);
+
 
     int used = 0;
     for (int at = 0; at < sections; ++at) {

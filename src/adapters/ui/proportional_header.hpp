@@ -21,8 +21,8 @@ public:
     void setWeight(int section, int weight, int floor);
     /// Forget every weight; the sections then keep their own size.
     void clearWeights();
-    /// Re-share the width now, without waiting for a resize.
-    void shareNow();
+    /// Re-share `room` pixels now, without waiting for a resize.
+    void shareNow(int room);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -31,7 +31,7 @@ private:
     QList<int> weights_;
     QList<int> floors_;
 
-    void share();
+    void share(int room);
 };
 
 } // namespace antares::adapters::ui
