@@ -16,7 +16,10 @@
 #                        members would buy nothing (misc-non-private-member-variables-
 #                        in-classes)
 #   by-design            the recursion and the throw-through are the design
-#                        (misc-no-recursion, bugprone-exception-escape)
+#                        (misc-no-recursion, bugprone-exception-escape); the
+#                        backend name is one atomic the factory writes and every
+#                        reader reads, which a local static cannot express
+#                        (cppcoreguidelines-avoid-non-const-global-variables)
 #   nghttp2              the library takes non-const byte buffers, so the
 #                        const is peeled at the boundary (pro-type-const-cast)
 #   startup              getenv is read once, before a thread exists
@@ -35,6 +38,7 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-type-vararg,
   -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-non-const-global-variables,
   -bugprone-easily-swappable-parameters,
   -altera-*,
   -boost-*,

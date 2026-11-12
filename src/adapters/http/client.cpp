@@ -88,16 +88,19 @@ HttpClient::~HttpClient()
         return;
     }
     if (!pool_.isRunning()) {
-        // No loop to post to: close in place. The map is moved aside first
-        // because `close` re-enters `release`, which inserts into `idle_` again.
-        auto pending = std::move(idle_);
+        // No loop to post to: close in place. The connections are collected
+        // first and both maps are emptied before any `close`, because closing
+        // re-enters `release`, which inserts into `idle_` and rebalances the
+        // nodes a live iterator would be sitting on.
+        std::vector<std::shared_ptr<Connection>> doomed;
+        for (const auto &[key, bucket] : idle_) {
+            doomed.insert(doomed.end(), bucket.begin(), bucket.end());
+        }
         idle_.clear();
         sessions_.clear();
-        for (auto &[key, bucket] : pending) {
-            for (auto &connection : bucket) {
-                if (connection) {
-                    connection->close();
-                }
+        for (const auto &connection : doomed) {
+            if (connection) {
+                connection->close();
             }
         }
         return;

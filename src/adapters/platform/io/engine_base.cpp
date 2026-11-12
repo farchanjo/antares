@@ -51,9 +51,8 @@ EngineBase::~EngineBase()
     // Whatever was posted after the last drain is still on the stack; its nodes
     // are ours to free, and dropping them runs no task.
     for (TaskNode *node = head_.exchange(nullptr); node != nullptr;) {
-        TaskNode *next = node->next;
-        delete node;
-        node = next;
+        const std::unique_ptr<TaskNode> owned{node};
+        node = owned->next;
     }
     if (wake_[0] >= 0) {
         ::close(wake_[0]);
