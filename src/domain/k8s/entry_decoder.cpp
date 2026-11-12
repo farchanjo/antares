@@ -66,6 +66,52 @@ struct LabelRef {
 /// The decoded pairs go into one blob and only offsets are kept, so a label
 /// costs two appends rather than two `std::string`s — the label member is the
 /// single most expensive part of an entry and this is what keeps it cheap.
+/// Keep the `kind` of the first owner reference and skip the rest: the row shows
+/// one controller, and a second reference is the exception.
+[[nodiscard]] std::expected<void, json::ScanError> scanOwnerKind(json::ScalarScan &scan,
+                                                                std::string &kind)
+{
+    if (!scan.begin('[')) {
+        return std::unexpected(scan.error());
+    }
+    bool first = true;
+    bool kept = false;
+    while (true) {
+        const auto state = scan.nextEntry(']', first);
+        if (state != json::ScalarScan::EntryState::more) {
+            return {};
+        }
+        first = false;
+        if (!scan.begin('{')) {
+            return std::unexpected(scan.error());
+        }
+        bool firstMember = true;
+        while (true) {
+            const auto member = scan.nextEntry('}', firstMember);
+            if (member != json::ScalarScan::EntryState::more) {
+                break;
+            }
+            firstMember = false;
+            std::string_view key;
+            if (!scan.memberName(key)) {
+                return std::unexpected(scan.error());
+            }
+            if (key == "kind" && !kept) {
+                std::string_view text;
+                if (!scan.stringValue(text)) {
+                    return std::unexpected(scan.error());
+                }
+                kind = std::string{cut(text, TEXT_CEILING)};
+                kept = true;
+                continue;
+            }
+            if (!scan.skipValue(META_DEPTH)) {
+                return std::unexpected(scan.error());
+            }
+        }
+    }
+}
+
 [[nodiscard]] std::expected<void, json::ScanError> scanLabels(json::ScalarScan &scan, Labels &labels)
 {
     if (!scan.begin('{')) {
@@ -254,6 +300,33 @@ scanMetadataMember(json::ScalarScan &scan, std::string_view key, Entry &entry, b
             return std::unexpected(scan.error());
         }
         entry.generation = static_cast<std::uint64_t>(std::max<std::int64_t>(count.value_or(0), 0));
+        return {};
+    }
+    if (key == "namespace") {
+        std::string_view text;
+        if (!scan.stringValue(text)) {
+            return std::unexpected(scan.error());
+        }
+        entry.namespaceName = std::string{cut(text, TEXT_CEILING)};
+        return {};
+    }
+    if (key == "ownerReferences") {
+        return scanOwnerKind(scan, entry.ownerKind);
+    }
+    if (key == "nodeName") {
+        std::string_view text;
+        if (!scan.stringValue(text)) {
+            return std::unexpected(scan.error());
+        }
+        entry.nodeName = std::string{cut(text, TEXT_CEILING)};
+        return {};
+    }
+    if (key == "qosClass") {
+        std::string_view text;
+        if (!scan.stringValue(text)) {
+            return std::unexpected(scan.error());
+        }
+        entry.qosClass = std::string{cut(text, TEXT_CEILING)};
         return {};
     }
     if (key == "creationTimestamp") {

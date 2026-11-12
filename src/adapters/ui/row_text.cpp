@@ -99,7 +99,9 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
     case RowRole::name:
         return entry.identity.name;
     case RowRole::namespaceName:
-        return scope.namespaceName.text();
+        // The scope's namespace covers a narrowed list; the entry's covers "all
+        // namespaces", where the scope has none.
+        return scope.namespaceName.empty() ? entry.namespaceName : scope.namespaceName.text();
     case RowRole::status:
         return statusText(entry.status);
     case RowRole::age:
@@ -108,13 +110,16 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
         return labelsText(entry.labels);
     case RowRole::conditions:
         return entry.status.reason;
+    case RowRole::controlledBy:
+        return entry.ownerKind;
+    case RowRole::node:
+        return entry.nodeName;
+    case RowRole::qos:
+        return entry.qosClass;
     case RowRole::cpu:
     case RowRole::memory:
     case RowRole::disk:
     case RowRole::restarts:
-    case RowRole::node:
-    case RowRole::qos:
-    case RowRole::controlledBy:
     case RowRole::version:
     case RowRole::keys:
     case RowRole::type:

@@ -26,6 +26,16 @@ struct Entry {
     std::string creationTimestamp;
     Labels labels;
     StatusSummary status;
+    /// The owning namespace. Empty for a cluster-scoped object, and also empty
+    /// when the list was narrowed to one namespace and the server omits it.
+    std::string namespaceName;
+    /// The kind of the controller that owns the object, from the first owner
+    /// reference. Empty when nothing owns it.
+    std::string ownerKind;
+    /// The node a pod is scheduled on.
+    std::string nodeName;
+    /// The pod's QoS class.
+    std::string qosClass;
 
     [[nodiscard]] const Uid &uid() const noexcept { return identity.uid; }
 

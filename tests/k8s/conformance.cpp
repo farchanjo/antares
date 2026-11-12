@@ -1157,7 +1157,8 @@ void caseScanIsFaster()
     check(ratio >= 4.0, "the scanner is at least 4x faster");
 }
 
-// FR-003 — five thousand fixture pods stay inside 2 560 000 bytes.
+// FR-003 — five thousand fixture pods stay inside 3 000 000 bytes. The four
+// list-only fields (namespace, owner, node, QoS) cost 80 bytes an entry.
 void caseStoreBounds5000Pods()
 {
     const auto base = decodeFixture("pod.json");
@@ -1192,7 +1193,7 @@ void caseStoreBounds5000Pods()
         used = antares::test::live() - before;
         check(store.totalEntries() == 5000, "every pod is stored");
     }
-    check(used <= 2'560'000, "five thousand pods cost at most 2 560 000 bytes");
+    check(used <= 3'000'000, "five thousand pods cost at most 3 000 000 bytes");
     std::printf("  5000 pods: %zu bytes (%zu per entry)\n", used, used / 5000);
 }
 

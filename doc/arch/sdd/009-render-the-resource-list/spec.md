@@ -135,3 +135,11 @@ No new metric. The store already reports `entries` and `refused`; the view adds
 - **Why is `uniformItemSizes` conditional?** The documentation requires every
   item to be the same size; a varying row makes the hint a lie and the layout
   wrong.
+
+## Amendment: four list-only fields
+
+The reference paints a namespace, an owner kind, a node and a QoS class in the
+list, so the projection carries them. They cost 80 bytes an entry and the
+five-thousand-pod ceiling moves from 2 560 000 to 3 000 000 bytes to match. The
+shape stays additive (D-16): nothing was removed and no reader of the older four
+fields changed.
