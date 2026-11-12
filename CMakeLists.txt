@@ -102,6 +102,11 @@ if(APPLE)
 else()
     find_package(OpenSSL 3.0 REQUIRED COMPONENTS SSL Crypto)
 endif()
+# The PCH names both third parties, and it is propagated through `antares_core`.
+# The include directories have to travel with it, or a Homebrew prefix that is
+# not `/usr` leaves every translation unit unable to find the header.
+target_link_libraries(antares_core INTERFACE OpenSSL::SSL OpenSSL::Crypto)
+
 # nghttp2 ships no CMake config, only a pkg-config file, so the pin goes there.
 find_package(PkgConfig REQUIRED)
 if(APPLE)
@@ -143,6 +148,7 @@ pkg_check_modules(ZLIB REQUIRED IMPORTED_TARGET zlib)
 pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd)
 pkg_check_modules(BROTLI REQUIRED IMPORTED_TARGET libbrotlidec libbrotlienc)
 
+target_link_libraries(antares_core INTERFACE PkgConfig::NGHTTP2)
 target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2
                                       PkgConfig::ZLIB PkgConfig::ZSTD PkgConfig::BROTLI)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
