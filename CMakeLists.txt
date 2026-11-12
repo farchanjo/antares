@@ -75,7 +75,6 @@ set(ANTARES_UI_SOURCES
     src/adapters/ui/family.cpp
     src/adapters/ui/kube_page_source.cpp
     src/adapters/ui/preferences_page.cpp
-    src/adapters/ui/proportional_header.cpp
     src/adapters/ui/row_delegate.cpp
     src/adapters/ui/qt_list_model.cpp
 )

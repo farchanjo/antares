@@ -26,14 +26,12 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
-#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
 #include "adapters/ui/edit_dialog.hpp"
 #include "adapters/ui/preferences_page.hpp"
-#include "adapters/ui/proportional_header.hpp"
 #include "adapters/ui/row_delegate.hpp"
 #include "domain/k8s/options.hpp"
 #include "ports/k8s/kube_client.hpp"
@@ -300,8 +298,6 @@ QWidget *MainWindow::buildTablePage()
     view_->setAllColumnsShowFocus(true);
     view_->setUniformRowHeights(true);
     view_->setModel(&model_);
-    auto *header = new ProportionalHeader{view_};
-    view_->setHeader(header);
     delegate_ = new RowDelegate{model_, this};
     view_->setItemDelegate(delegate_);
     // A reset recreates the header sections at the default width; the widths are
@@ -608,27 +604,33 @@ void MainWindow::buildStatus(const QString &message)
 
 void MainWindow::applyColumnWidths()
 {
-    // A role is a stable id, not a position: the weight is looked up by role and
-    // handed to the header at the column index the family gives it. The saved
-    // width is the weight, so a column the reader widened keeps the larger share.
-    auto *header = dynamic_cast<ProportionalHeader *>(view_->header());
-    if (header == nullptr) {
-        return;
-    }
+    // Plain `setColumnWidth` on the stock header: installing a header of our own
+    // left it a hundred pixels wide while the rows drew across six hundred, and
+    // every measurement of it came back at that hundred.
     const ViewConfig config;
-    header->clearWeights();
     const std::span<const RowRole> shown = familyColumns(model_.family());
-    for (std::size_t at = 0; at < shown.size(); ++at) {
-        const RowRole role = shown[at];
+    int weightTotal = 0;
+    for (const RowRole role : shown) {
         const auto wanted = std::find_if(
             config.columns().begin(), config.columns().end(),
             [role](const ColumnWidth &column) { return column.role == role; });
-        const int weight = wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
-        header->setWeight(static_cast<int>(at), weight, role == RowRole::actions ? 28 : 48);
+        weightTotal += wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
     }
-    // No share here: the header re-shares on its own resize, which is the moment
-    // the pane really has a width. Sharing now would measure the default size.
-    header->shareNow(header->width());
+    const int room = view_->viewport()->width();
+    if (room <= 60 || weightTotal <= 0) {
+        return;
+    }
+    int used = 0;
+    for (std::size_t at = 0; at < shown.size(); ++at) {
+        const auto wanted = std::find_if(
+            config.columns().begin(), config.columns().end(),
+            [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
+        const int weight = wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
+        const int sized =
+            (at + 1 == shown.size()) ? room - used : (room * weight) / weightTotal;
+        view_->setColumnWidth(static_cast<int>(at), sized > 24 ? sized : 24);
+        used += sized > 24 ? sized : 24;
+    }
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
@@ -645,11 +647,7 @@ void MainWindow::showEvent(QShowEvent *event)
     // After the first layout pass, so the sections exist at their final count.
     // Long enough for the splitter and the tab widget to have sized the pane: at
     // zero the view is still a hundred pixels wide and the shares come out wrong.
-    QTimer::singleShot(400, this, [this] {
-        applyColumnWidths();
-        std::fprintf(stderr, "  [pos] n=%d w5=%d\n", view_->header()->count(),
-                     view_->columnWidth(5));
-    });
+    QTimer::singleShot(400, this, [this] { applyColumnWidths(); });
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }
