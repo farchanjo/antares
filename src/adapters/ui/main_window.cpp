@@ -19,6 +19,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
@@ -438,6 +439,9 @@ void MainWindow::applyColumnWidths()
             view_->setColumnWidth(static_cast<int>(at), static_cast<int>(wanted->width));
         }
     }
+    std::fprintf(stderr, "  [larg] modelo_cols=%d view_cols=%d c0=%d c1=%d c9=%d\n",
+                 model_.columnCount(), view_->header()->count(), view_->columnWidth(0),
+                 view_->columnWidth(1), view_->columnWidth(9));
 }
 
 void MainWindow::showEvent(QShowEvent *event)
