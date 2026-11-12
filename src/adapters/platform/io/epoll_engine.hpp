@@ -22,6 +22,9 @@ public:
     /// False when the kernel refused the set; the factory then falls back.
     [[nodiscard]] bool ready() const noexcept;
 
+    /// The set itself: readable while any registered descriptor is ready.
+    [[nodiscard]] int waitHandle() const noexcept override;
+
 protected:
     bool waitReady(int timeoutMilliseconds) override;
     void armWakeup() override;

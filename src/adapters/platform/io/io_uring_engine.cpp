@@ -40,7 +40,9 @@ IoUringEngine::IoUringEngine()
     if (io_uring_queue_init(RING_ENTRIES, ring_, 0) < 0) {
         delete ring_;
         ring_ = nullptr;
+        return;
     }
+    ringFd_ = ring_->ring_fd;
 }
 
 IoUringEngine::~IoUringEngine()
@@ -54,6 +56,8 @@ IoUringEngine::~IoUringEngine()
 std::string_view IoUringEngine::name() const noexcept { return "io_uring"; }
 
 bool IoUringEngine::ready() const noexcept { return ring_ != nullptr; }
+
+int IoUringEngine::waitHandle() const noexcept { return ringFd_; }
 
 bool IoUringEngine::flushLocked()
 {
@@ -123,6 +127,13 @@ void IoUringEngine::rearmWake()
     sqe->user_data = WAKE_TAG;
     wakeArmed_ = true;
     ++queued_;
+}
+
+void IoUringEngine::turnEnded()
+{
+    const std::lock_guard<std::mutex> guard{ringMutex_};
+    rearmWake();
+    (void)flushLocked();
 }
 
 void IoUringEngine::armWakeup()

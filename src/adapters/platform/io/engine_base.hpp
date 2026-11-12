@@ -11,6 +11,7 @@
 #include <mutex>
 #include <string>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "domain/units/instant.hpp"
@@ -101,6 +102,13 @@ public:
     /// Idempotent. After it returns, no completion fires until `run()` again.
     void stop() override;
 
+    // Hosted mode (ADR-0020). The host owns the sleep; these only turn.
+    void attach() override;
+    void runOnce(domain::Duration budget) override;
+    [[nodiscard]] int waitHandle() const noexcept override;
+    [[nodiscard]] std::optional<domain::Instant> nextDeadline() const noexcept override;
+    void shutdown() override;
+
 protected:
     /// Wait for readiness. Returns true when at least one op made progress.
     /// Implemented by the backend; the timeout bounds an idle loop. The wait
@@ -120,6 +128,12 @@ protected:
     /// Drop any interest the backend still holds for `op`. Called before the op
     /// is released, so a queued readiness event cannot land on freed memory.
     virtual void forget(PendingOp &op);
+
+    /// End-of-turn hook. A backend whose readiness is queued rather than
+    /// registered (io_uring) rearms and flushes here, so the wakeup is still
+    /// armed when the host comes back from its own sleep. The default is the
+    /// registered-interest backends, for which there is nothing to do.
+    virtual void turnEnded();
 
     void countCompletion(const IoError *failure) noexcept;
 

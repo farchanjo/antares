@@ -265,8 +265,8 @@ add_custom_target(check
     USES_TERMINAL)
 # The lint target is not a dependency: the CI runs it as its own job, and
 # running it twice per pipeline buys nothing.
-add_dependencies(check antares_io_conformance antares_http_conformance
-                 antares_k8s_conformance)
+add_dependencies(check antares_io_conformance antares_io_hosted
+                 antares_http_conformance antares_k8s_conformance)
 
 # Presets are read from the source directory, so every command starts there.
 set(ANTARES_CMAKE_RUN ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} ${CMAKE_COMMAND})
@@ -335,6 +335,31 @@ if(APPLE)
     add_custom_command(TARGET antares_io_conformance POST_BUILD
         COMMAND dsymutil $<TARGET_FILE:antares_io_conformance>
         COMMENT "dsymutil antares_io_conformance"
+        VERBATIM)
+endif()
+
+# The hosted-mode suite: the same port driven by a `poll()` host instead of
+# `run()`. It is the Linux gate for the mode ADR-0020 decides, so a Darwin-only
+# assumption surfaces here (ADR-0020, feature 007).
+add_executable(antares_io_hosted tests/io/hosted.cpp)
+target_link_libraries(antares_io_hosted PRIVATE antares_io)
+target_include_directories(antares_io_hosted PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(antares_io_hosted PRIVATE PkgConfig::LIBURING)
+endif()
+if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
+    if(APPLE)
+        target_link_options(antares_io_hosted PRIVATE
+            "LINKER:-force_load,$<TARGET_FILE:mimalloc-static>")
+    else()
+        target_link_libraries(antares_io_hosted PRIVATE mimalloc-static)
+    endif()
+endif()
+set_target_properties(antares_io_hosted PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+if(APPLE)
+    add_custom_command(TARGET antares_io_hosted POST_BUILD
+        COMMAND dsymutil $<TARGET_FILE:antares_io_hosted>
+        COMMENT "dsymutil antares_io_hosted"
         VERBATIM)
 endif()
 
@@ -534,6 +559,35 @@ foreach(case IN LISTS ANTARES_IO_CASES)
         set_tests_properties("uring/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=io_uring" TIMEOUT 30)
         add_test(NAME "epoll/${case}" COMMAND antares_io_conformance "${case}")
         set_tests_properties("epoll/${case}" PROPERTIES ENVIRONMENT "ANTARES_IO_BACKEND=epoll" TIMEOUT 30)
+    endif()
+endforeach()
+
+set(ANTARES_IO_HOSTED_CASES
+    turn-runs-on-host-thread
+    post-waits-for-the-host
+    post-wakes-the-handle
+    next-deadline-tracks-timers
+    turn-honours-its-budget
+    stop-from-callback-does-not-deadlock
+    no-completion-starts-after-stop
+    shutdown-settles-pending
+    wait-handle-is-pollable)
+
+foreach(case IN LISTS ANTARES_IO_HOSTED_CASES)
+    add_test(NAME "hosted-poll/${case}" COMMAND antares_io_hosted "${case}")
+    set_tests_properties("hosted-poll/${case}" PROPERTIES
+        ENVIRONMENT "ANTARES_IO_BACKEND=poll" TIMEOUT 30)
+    if(APPLE)
+        add_test(NAME "hosted-kqueue/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-kqueue/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=kqueue" TIMEOUT 30)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME "hosted-uring/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-uring/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=io_uring" TIMEOUT 30)
+        add_test(NAME "hosted-epoll/${case}" COMMAND antares_io_hosted "${case}")
+        set_tests_properties("hosted-epoll/${case}" PROPERTIES
+            ENVIRONMENT "ANTARES_IO_BACKEND=epoll" TIMEOUT 30)
     endif()
 endforeach()
 

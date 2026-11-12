@@ -542,6 +542,85 @@ void EngineBase::stop()
     }
 }
 
+void EngineBase::attach()
+{
+    // The host is the loop from here on. The thread is recorded before anything
+    // can post, so an early post is queued for this thread instead of drained on
+    // the poster; `loopRunning_` is what `post()` decides on. `stopped_` is
+    // cleared because the host is starting a fresh loop.
+    loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+    loopStarted_.store(true, std::memory_order_release);
+    stopped_.store(false, std::memory_order_release);
+    loopRunning_.store(true, std::memory_order_release);
+    armWakeup();
+    // The host may be about to sleep on an idle engine, and the port of the
+    // wakeup is the only signal every backend shares: it must be readable now.
+    poke();
+}
+
+void EngineBase::runOnce(domain::Duration budget)
+{
+    // A host is allowed to turn without `attach()`; the first turn then adopts
+    // the thread the same way, so `isEngineThread()` is true inside a callback.
+    if (loopThread_.load(std::memory_order_relaxed) == std::thread::id{}) {
+        loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+        loopRunning_.store(true, std::memory_order_release);
+    }
+
+    drainWakeup();
+    drainUntil(std::chrono::steady_clock::now() + budget);
+    fireDueTimers();
+
+    if (stopped_.load(std::memory_order_acquire)) {
+        // The turn that saw the stop is the last one that drains: `stop()`
+        // posted the cancellation, so clearing the flag here is what lets it
+        // return. Nothing is left to rearm for.
+        drainUntil(std::chrono::steady_clock::time_point::max());
+        loopRunning_.store(false, std::memory_order_release);
+        return;
+    }
+
+    // Zero and not blocking: the host owns the sleep, and a turn that slept
+    // would take the window with it.
+    (void)waitReady(0);
+    turnEnded();
+}
+
+int EngineBase::waitHandle() const noexcept
+{
+    // The wakeup pipe is the one signal every backend shares, so it is the
+    // default. A backend with an aggregate descriptor overrides this.
+    return wakeReader();
+}
+
+std::optional<domain::Instant> EngineBase::nextDeadline() const noexcept
+{
+    const std::lock_guard<std::mutex> guard{timerMutex_};
+    if (timers_.empty()) {
+        return std::nullopt;
+    }
+
+    const auto nearest = std::min_element(
+        timers_.begin(), timers_.end(),
+        [](const Timer &left, const Timer &right) { return left.due < right.due; });
+    return nearest->due;
+}
+
+void EngineBase::turnEnded() {}
+
+void EngineBase::shutdown()
+{
+    // Hosted teardown runs on the loop thread, so there is no loop to wait for
+    // and no turn left to post into: the pending ops are settled here, then the
+    // queue is drained by hand so a task posted before the stop still runs.
+    cancelAll();
+    stop();
+    drainUntil(std::chrono::steady_clock::time_point::max());
+    loopRunning_.store(false, std::memory_order_release);
+    loopThread_.store(std::thread::id{}, std::memory_order_relaxed);
+    loopStarted_.store(false, std::memory_order_release);
+}
+
 void EngineBase::fireDueTimers()
 {
     const std::lock_guard<std::mutex> guard{timerMutex_};

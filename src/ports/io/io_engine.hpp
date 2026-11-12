@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <optional>
 
 #include <sys/socket.h>
 #include <string>
@@ -15,6 +16,7 @@
 
 #include "domain/units/bytes.hpp"
 #include "domain/units/duration.hpp"
+#include "domain/units/instant.hpp"
 #include "ports/io/io_error.hpp"
 #include "ports/io/io_handle.hpp"
 #include "ports/io/io_stats.hpp"
@@ -114,6 +116,34 @@ public:
 
     /// Stop the loop; no callback runs after this returns.
     virtual void stop() = 0;
+
+    // Hosted mode (ADR-0020). The engine stops owning a thread and becomes a
+    // source inside someone else's loop: the host watches `waitHandle()`, sleeps
+    // until it is ready or `nextDeadline()` falls due, and calls `runOnce()`.
+    // A hosted engine is still one loop per instance — the host thread only ever
+    // turns it, and a completion still runs on that thread.
+
+    /// Adopt the calling thread as the loop thread and arm the wakeup. No turn
+    /// runs here, so the host is in charge from the first `runOnce()` on.
+    virtual void attach() = 0;
+
+    /// One non-blocking turn: drain the wakeup, run due tasks within `budget`,
+    /// fire due timers, then poll once with a zero timeout. Never sleeps.
+    virtual void runOnce(domain::Duration budget) = 0;
+
+    /// The descriptor the host watches. Readable means "a turn is due". A
+    /// backend without an aggregate descriptor returns the wakeup pipe, which is
+    /// the one signal every backend shares.
+    [[nodiscard]] virtual int waitHandle() const noexcept = 0;
+
+    /// The nearest timer deadline, or nothing when no timer is armed. The host
+    /// arms its own timer on it; without this, retry and every watchdog would
+    /// only fire on an unrelated wakeup.
+    [[nodiscard]] virtual std::optional<domain::Instant> nextDeadline() const noexcept = 0;
+
+    /// Hosted teardown: settle every pending op as `cancelled`, then stop. Runs
+    /// on the loop thread and does not wait for a loop that is not `run()`ing.
+    virtual void shutdown() = 0;
 };
 
 } // namespace antares::ports::io

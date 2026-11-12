@@ -37,6 +37,8 @@ std::string_view KqueueEngine::name() const noexcept { return "kqueue"; }
 
 bool KqueueEngine::ready() const noexcept { return queue_ >= 0; }
 
+int KqueueEngine::waitHandle() const noexcept { return queue_; }
+
 bool KqueueEngine::arm(PendingOp &op, std::int16_t filter)
 {
     if (queue_ < 0) {
