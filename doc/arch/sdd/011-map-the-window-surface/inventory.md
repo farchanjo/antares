@@ -604,3 +604,33 @@ beside it.
 The pane is the product's centre of gravity: it is where an object is read
 (Properties), watched (Metrics) and rolled (Deploy Revisions). The list is a way to
 choose one. A port that renders only the list has the smaller half.
+
+## Preferences, in full
+
+A tab of its own, titled `Preferences`. A left rail of sub-pages in the order
+`App`, `Proxy`, `Kubernetes`, `Editor`, `Tables`, `Terminal`, `Integrations`,
+`Telemetry`, `Lens Teamwork`, `External Tools`; the selected one is filled.
+
+### External Tools
+
+- Title `External Tools`.
+- `AI TOOL` followed by a `PREMIUM` pill.
+- Description: `The AI tool Lens launches to eg. "Ask AI".`
+- Right-aligned `2 of 5 detected on your system` and a `Refresh` link.
+- Rows, icon and name then description, with the state at the right edge:
+
+| Name | Description | State |
+|---|---|---|
+| Claude Code | The coding assistant by Anthropic | ✓ `INSTALLED` |
+| GitHub Copilot CLI | `CLI command "copilot" not found in PATH, click "install" for instructions.` | `Install` |
+| Gemini CLI | the same, for `gemini` | `Install` |
+| Codex CLI | the same, for `codex` | `Install` |
+| OpenCode | The coding assistant by SST | ✓ `INSTALLED` |
+| Custom | Runs your own configured command | `CUSTOM` |
+| No AI tool | Lens does not launch an AI tool. | radio, selected |
+
+- Footer: `Open AI tools in an external terminal`, a toggle, and the line `Launch
+  the selected AI tool in a new terminal window instead of a Lens terminal tab.`
+
+`INSTALLED` carries a green tick. A row is a radio group: choosing one sets the
+launcher.
