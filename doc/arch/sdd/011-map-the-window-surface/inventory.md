@@ -653,3 +653,17 @@ cluster settings.`), `START-UP` (toggle off; `Automatically start Lens on login`
 `America/Sao_Paulo`).
 
 A toggle is a pill switch, green when on. A dropdown fills the content width.
+
+### Proxy
+
+`HTTP PROXY` — text field, placeholder `Type HTTP proxy url (example:
+http://proxy.acme.org:8080)`, description `Proxy is used only for non-cluster
+communication.`
+
+`LENS INTERNAL PROXY` — toggle on. `Bypass Lens internal KubeApi Proxy` / `This
+will make commands like kubectl and helm skip Lens internal KubeApi proxy.`
+
+`CERTIFICATE TRUST` — toggle on. `Allow untrusted Certificate Authorities` / `This
+will make Lens to trust ANY certificate authority without any validations. Needed
+with some corporate proxies that do certificate re-writing. Does not affect
+cluster communications!`
