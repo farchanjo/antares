@@ -96,6 +96,61 @@ Three findings, in severity order:
 - **NFR-003** Scrolling a five-thousand-object namespace holds 60 fps.
 - **NFR-004** No control is reachable by mouse only.
 
+## Layout Rules
+
+Taken from the Qt layout documentation
+(`https://doc.qt.io/qt-6/layout.html`), not invented here.
+
+- **LR-001** Every child sits in a `QLayout`; nothing is positioned by hand. A
+  layout owns positioning, default size, minimum size and resize, and the
+  reparenting that follows (Tips for Using Layouts).
+- **LR-002** The list is the only `Expanding` widget. Everything else is
+  `Preferred` or `Fixed`, so slack goes to the rows and never to a toolbar.
+- **LR-003** The minimum window size is derived from the layout, not set by hand:
+  the controls' `minimumSizeHint` plus margins. The window may not shrink below
+  what the layout needs (Adding Widgets to a Layout, step 4).
+- **LR-004** A custom widget with no children reimplements `sizeHint` and
+  `minimumSizeHint` and calls `updateGeometry` when either changes (Custom
+  Widgets in Layouts).
+- **LR-005** Nesting stops at three levels. A fourth is extracted into a widget
+  (D-05 nesting depth).
+- **LR-006** A label that wraps sets `heightForWidth` on its size policy and
+  reimplements `heightForWidth`, or the layout gives it one line and clips
+  (Layout Issues — rich text and FreeResize).
+- **LR-007** Spacing and margins come from the style, never from a literal, so a
+  platform that wants tighter spacing gets it.
+
+## Internationalization Rules
+
+Taken from the Qt internationalization documentation
+(`https://doc.qt.io/qt-6/internationalization.html`) and the source-translation
+page, not invented here.
+
+- **I18N-001** Every user-visible string goes through `tr()`. A literal that
+  reaches a widget is a defect.
+- **I18N-002** Sources are UTF-8 and carry no `CODE` pragma; the string is
+  written as text, not as an escape sequence.
+- **I18N-003** Translations live in `translations/antares_<locale>.ts`, one file
+  per locale, and are built by `qt_add_translations`. `.ts` files are committed;
+  `.qm` files are not (Commit no artifacts).
+- **I18N-004** At startup the app installs the catalogue for the system locale,
+  falling back to the source locale when none matches. Installing a catalogue is
+  not an error path — a missing one is normal.
+- **I18N-005** A plural uses `tr(..., n)` with the `%n` placeholder, never a
+  hand-built `n == 1 ?`.
+- **I18N-006** A translatable string names its context; a string shared by two
+  widgets gets two contexts when the translations could differ.
+- **I18N-007** Widths are not tuned to English. A control sizes to its
+  `sizeHint` and the layout absorbs the difference; German is the reference for
+  length, Japanese for height.
+- **I18N-008** Numbers, dates and durations format through `QLocale`, not
+  `printf`. The age column is the first case.
+- **I18N-009** Right-to-left is a layout concern, not a string one: no
+  `left`/`right` in a stylesheet where `start`/`end` exists, and the row order
+  follows the layout direction.
+- **I18N-010** `lupdate` runs over `src/adapters/ui` in the `check` target, so a
+  new `tr()` with no catalogue entry fails the build.
+
 ## Observability
 
 Signals, per the strategy in `doc/arch/observability/observability.md`:

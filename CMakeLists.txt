@@ -34,10 +34,16 @@ add_link_options(-stdlib=libc++)
 set(FETCHCONTENT_BASE_DIR "$ENV{HOME}/.cache/antares/deps" CACHE PATH "")
 
 # Qt is optional while the tree is empty: the presets must configure without it.
-find_package(Qt6 QUIET COMPONENTS Core Widgets)
+# `LinguistTools` is optional: a Qt without it only loses the catalogue build, and
+# naming it as a plain component would flip `Qt6_FOUND` off and take the toolkit
+# down with it.
+find_package(Qt6 QUIET COMPONENTS Core Widgets OPTIONAL_COMPONENTS LinguistTools)
 
 if(Qt6_FOUND)
-    qt_standard_project_setup()
+    # `I18N_TRANSLATED_LANGUAGES` is what makes the build extract `tr()` strings
+    # and compile the catalogues into the binary (I18N-003). The `.qm` output is a
+    # build artifact and stays out of the tree.
+    qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES pt_BR)
     message(STATUS "antares: Qt ${Qt6_VERSION} found")
 else()
     message(STATUS "antares: Qt6 not found — headers-only configure")
@@ -451,6 +457,9 @@ endif()
 if(Qt6_FOUND)
     # The live window binary. Without the toolkit the tree still builds.
     add_executable(antares_app src/adapters/ui/main.cpp)
+    if(TARGET Qt6::lupdate)
+        qt_add_translations(antares_app TS_FILES translations/antares_pt_BR.ts)
+    endif()
     target_link_libraries(antares_app PRIVATE antares_ui)
     set_target_properties(antares_app PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
     if(ANTARES_ALLOCATOR STREQUAL "mimalloc")

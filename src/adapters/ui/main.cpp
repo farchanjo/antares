@@ -2,6 +2,9 @@
 #include <string_view>
 
 #include <QApplication>
+#include <QLibraryInfo>
+#include <QLocale>
+#include <QTranslator>
 
 #include "adapters/ui/application.hpp"
 
@@ -11,6 +14,14 @@
 int main(int argc, char **argv)
 {
     QApplication app{argc, argv};
+
+    // The catalogue for the system locale, when one ships. A missing catalogue is
+    // normal and falls back to the source strings (I18N-004).
+    QTranslator translator;
+    if (translator.load(QLocale{}, QStringLiteral("antares"), QStringLiteral("_"),
+                        QStringLiteral(":/i18n"))) {
+        QApplication::installTranslator(&translator);
+    }
     QApplication::setApplicationName(QStringLiteral("antares"));
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
 

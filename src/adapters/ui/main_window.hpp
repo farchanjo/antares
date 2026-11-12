@@ -3,18 +3,24 @@
 #include <QMainWindow>
 #include <QString>
 
+class QComboBox;
 class QLabel;
+class QLineEdit;
 class QListView;
+class QToolBar;
 
 namespace antares::adapters::ui {
 
 class QtListModel;
 
-/// The only widget this feature owns (scope of 010).
+/// The window: a scope bar, the list, a status line.
 ///
-/// A list, a status line and a title. Feature 009 replaces the list's
-/// configuration with the batched layout it specifies; the window itself stays
-/// the same, which is why the message is passed in rather than built here.
+/// Every child sits in a layout (LR-001) and only the list expands (LR-002), so
+/// the rows take the slack at any window size and the controls keep their
+/// height. The minimum comes from the layout, not from a literal (LR-003).
+///
+/// Every visible string goes through `tr()` (I18N-001); the catalogue is
+/// installed by the application before this window exists.
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 
@@ -28,7 +34,18 @@ public:
     /// The status line, so a case can assert the message and not just the widget.
     [[nodiscard]] QLabel *status() const noexcept;
 
+    /// The namespace selector and the filter box, likewise for the cases.
+    [[nodiscard]] QComboBox *namespaceBox() const noexcept;
+    [[nodiscard]] QLineEdit *filterBox() const noexcept;
+
 private:
+    void buildBar();
+
+    QtListModel &model_;
+    QToolBar *bar_ = nullptr;
+    QComboBox *namespaceBox_ = nullptr;
+    QLineEdit *filterBox_ = nullptr;
+    QListView *view_ = nullptr;
     QLabel *status_ = nullptr;
 };
 
