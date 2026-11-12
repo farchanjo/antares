@@ -107,18 +107,21 @@ void QtListModel::rowsReset()
 {
     beginResetModel();
     endResetModel();
+    Q_EMIT rowsChanged();
 }
 
 void QtListModel::rowsInserted(std::uint32_t first, std::uint32_t last)
 {
     beginInsertRows(QModelIndex(), static_cast<int>(first), static_cast<int>(last));
     endInsertRows();
+    Q_EMIT rowsChanged();
 }
 
 void QtListModel::rowsRemoved(std::uint32_t first, std::uint32_t last)
 {
     beginRemoveRows(QModelIndex(), static_cast<int>(first), static_cast<int>(last));
     endRemoveRows();
+    Q_EMIT rowsChanged();
 }
 
 void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,

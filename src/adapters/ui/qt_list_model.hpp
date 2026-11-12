@@ -110,6 +110,10 @@ signals:
     /// against this libc++ tree.
     void ticksChanged();
 
+    /// The row count moved. Emitted beside every insert, remove and reset, so a
+    /// reader that only wants the number never touches the model's own signals.
+    void rowsChanged();
+
 private:
     std::unique_ptr<ResourceListModel> model_;
     Family family_ = Family::pods;
