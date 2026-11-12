@@ -70,6 +70,29 @@ constexpr int PAINT_LABEL_HEIGHT = 120;
 /// peer arms this.
 QElapsedTimer *wakeWatch = nullptr;
 long long wakeLatencyUs = -1;
+const char *phaseName = "none";
+
+#if defined(__APPLE__)
+id<NSObject> processActivity = nil;
+
+/// Hold or release the process-wide activity assertion. Everything except FR-007
+/// holds one: without it macOS defers the phase timers themselves once the window
+/// is occluded, which stalls the run instead of measuring it.
+void setActivity(bool held)
+{
+    if (held && processActivity == nil) {
+        processActivity = [[NSProcessInfo processInfo]
+            beginActivityWithOptions:NSActivityUserInitiated
+                              reason:@"hosted-loop spike"];
+    }
+    if (!held && processActivity != nil) {
+        [[NSProcessInfo processInfo] endActivity:processActivity];
+        processActivity = nil;
+    }
+}
+#else
+void setActivity(bool) {}
+#endif
 
 /// A label that counts its own paints. A painted frame is the measurable form of
 /// "the window still runs".
@@ -190,6 +213,10 @@ private:
             ++overruns_;
         }
 
+        if (turnsUs_.size() % 5000 == 0) {
+            std::fprintf(stderr, "DBG phase=%s turns=%zu notifier=%ld deadline=%ld recovery=%ld\n",
+                         phaseName, turnsUs_.size(), fromNotifier_, fromDeadline_, fromRecovery_);
+        }
         armDeadline();
     }
 
@@ -354,6 +381,7 @@ void expect(bool condition, const char *what)
 /// Run `span`, pumping the peers every millisecond, then print the turn stats.
 void runFor(Harness &host, std::chrono::milliseconds span, bool saturate)
 {
+    phaseName = saturate ? "saturated" : "idle";
     host.setStopFlag(&stopFlag);
     stopFlag = false;
 
@@ -604,6 +632,9 @@ void fr006(Harness &host)
 void fr007(Harness &host)
 {
     std::printf("FR-007 App Nap does not stall the loop\n");
+    // The one FR without the process-wide assertion: the point is what occlusion
+    // does on its own.
+    setActivity(false);
     std::vector<double> intervals;
 
     const auto measure = [&host, &intervals](std::chrono::milliseconds span,
@@ -662,6 +693,8 @@ void fr007(Harness &host)
     measure(std::chrono::milliseconds{60000}, true);
     const double withWorst = percentile(intervals, 1.0);
     const double withP99 = percentile(intervals, 0.99);
+
+    setActivity(true);
 
     result("FR-007", "occluded_p99_ms=" + std::to_string(withoutP99) + " occluded_max_ms=" +
                          std::to_string(withoutWorst) + " activity_p99_ms=" +
@@ -726,6 +759,7 @@ int main(int argc, char **argv)
     // gets by double-clicking.
     [NSApplication sharedApplication].activationPolicy = NSApplicationActivationPolicyRegular;
     [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
+    setActivity(true);
     window.raise();
     window.activateWindow();
 #endif
