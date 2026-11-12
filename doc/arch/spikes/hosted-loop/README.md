@@ -5,17 +5,22 @@ Nothing here is product code; it exists to be measured once and then left alone.
 
 ## Build
 
-By hand, against the tree already configured for `dev`. `QT_QPA_PLATFORM=offscreen`
-lets it run over SSH with no display attached.
+By hand, against the tree already configured for `dev`. The Qt headers live in
+the framework bundles of the Homebrew prefix, which is why they are spelled out:
 
 ```sh
 O=$(brew --prefix openssl@3)
 clang++ -std=c++26 -stdlib=libc++ -O2 -Isrc -I"$O/include" \
-    $(pkg-config --cflags Qt6Widgets) \
+    -I/opt/homebrew/lib/QtWidgets.framework/Headers \
+    -I/opt/homebrew/lib/QtGui.framework/Headers \
+    -I/opt/homebrew/lib/QtCore.framework/Headers -F/opt/homebrew/lib \
     -x objective-c++ doc/arch/spikes/hosted-loop/main.cpp -x none build/dev/libantares_io.a \
-    -F/opt/homebrew/lib -framework QtCore -framework QtGui -framework QtWidgets \
+    -framework QtWidgets -framework QtGui -framework QtCore \
     -framework AppKit -framework Foundation -L"$O/lib" -lssl -lcrypto -o /tmp/spike
 ```
+
+No `QT_QPA_PLATFORM`: the run needs the real Cocoa platform, because a nested
+tracking loop (FR-004) and App Nap (FR-007) only exist there.
 
 `-x objective-c++` covers FR-007 only, which needs `NSProcessInfo beginActivity`.
 `-x none` before the archive is what stops the language flag from being applied to
@@ -24,10 +29,14 @@ it as well.
 ## Run
 
 ```sh
-QT_QPA_PLATFORM=offscreen /tmp/spike all
+caffeinate -dimsu /tmp/spike fr-001     # one FR
+caffeinate -dimsu /tmp/spike all        # every FR, ~4 minutes
 ```
 
-One `RESULT` line per measurement. Exit 0 means every threshold in the spec held.
+One `RESULT` line per measurement on stdout, `PASS`/`FAIL` per threshold. Exit 0
+means every threshold in the spec held. Run one FR per process: the numbers above
+were taken that way, and a single `all` run is the case that can stall (see the
+last paragraph).
 
 ## Measured on this host
 
