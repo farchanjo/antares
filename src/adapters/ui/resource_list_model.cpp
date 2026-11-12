@@ -183,6 +183,16 @@ void ResourceListModel::onPage(PageOutcome outcome)
     wakeup_.wake();
 }
 
+void ResourceListModel::observe(const domain::k8s::ChangeSet &changes)
+{
+    queue_.postChanges(changes);
+    if (std::this_thread::get_id() == owner_) {
+        drain();
+        return;
+    }
+    wakeup_.wake();
+}
+
 void ResourceListModel::settlePage(PageOutcome outcome)
 {
     fetching_ = false;

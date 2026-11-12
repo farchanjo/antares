@@ -102,6 +102,8 @@ bool QtListModel::canFetchMore(const QModelIndex &parent) const
     return model_->canFetchMore();
 }
 
+void QtListModel::observe(const domain::k8s::ChangeSet &changes) { model_->observe(changes); }
+
 void QtListModel::fetchMore(const QModelIndex &parent)
 {
     if (parent.isValid()) {

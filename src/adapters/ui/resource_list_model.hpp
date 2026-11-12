@@ -86,6 +86,10 @@ public:
     /// the only one under which the set's indices stay valid while it is replayed.
     void apply(const domain::k8s::ChangeSet &changes);
 
+    /// Take a change set the store published. The store calls this on whatever
+    /// thread produced the batch, so it is queued and hopped like a page.
+    void observe(const domain::k8s::ChangeSet &changes);
+
     /// Queue a batch produced on another thread and wake the model's thread.
     void applyLater(domain::k8s::ChangeSet changes);
 

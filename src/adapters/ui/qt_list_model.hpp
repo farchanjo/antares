@@ -44,6 +44,9 @@ public:
                 ports::log::Logger *logger = nullptr, QObject *parent = nullptr);
     ~QtListModel() override;
 
+    /// Forward a store batch to the model below.
+    void observe(const domain::k8s::ChangeSet &changes);
+
     // No default arguments here: the base declares them and re-specifying a
     // default on an override is what `google-default-arguments` refuses.
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;

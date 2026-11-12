@@ -232,6 +232,10 @@ std::expected<void, StartupError> Application::build()
     if (model_->canFetchMore({})) {
         model_->fetchMore({});
     }
+    // The store publishes every batch it applies; the model is the only reader,
+    // so the two are wired here and nowhere else.
+    store_->setListener([this](const domain::k8s::ChangeSet &changes) { model_->observe(changes); });
+
     // The window owns no loader: the lists are read once here and handed over.
     QStringList contexts;
     QStringList namespaces;
