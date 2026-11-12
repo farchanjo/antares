@@ -207,7 +207,7 @@ std::expected<void, StartupError> Application::build()
     // FR-001 continues in dependency order: store, model, window. The window
     // takes both by reference, so it must come last.
     store_ = std::make_unique<application::k8s::ObjectStore>();
-    model_ = std::make_unique<ResourceModel>(*store_);
+    model_ = std::make_unique<ResourceModel>(*store_, scope_);
     window_ = std::make_unique<MainWindow>(*model_, context, message);
     if (!window_) {
         destroy();

@@ -100,6 +100,8 @@ private:
     std::shared_ptr<ports::http::Client> client_;
     std::shared_ptr<k8s::HttpKubeClient> kube_;
     std::unique_ptr<application::k8s::ObjectStore> store_;
+    /// The scope the model shows. Built with the store, before the window.
+    domain::k8s::Scope scope_;
     std::unique_ptr<ResourceModel> model_;
     std::unique_ptr<MainWindow> window_;
 

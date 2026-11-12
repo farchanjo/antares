@@ -4,21 +4,17 @@
 
 namespace antares::adapters::ui {
 
-namespace {
-
-/// A row height, rendered without allocating a locale-aware formatter: the
-/// column is diagnostics, not presentation.
-[[nodiscard]] QString ageText(domain::Duration age)
-{
-    return QString::number(age.count()) + QStringLiteral("s");
-}
-
-} // namespace
-
-ResourceModel::ResourceModel(application::k8s::ObjectStore &store, QObject *parent)
+ResourceModel::ResourceModel(application::k8s::ObjectStore &store, domain::k8s::Scope scope,
+                             QObject *parent)
     : QAbstractListModel(parent)
     , store_(store)
+    , scope_(std::move(scope))
 {
+}
+
+const application::k8s::StoreScope *ResourceModel::scopeRows() const
+{
+    return store_.find(scope_);
 }
 
 int ResourceModel::rowCount(const QModelIndex &parent) const
@@ -26,21 +22,25 @@ int ResourceModel::rowCount(const QModelIndex &parent) const
     if (parent.isValid()) {
         return 0;
     }
-    return static_cast<int>(store_.size());
+    const auto *rows = scopeRows();
+    return rows == nullptr ? 0 : static_cast<int>(rows->size());
 }
 
-QVariant ResourceModel::valueFor(const application::k8s::Entry &entry, int role)
+QVariant ResourceModel::valueFor(const domain::k8s::Entry &entry,
+                                 const domain::k8s::Scope &scope, int role)
 {
     switch (role) {
     case NameRole:
     case Qt::DisplayRole:
-        return QString::fromUtf8(entry.name.c_str());
+        return QString::fromUtf8(entry.identity.name.c_str());
     case NamespaceRole:
-        return QString::fromUtf8(entry.namespaceName.c_str());
+        return QString::fromUtf8(scope.namespaceName.text().c_str());
     case StatusRole:
-        return QString::fromUtf8(entry.status.c_str());
+        return QString::fromUtf8(entry.status.reason.c_str());
     case AgeRole:
-        return ageText(entry.age);
+        // The projection keeps the timestamp, not a duration: the age is a
+        // function of "now", and the model has no clock of its own.
+        return QString::fromUtf8(entry.creationTimestamp.c_str());
     default:
         return {};
     }
@@ -48,33 +48,25 @@ QVariant ResourceModel::valueFor(const application::k8s::Entry &entry, int role)
 
 QVariant ResourceModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 ||
-        static_cast<std::size_t>(index.row()) >= store_.size()) {
+    const auto *rows = scopeRows();
+    if (rows == nullptr || !index.isValid() || index.row() < 0 ||
+        static_cast<std::size_t>(index.row()) >= rows->size()) {
         return {};
     }
-    return valueFor(store_.at(static_cast<std::size_t>(index.row())), role);
+    return valueFor(rows->at(static_cast<std::size_t>(index.row())), scope_, role);
 }
 
 void ResourceModel::multiData(const QModelIndex &index, QModelRoleDataSpan roleData) const
 {
-    if (!index.isValid() || index.row() < 0 ||
-        static_cast<std::size_t>(index.row()) >= store_.size()) {
-        return;
-    }
-    const application::k8s::Entry &entry = store_.at(static_cast<std::size_t>(index.row()));
     for (QModelRoleData &slot : roleData) {
-        slot.setData(valueFor(entry, slot.role()));
+        slot.setData(data(index, slot.role()));
     }
 }
 
 QHash<int, QByteArray> ResourceModel::roleNames() const
 {
-    return {
-        {NameRole, QByteArrayLiteral("name")},
-        {NamespaceRole, QByteArrayLiteral("namespace")},
-        {StatusRole, QByteArrayLiteral("status")},
-        {AgeRole, QByteArrayLiteral("age")},
-    };
+    return {{NameRole, "name"}, {NamespaceRole, "namespaceName"}, {StatusRole, "status"},
+            {AgeRole, "age"}};
 }
 
 void ResourceModel::reload()
