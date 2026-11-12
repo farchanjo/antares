@@ -508,7 +508,7 @@ void MainWindow::buildStatus(const QString &message)
     statusBar()->addWidget(count_);
 
     QObject::connect(&model_, &QtListModel::ticksChanged, this, &MainWindow::refreshCount);
-    QObject::connect(&model_, &QAbstractItemModel::modelReset, this, &MainWindow::refreshCount);
+    QObject::connect(&model_, &QtListModel::rowsChanged, this, &MainWindow::refreshCount);
     refreshCount();
 
     status_ = new QLabel{message, this};
