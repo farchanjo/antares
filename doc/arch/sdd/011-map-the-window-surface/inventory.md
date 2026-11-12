@@ -344,3 +344,22 @@ status bar. It is the create action for the family.
 
 A compact duration: `3y198d`, `2y232d`, `685d`, `25d`, `53d`. Years and days are
 concatenated without a separator and without a space.
+
+## Menu bar
+
+The menu bar is the platform's: `Lens`, `File`, `Edit`, `View`, `Help`.
+
+`File`:
+
+| Item | Shortcut |
+|---|---|
+| About Lens | |
+| Check for Updates… | |
+| Preferences | ⌘, |
+| Services | submenu |
+| Hide Lens | ⌘H |
+| Hide Others | ⌥⌘H |
+| Show All | |
+| Quit | ⌘Q |
+
+The first two are the application menu's; `Preferences` carries ⌘,.
