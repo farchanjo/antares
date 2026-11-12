@@ -65,7 +65,8 @@ void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view con
                 event.entry = std::move(entry);
                 batch.push_back(std::move(event));
             }
-            (void)store_.apply(*shared, batch);
+            const auto applied = store_.apply(*shared, batch);
+            std::fprintf(stderr, "  [page] aplicado inseridos=%zu\n", applied.inserted.size());
 
             done(result->continueToken);
         }));
