@@ -111,6 +111,11 @@ void QtListModel::multiData(const QModelIndex &index, QModelRoleDataSpan span) c
     for (std::size_t at = 0; at < count; ++at) {
         span.data()[positions[at]].setData(QVariant{toQt(texts[at])});
     }
+    static int shown = 0;
+    if (shown < 4 && count > 0) {
+        std::fprintf(stderr, "  [multiData] count=%zu texto=[%s]\n", count, texts[0].c_str());
+        ++shown;
+    }
 }
 
 QHash<int, QByteArray> QtListModel::roleNames() const
