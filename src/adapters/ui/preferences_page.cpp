@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QListWidgetItem>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStackedWidget>
@@ -86,11 +87,12 @@ PreferencesPage::PreferencesPage(QWidget *parent)
         rail_->addItem(QString::fromUtf8(entry.label));
     }
 
-    QObject::connect(rail_, &QListWidget::currentRowChanged, pages_,
-                     &QStackedWidget::setCurrentIndex);
-    QObject::connect(rail_, &QListWidget::currentRowChanged, pages_, [this](int row) {
-        std::fprintf(stderr, "  [rail] linha=%d paginas=%d atual=%d\n", row, pages_->count(),
-                     pages_->currentIndex());
+    QObject::connect(rail_, &QListWidget::currentRowChanged, this, [this](int row) {
+        std::fprintf(stderr, "  [rail] linha=%d\n", row);
+        pages_->setCurrentIndex(row);
+    });
+    QObject::connect(rail_, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+        pages_->setCurrentIndex(rail_->row(item));
     });
     rail_->setCurrentRow(0);
     QTimer::singleShot(0, this, [this] {
