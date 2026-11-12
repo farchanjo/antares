@@ -338,6 +338,7 @@ QWidget *MainWindow::buildTablePage()
         if (columns[static_cast<std::size_t>(index.column())] != RowRole::actions) {
             return;
         }
+        std::fprintf(stderr, "  [menu] col=%d linha=%d\n", index.column(), index.row());
         QMenu menu{this};
         const QString name = index.sibling(index.row(), 0).data().toString();
         menu.addAction(tr("Edit"), this, [this, name] { editObject(name); });
