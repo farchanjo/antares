@@ -39,9 +39,17 @@ produced elsewhere crosses by `QMetaObject::invokeMethod` with
 
 ### Test strategy
 
-The model is testable without a window: a `QApplication` in offscreen mode, an
-`ObjectStore` fixture, and assertions on the signals a `QAbstractItemModelSpy`
-captures. The fetch case drives `canFetchMore`/`fetchMore` directly.
+The model is testable without a window: an `ObjectStore` fixture, a recording
+sink, and assertions on the operations a view would receive. The fetch case drives
+`canFetchMore`/`fetchMore` directly.
+
+**No `QApplication`, and no Qt in the suite.** `Qt6Core` on the CI host is built
+against libstdc++ while this tree links libc++, so a `QString`-returning call is
+an undefined symbol; a widget test would not link. The model therefore speaks a
+plain `ModelSink`/`ModelWakeup` pair that mirrors `begin*`/`end*` and the queued
+invocation, and `adapters/ui/qt_list_model.*` is the only translation unit that
+includes Qt — behind `ANTARES_HAS_QT`, so a checkout without the toolkit still
+builds and still runs every case.
 
 ### Risks
 
@@ -51,6 +59,12 @@ captures. The fetch case drives `canFetchMore`/`fetchMore` directly.
   in a loop.
 - `multiData` has a default that falls back to `data`; overriding only `multiData`
   and forgetting `data` breaks delegates that call `data` directly.
+- The store publishes *after* it mutates, so the model cannot bracket a batch
+  itself. Every operation is stated with its indices instead of derived from
+  `rowCount`, which is what makes an already-applied batch safe.
+- A reorder is the one operation a `ChangeSet` cannot state. The model re-places
+  the row in the store (`ObjectStore::moveToTail`) and then emits the move, so the
+  view row index still equals the store row index.
 
 ## Constitution
 

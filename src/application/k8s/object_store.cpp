@@ -293,8 +293,17 @@ ChangeSet ObjectStore::apply(const Scope &scope, std::span<const domain::k8s::Wa
     return changes;
 }
 
-std::expected<std::uint64_t, StoreError> ObjectStore::beginRelist(const Scope &scope)
+bool ObjectStore::moveToTail(const Scope &scope, std::size_t row)
 {
+    StoreScope *target = find(scope);
+    if (target == nullptr || row + 1 >= target->size()) {
+        return false;
+    }
+    target->moveToTail(row);
+    return true;
+}
+
+std::expected<std::uint64_t, StoreError> ObjectStore::beginRelist(const Scope &scope){
     StoreScope *target = find(scope);
     if (target == nullptr) {
         return std::unexpected(StoreError::unknownScope);

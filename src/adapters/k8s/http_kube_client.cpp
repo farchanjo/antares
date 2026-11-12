@@ -164,6 +164,9 @@ HttpKubeClient::list(const domain::k8s::ApiPath &path, const domain::k8s::ListOp
     auto completion = [weak, done = std::move(done)](
                           std::expected<domain::http::Response, domain::http::HttpError> result) {
         const auto self = weak.lock();
+        if (self) {
+            ++self->stats_.pagesFetched;
+        }
         if (!result) {
             if (self) {
                 ++self->stats_.failed;

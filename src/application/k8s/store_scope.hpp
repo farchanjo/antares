@@ -58,6 +58,12 @@ public:
     /// Tombstone a live row.
     void erase(std::size_t row);
 
+    /// Move a live row to the tail, keeping its entry. The list model's half of
+    /// a reorder (FR-005 of 009): the store keeps arrival order, so a row whose
+    /// ordering key moved is re-placed rather than rewritten, and the index is
+    /// rebuilt to follow. O(n) — a reorder is rare next to an update.
+    void moveToTail(std::size_t row);
+
     /// Drop every tombstone and rebuild the index. Once per batch.
     void compact();
 

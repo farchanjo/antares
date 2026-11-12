@@ -36,6 +36,10 @@ struct KubeStats {
     /// most once per chunk (FR-005).
     std::uint64_t framesParsed = 0;
     std::uint64_t bufferCompactions = 0;
+    /// Pages a list completed, successful or not. A fetch loop is otherwise
+    /// invisible: `submitted` counts the call, this counts a page that landed,
+    /// so the two drifting apart names the loop.
+    std::uint64_t pagesFetched = 0;
 };
 
 /// A value that arrived from the server. `body` is the raw JSON so the caller

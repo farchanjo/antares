@@ -68,6 +68,15 @@ public:
     [[nodiscard]] domain::k8s::ChangeSet apply(const domain::k8s::Scope &scope,
                                                std::span<const domain::k8s::WatchEvent> batch);
 
+    /// Re-place a live row at the tail of its scope, keeping the entry (FR-005
+    /// of 009). The batch that carried the ordering-key change is already
+    /// applied and published, so this is the model's half of a reorder and the
+    /// index follows it. A `ChangeSet` alone does not reproduce a move, which is
+    /// why the replay case of feature 005 never asks for one.
+    ///
+    /// False when the scope or the row is gone, or the row is already last.
+    [[nodiscard]] bool moveToTail(const domain::k8s::Scope &scope, std::size_t row);
+
     /// Open a relist epoch (FR-007). Every page that follows is marked with it.
     [[nodiscard]] std::expected<std::uint64_t, domain::k8s::StoreError>
     beginRelist(const domain::k8s::Scope &scope);

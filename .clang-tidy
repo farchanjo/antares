@@ -27,6 +27,10 @@
 #   qt-ownership         a QObject is owned by its parent, so `new` lands in a
 #                        raw member by design and gsl::owner is not linked in
 #                        (cppcoreguidelines-owning-memory)
+#   qt-functor-ownership QMetaObject::invokeMethod takes ownership of the
+#                        functor it allocates and deletes it after the call; the
+#                        analyzer reports the `new` in qobjectdefs.h as a leak
+#                        (clang-analyzer-cplusplus.NewDeleteLeaks)
 Checks: >
   *,
   -fuchsia-*,
@@ -66,7 +70,8 @@ Checks: >
   -bugprone-exception-escape,
   -cppcoreguidelines-pro-type-const-cast,
   -concurrency-mt-unsafe,
-  -clang-analyzer-optin.cplusplus.VirtualCall
+  -clang-analyzer-optin.cplusplus.VirtualCall,
+  -clang-analyzer-cplusplus.NewDeleteLeaks
 
 WarningsAsErrors: '*'
 

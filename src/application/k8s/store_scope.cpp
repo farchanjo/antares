@@ -68,8 +68,28 @@ void StoreScope::erase(std::size_t row)
     --live_;
 }
 
-void StoreScope::compact()
+void StoreScope::moveToTail(std::size_t row)
 {
+    if (row + 1 >= rows_.size() || !rows_[row]) {
+        return;
+    }
+    // Push the slot first, then erase it under the same index: the vector may
+    // reallocate, so only indices are carried across the two statements.
+    rows_.push_back(std::move(rows_[row]));
+    rows_.erase(rows_.begin() + static_cast<std::ptrdiff_t>(row));
+
+    index_.clear();
+    index_.reserve(rows_.size());
+    for (std::size_t at = 0; at < rows_.size(); ++at) {
+        const std::optional<Entry> &slot = rows_[at];
+        if (!slot) {
+            continue;
+        }
+        index_.emplace(slot->uid(), at);
+    }
+}
+
+void StoreScope::compact(){
     std::erase_if(rows_, [](const std::optional<Entry> &row) { return !row.has_value(); });
     index_.clear();
     index_.reserve(rows_.size());

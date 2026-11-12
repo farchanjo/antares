@@ -49,22 +49,41 @@ target_include_directories(antares_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/s
 # The toolkit is not the core. Linking Qt into `antares_core` would let a domain
 # header include `<QObject>` and still build, so D-03 would hold on paper only.
 # Everything below `adapters/ui` links the core; only that adapter links this.
+# The window is absent without Qt6 and the tree still configures, builds and
+# tests the engine, HTTP and Kubernetes layers. That is what lets the Linux loop
+# run while the acceptance target (P-05) is the only one with a toolkit.
 #
-# Without Qt6 the tree still configures, builds and tests the engine, HTTP and
-# Kubernetes layers; the window is simply absent. That is what lets the Linux
-# loop run while the acceptance target (P-05) is the only one with a toolkit.
+# Two model files exist while 009 and 010 settle: `resource_model` is what the
+# window binds to, `resource_list_model` is the change-set applier the suite
+# drives without a widget. They converge later.
+set(ANTARES_UI_SOURCES
+    src/adapters/ui/resource_model.cpp
+    src/adapters/ui/change_queue.cpp
+    src/adapters/ui/page_error.cpp
+    src/adapters/ui/resource_list_model.cpp
+    src/adapters/ui/row_role.cpp
+    src/adapters/ui/row_text.cpp
+    src/adapters/ui/view_config.cpp
+    src/adapters/ui/qt_list_model.cpp
+)
+
 if(Qt6_FOUND)
-    add_library(antares_ui STATIC
-        src/application/k8s/object_store.cpp
-        src/adapters/ui/resource_model.cpp
+    list(APPEND ANTARES_UI_SOURCES
         src/adapters/ui/main_window.cpp
         src/adapters/ui/application.cpp)
-    target_link_libraries(antares_ui PUBLIC antares_k8s Qt6::Core Qt6::Widgets)
+endif()
+
+add_library(antares_ui STATIC ${ANTARES_UI_SOURCES})
+target_link_libraries(antares_ui PUBLIC antares_core antares_k8s)
+set_target_properties(antares_ui PROPERTIES AUTOUIC OFF AUTORCC OFF)
+
+if(Qt6_FOUND)
+    target_link_libraries(antares_ui PUBLIC Qt6::Core Qt6::Widgets)
+    target_compile_definitions(antares_ui PUBLIC ANTARES_HAS_QT=1)
     # Q_OBJECT on the model and the window needs the metaobject compiler.
-    set_target_properties(antares_ui PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+    set_target_properties(antares_ui PROPERTIES AUTOMOC ON)
 else()
-    add_library(antares_ui INTERFACE)
-    target_link_libraries(antares_ui INTERFACE antares_core)
+    set_target_properties(antares_ui PROPERTIES AUTOMOC OFF)
 endif()
 
 # Stable-header precompiled header, propagated to every consumer through the
@@ -278,6 +297,7 @@ add_custom_target(check
 # running it twice per pipeline buys nothing.
 add_dependencies(check antares_io_conformance antares_http_conformance
                  antares_k8s_conformance)
+# The UI suite needs the toolkit.
 if(Qt6_FOUND)
     add_dependencies(check antares_ui_conformance)
 endif()
@@ -336,7 +356,8 @@ if(Qt6_FOUND)
 
     add_executable(antares_ui_conformance tests/ui/conformance.cpp)
     target_link_libraries(antares_ui_conformance PRIVATE antares_ui)
-    target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+    target_include_directories(antares_ui_conformance PRIVATE ${CMAKE_SOURCE_DIR}/tests
+                                                              ${CMAKE_SOURCE_DIR}/tests/ui)
     set_target_properties(antares_ui_conformance PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
     if(ANTARES_ALLOCATOR STREQUAL "mimalloc")
         target_link_libraries(antares_ui_conformance PRIVATE mimalloc-static)
@@ -440,6 +461,36 @@ if(APPLE)
         VERBATIM)
 endif()
 
+set(ANTARES_UI_CASES
+    model-footprint-under-4k
+    multi-data-fills-span
+    status-text-falls-back
+    fetch-inserts-one-range
+    fetch-asks-the-limit
+    can-fetch-more-needs-a-token
+    change-set-applies-in-order
+    empty-mask-repaints-nothing
+    status-change-repaints-status
+    reorder-is-a-move
+    move-of-last-row-is-silent
+    view-config-batched-and-fixed
+    view-config-takes-saved-layout
+    uniform-flag-flips-on-varied-row
+    cross-thread-change-set-queues
+    fetch-failure-shows-retry-row
+    retry-does-not-loop
+    truncation-is-reported
+    role-index-matches-cue
+    roles-for-mask)
+
+foreach(case IN LISTS ANTARES_UI_CASES)
+    add_test(NAME "ui/${case}" COMMAND antares_ui_conformance "${case}")
+    # No display here: the offscreen plugin is what makes a QApplication start
+    # without one.
+    set_tests_properties("ui/${case}" PROPERTIES TIMEOUT 30
+                                                  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endforeach()
+
 # The live read-only smoke. Not a ctest entry: it needs a real cluster.
 add_executable(antares_k8s_live tools/k8s_live/main.cpp)
 target_link_libraries(antares_k8s_live PRIVATE antares_k8s)
@@ -499,7 +550,8 @@ set(ANTARES_K8S_CASES
     store-relist-reconciles
     store-relist-abandoned
     store-routes-events
-    store-metrics-bounded)
+    store-metrics-bounded
+    pages-fetched-counts)
 
 foreach(case IN LISTS ANTARES_K8S_CASES)
     add_test(NAME "k8s/${case}" COMMAND antares_k8s_conformance "${case}")
