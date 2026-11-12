@@ -1,6 +1,5 @@
 #include "adapters/ui/qt_list_model.hpp"
 
-#include <cstdio>
 
 #if defined(ANTARES_HAS_QT)
 
@@ -67,8 +66,6 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     }
     if (*wanted == RowRole::cpu || *wanted == RowRole::memory) {
         const auto named = model_->data(static_cast<std::uint32_t>(index.row()), RowRole::name);
-        std::fprintf(stderr, "  [busca] %s no mapa de %zu\n",
-                     named.value_or(std::string{}).c_str(), usage_.size());
         const auto found = usage_.find(named.value_or(std::string{}));
         if (found == usage_.end()) {
             return QVariant{toQt(std::string{})};
@@ -178,7 +175,6 @@ void QtListModel::setUsage(std::map<std::string, Usage> usage)
 {
     // The rows already carry the usage, so the table only marks the cells dirty:
     // they are repainted from the entry and nothing is looked up twice.
-    std::fprintf(stderr, "  [mapa] entradas=%zu\n", usage.size());
     usage_ = std::move(usage);
     if (rowCount(QModelIndex{}) > 0) {
         Q_EMIT QAbstractListModel::dataChanged(index(0, 0),
