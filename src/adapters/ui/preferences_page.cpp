@@ -1,8 +1,6 @@
 #include "adapters/ui/preferences_page.hpp"
 
 #include <QCheckBox>
-
-#include <cstdio>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -132,21 +130,16 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
     }
     sectionLayout->addLayout(row);
 
-    int hintVisible = 0;
     if (!description.isEmpty()) {
         // The description is a plain label with the default palette: a styled
         // one inherited nothing and painted invisible.
         auto *hint = new QLabel{description, section};
         hint->setWordWrap(true);
         sectionLayout->addWidget(hint);
-        hintVisible = 1;
     }
 
     section->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
     layout->addWidget(section);
-    std::fprintf(stderr, "  [sec] %s sec=%zu filho=%d hint=%d\n", qPrintable(title),
-                 static_cast<std::size_t>(sectionLayout->count()), section->isVisible(),
-                 hintVisible);
 }
 
 void PreferencesPage::buildApp(QWidget *page)
