@@ -386,3 +386,14 @@ context-sensitive — a focused table adds the clipboard items.
 `Command Palette` is the keyboard-first surface: every action is reachable by
 name without the tree. `Back` and `Forward` are the toolbar arrows, and `Reload`
 is the table refresh.
+
+`Help`: `Search`, `Welcome`, `Documentation`, `Release Notes`, then a separator,
+`Support`, `Export Support Logs`, `License`.
+
+`Export Support Logs` is the field-diagnostics action: it bundles the logs so a
+user can attach them. `License` shows the bundled open-source notices.
+
+## Menu bar, complete
+
+`Lens` (application menu: About, Check for Updates, Preferences ⌘,, Services,
+Hide ⌘H, Hide Others ⌥⌘H, Show All, Quit ⌘Q), `File`, `Edit`, `View`, `Help`.
