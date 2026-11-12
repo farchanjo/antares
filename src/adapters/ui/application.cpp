@@ -286,7 +286,8 @@ std::expected<void, StartupError> Application::build()
 
     std::fprintf(stderr, "  [build] show\n");
     window_->show();
-    std::fprintf(stderr, "  [build] mostrada\n");
+    std::fprintf(stderr, "  [build] mostrada tabela=%dx%d linhas=%d\n", window_->table()->width(),
+                 window_->table()->height(), window_->table()->model() == nullptr ? -1 : 0);
     built_ = true;
     return {};
 }
