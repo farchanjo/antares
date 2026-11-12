@@ -103,7 +103,6 @@ QWidget *PreferencesPage::buildPage(const QString &title)
     font.setPointSizeF(font.pointSizeF() * 1.4);
     heading->setFont(font);
     layout->addWidget(heading);
-    layout->addStretch(1);
     return page;
 }
 
@@ -152,8 +151,8 @@ void PreferencesPage::addSection(QWidget *page, const QString &title, const QStr
         sectionLayout->addWidget(control);
     }
 
-    // Before the trailing stretch, so the sections stack from the top.
-    layout->insertWidget(layout->count() - 1, section);
+    section->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+    layout->addWidget(section);
     std::fprintf(stderr, "  [sec] %s sec=%zu filho=%d hint=%d\n", qPrintable(title),
                  static_cast<std::size_t>(sectionLayout->count()), section->isVisible(),
                  hintVisible);
