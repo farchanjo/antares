@@ -662,7 +662,8 @@ void caseWsCloseCloses()
 /// would never notice the difference.
 [[nodiscard]] std::string upgradeResponse(std::string_view request,
                                           std::string_view subprotocol,
-                                          std::string_view after = {})
+                                          std::string_view after = {},
+                                          std::string_view extension = {})
 {
     const std::string head{request};
     // The client spells the header `Sec-WebSocket-Key`, so the search is folded
@@ -689,6 +690,9 @@ void caseWsCloseCloses()
                            antares::adapters::http::WebSocket::acceptFor(key) + "\r\n";
     if (!subprotocol.empty()) {
         response += "Sec-WebSocket-Protocol: " + std::string{subprotocol} + "\r\n";
+    }
+    if (!extension.empty()) {
+        response += "Sec-WebSocket-Extensions: " + std::string{extension} + "\r\n";
     }
     response += "\r\n";
     response += after;
@@ -1381,6 +1385,58 @@ void caseCacheNeedsValidator()
           "no validator, no conditional request");
 }
 
+/// permessage-deflate (RFC 7692): the extension is offered, and only an echo
+/// turns it on. A compressed frame comes back decoded.
+void caseWsPerMessageDeflate()
+{
+    // "hi" deflated raw, without the four-byte tail the protocol strips.
+    std::string plain = "antares deflate payload";
+    std::string coded(compressBound(plain.size()) + 8, '\0');
+    z_stream stream{};
+    (void)deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY);
+    stream.next_in = reinterpret_cast<Bytef *>(plain.data());
+    stream.avail_in = static_cast<uInt>(plain.size());
+    stream.next_out = reinterpret_cast<Bytef *>(coded.data());
+    stream.avail_out = static_cast<uInt>(coded.size());
+    (void)deflate(&stream, Z_SYNC_FLUSH);
+    coded.resize(stream.total_out >= 4 ? stream.total_out - 4 : stream.total_out);
+    (void)deflateEnd(&stream);
+
+    // One text frame with RSV1 set.
+    std::string wire;
+    wire.push_back(static_cast<char>(0x80 | 0x40 | 0x01));
+    wire.push_back(static_cast<char>(coded.size()));
+    wire += coded;
+
+    antares::test::LoopbackServer server{[wire](std::string_view request) {
+        return upgradeResponse(request, "", wire, "permessage-deflate");
+    }};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await opened;
+    antares::test::Await messaged;
+    std::string received;
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onMessage([&](const auto &frame) {
+                received = frame.payload;
+                messaged.signal();
+            });
+            socket->onClose([&](HttpError) { messaged.signal(); });
+            opened.signal();
+        },
+        [&](HttpError) { opened.signal(); });
+
+    check(opened.wait(std::chrono::seconds{5}), "the upgrade settled");
+    check(messaged.wait(std::chrono::seconds{5}), "the message settled");
+    check(received == plain, "the compressed frame came back decoded");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1442,6 +1498,7 @@ std::span<const Case> cases()
         {"cookie-path-boundary", caseCookiePathBoundary},
         {"cache-revalidates", caseCacheRevalidates},
         {"cache-needs-validator", caseCacheNeedsValidator},
+        {"ws-permessage-deflate", caseWsPerMessageDeflate},
         {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
         {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };

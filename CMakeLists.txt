@@ -477,6 +477,7 @@ set(ANTARES_HTTP_CASES
     cookie-path-boundary
     cache-revalidates
     cache-needs-validator
+    ws-permessage-deflate
     content-encoding-unknown-passes-through
     accept-encoding-is-offered)
 

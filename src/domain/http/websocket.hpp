@@ -19,6 +19,8 @@ struct WsFrame {
     WsOpcode opcode = WsOpcode::text;
     std::string payload;
     bool fin = true;
+    /// Set when the payload is permessage-deflate coded.
+    bool rsv1 = false;
 };
 
 /// Client-side framing (RFC 6455 §5). Pure: bytes in, frames out.
@@ -31,7 +33,12 @@ public:
 
     /// Encode one frame. `key` seeds the mask; a fixed key keeps tests stable.
     [[nodiscard]] static std::string encode(WsOpcode opcode, std::string_view payload,
-                                            std::uint32_t key, bool fin = true);
+                                            std::uint32_t key, bool fin = true,
+                                            bool rsv1 = false);
+
+    /// Whether a set RSV1 means permessage-deflate (RFC 7692) rather than a
+    /// protocol error. Only true once the extension was negotiated.
+    void allowDeflate(bool allowed) noexcept { deflateNegotiated_ = allowed; }
 
     /// Feed received bytes. Returns every frame completed so far.
     [[nodiscard]] std::expected<std::vector<WsFrame>, HttpError> feed(const std::byte *data,
@@ -45,6 +52,7 @@ private:
     std::string buffer_;
     Bytes ceiling_;
     bool closed_ = false;
+    bool deflateNegotiated_ = false;
     WsFrame last_;
 };
 

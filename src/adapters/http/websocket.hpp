@@ -42,6 +42,9 @@ public:
     [[nodiscard]] static bool verifyHandshake(std::string_view head, std::string_view key,
                                               std::string_view subprotocol);
 
+    /// Turn on permessage-deflate (RFC 7692) for both directions.
+    void enableDeflate();
+
     void onMessage(Message handler) { message_ = std::move(handler); }
     void onClose(Closed handler) { closed_ = std::move(handler); }
 
@@ -75,6 +78,8 @@ private:
     std::string pending_;
     domain::http::WsOpcode pendingOpcode_ = domain::http::WsOpcode::text;
     bool fragmented_ = false;
+    bool deflate_ = false;
+    bool pendingCompressed_ = false;
     Closed closed_;
     std::uint32_t mask_ = 0x1234ABCDU;
     std::uint64_t closeGeneration_ = 0;

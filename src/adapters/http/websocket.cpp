@@ -1,5 +1,7 @@
 #include "adapters/http/websocket.hpp"
 
+#include <zlib.h>
+
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -103,12 +105,93 @@ WebSocket::WebSocket(std::shared_ptr<Connection> connection, domain::Bytes ceili
 {
 }
 
+void WebSocket::enableDeflate()
+{
+    deflate_ = true;
+    codec_.allowDeflate(true);
+}
+
+namespace {
+
+/// Raw deflate, with the four-byte tail RFC 7692 §7.2.1 appends and the receiver
+/// strips. A message that grows is sent as it was, so the flag never lies.
+[[nodiscard]] bool deflateMessage(std::string_view plain, std::string &coded)
+{
+    z_stream stream{};
+    if (deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) !=
+        Z_OK) {
+        return false;
+    }
+
+    coded.assign(compressBound(plain.size()) + 8, '\0');
+    stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(plain.data()));
+    stream.avail_in = static_cast<uInt>(plain.size());
+    stream.next_out = reinterpret_cast<Bytef *>(coded.data());
+    stream.avail_out = static_cast<uInt>(coded.size());
+
+    const int status = deflate(&stream, Z_SYNC_FLUSH);
+    const std::size_t written = stream.total_out;
+    (void)deflateEnd(&stream);
+    if (status != Z_OK && status != Z_STREAM_END) {
+        return false;
+    }
+
+    coded.resize(written);
+    if (written < 4) {
+        return false;
+    }
+    // The tail is the empty stored block that marks the flush.
+    coded.resize(written - 4);
+    return true;
+}
+
+/// Undo `deflateMessage`. The tail is put back before inflating, which is what
+/// the peer's compressor left off.
+[[nodiscard]] std::expected<std::string, domain::http::HttpError>
+inflateMessage(std::string_view coded)
+{
+    z_stream stream{};
+    if (inflateInit2(&stream, -15) != Z_OK) {
+        return std::unexpected(domain::http::HttpError::protocol);
+    }
+
+    std::string input{coded};
+    input.append("\x00\x00\xff\xff", 4);
+
+    std::string out;
+    out.resize(input.size() * 4 + 64);
+    stream.next_in = reinterpret_cast<Bytef *>(input.data());
+    stream.avail_in = static_cast<uInt>(input.size());
+    stream.next_out = reinterpret_cast<Bytef *>(out.data());
+    stream.avail_out = static_cast<uInt>(out.size());
+
+    const int status = inflate(&stream, Z_SYNC_FLUSH);
+    const std::size_t written = stream.total_out;
+    (void)inflateEnd(&stream);
+    if (status != Z_OK && status != Z_STREAM_END && status != Z_BUF_ERROR) {
+        return std::unexpected(domain::http::HttpError::protocol);
+    }
+    out.resize(written);
+    return out;
+}
+
+} // namespace
+
 void WebSocket::send(domain::http::WsOpcode opcode, std::string_view payload)
 {
     if (!open_ || !connection_) {
         return;
     }
-    std::string frame = domain::http::WsCodec::encode(opcode, payload, mask_);
+
+    // Control frames are never compressed (§7.2.3).
+    const bool compress = deflate_ && opcode != domain::http::WsOpcode::ping &&
+                          opcode != domain::http::WsOpcode::pong &&
+                          opcode != domain::http::WsOpcode::close;
+    std::string coded;
+    const bool codedOk = compress && deflateMessage(payload, coded);
+
+    std::string frame = domain::http::WsCodec::encode(
+        opcode, codedOk ? std::string_view{coded} : payload, mask_, true, codedOk);
     mask_ = (mask_ * 1664525U) + 1013904223U;
     connection_->write(
         ports::io::Buffer{reinterpret_cast<const std::byte *>(frame.data()),
@@ -209,6 +292,14 @@ void WebSocket::receive(const std::byte *data, std::size_t length)
             whole.opcode = pendingOpcode_;
             whole.payload = std::move(pending_);
             pending_.clear();
+            if (pendingCompressed_) {
+                auto plain = inflateMessage(whole.payload);
+                if (!plain) {
+                    finish(domain::http::HttpError::protocol);
+                    return;
+                }
+                whole.payload = std::move(*plain);
+            }
             if (message_) {
                 message_(whole);
             }
@@ -218,11 +309,25 @@ void WebSocket::receive(const std::byte *data, std::size_t length)
         if (!frame.fin) {
             fragmented_ = true;
             pendingOpcode_ = frame.opcode;
+            pendingCompressed_ = frame.rsv1;
             pending_ = frame.payload;
             continue;
         }
+        if (!frame.rsv1) {
+            if (message_) {
+                message_(frame);
+            }
+            continue;
+        }
+        auto plain = inflateMessage(frame.payload);
+        if (!plain) {
+            finish(domain::http::HttpError::protocol);
+            return;
+        }
         if (message_) {
-            message_(frame);
+            domain::http::WsFrame decoded = frame;
+            decoded.payload = std::move(*plain);
+            message_(decoded);
         }
     }
 

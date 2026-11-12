@@ -346,15 +346,16 @@ void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, SocketReady ready,
                                SocketFailed failed)
 {
+    const std::string extensions = "permessage-deflate";
     auto self = std::static_pointer_cast<HttpClient>(shared_from_this());
     auto connection = std::make_shared<Connection>(pool_.next(), *tlsUpgrade_, config_.logger);
     auto* engine = &connection->engine();
 
     engine->post([self, connection, url = std::move(url), subprotocol = std::move(subprotocol),
-                  ready = std::move(ready), failed = std::move(failed)]() mutable {
+                  extensions, ready = std::move(ready), failed = std::move(failed)]() mutable {
         connection->open(
             url,
-            [self, connection, url, subprotocol = std::move(subprotocol),
+            [self, connection, url, subprotocol = std::move(subprotocol), extensions,
              ready = std::move(ready)]() mutable {
                 auto socket = std::make_shared<WebSocket>(connection, self->config_.limits.maxBodyBytes);
 
@@ -367,9 +368,8 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
 
                 auto pending = std::make_shared<std::string>();
                 auto upgraded = std::make_shared<bool>(false);
-                connection->onData([socket, pending, upgraded, key,
-                                    offered = subprotocol](const std::byte *data,
-                                                           std::size_t length) {
+                connection->onData([socket, pending, upgraded, key, offered = subprotocol,
+                                    extensions](const std::byte *data, std::size_t length) {
                     if (*upgraded) {
                         socket->receive(data, length);
                         return;
@@ -394,6 +394,23 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                         return;
                     }
 
+                    // The server echoes what it accepted; only an echo turns the
+                    // extension on, and it is never assumed.
+                    // Field names are case-insensitive, so the head is folded
+                    // before the search and the offsets stay valid.
+                    std::string folded = pending->substr(0, end + 4);
+                    std::transform(folded.begin(), folded.end(), folded.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    const std::size_t extensionsAt =
+                        folded.find("\r\nsec-websocket-extensions:");
+                    if (extensionsAt != std::string::npos) {
+                        const std::size_t valueAt = folded.find(':', extensionsAt) + 1;
+                        const std::size_t endAt = folded.find("\r\n", valueAt);
+                        if (folded.find("permessage-deflate", valueAt) < endAt) {
+                            socket->enableDeflate();
+                        }
+                    }
+
                     *upgraded = true;
                     const auto *rest = reinterpret_cast<const std::byte *>(pending->data()) + end + 4;
                     const std::size_t remaining = pending->size() - end - 4;
@@ -411,6 +428,11 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                                       key + "\r\n";
                 if (!subprotocol.empty()) {
                     request += "Sec-WebSocket-Protocol: " + subprotocol + "\r\n";
+                }
+                // permessage-deflate (RFC 7692). Only offered when the caller
+                // did not name its own extensions, which would be overwritten.
+                if (!extensions.empty()) {
+                    request += "Sec-WebSocket-Extensions: " + extensions + "\r\n";
                 }
                 request += "\r\n";
 

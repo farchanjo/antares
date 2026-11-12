@@ -10,6 +10,7 @@ namespace {
 constexpr std::uint8_t MASK_BIT = 0x80;
 constexpr std::uint8_t FIN_BIT = 0x80;
 constexpr std::uint8_t RSV_MASK = 0x70;
+constexpr std::uint8_t RSV1_BIT = 0x40;
 constexpr std::uint8_t OPCODE_MASK = 0x0F;
 constexpr std::size_t MAX_CONTROL_PAYLOAD = 125;
 
@@ -26,12 +27,14 @@ WsCodec::WsCodec(Bytes ceiling)
 {
 }
 
-std::string WsCodec::encode(WsOpcode opcode, std::string_view payload, std::uint32_t key, bool fin)
+std::string WsCodec::encode(WsOpcode opcode, std::string_view payload, std::uint32_t key,
+                            bool fin, bool rsv1)
 {
     std::string out;
     out.reserve(payload.size() + 14);
 
-    out.push_back(static_cast<char>((fin ? FIN_BIT : 0) | static_cast<std::uint8_t>(opcode)));
+    out.push_back(static_cast<char>((fin ? FIN_BIT : 0) | (rsv1 ? RSV1_BIT : 0) |
+                                    static_cast<std::uint8_t>(opcode)));
 
     const std::size_t size = payload.size();
     if (size < 126) {
@@ -108,6 +111,7 @@ std::expected<bool, HttpError> WsCodec::takeFrame()
     WsFrame frame;
     frame.fin = (first & FIN_BIT) != 0;
     frame.opcode = static_cast<WsOpcode>(first & OPCODE_MASK);
+    frame.rsv1 = (first & RSV1_BIT) != 0;
     frame.payload.assign(buffer_, offset, length);
 
     if (masked) {
@@ -119,7 +123,11 @@ std::expected<bool, HttpError> WsCodec::takeFrame()
 
     // RFC 6455 §5.2: RSV1-3 are zero unless an extension claimed them, and no
     // extension is ever negotiated here.
-    if ((first & RSV_MASK) != 0) {
+    // RSV1 is the permessage-deflate marker once the extension is negotiated; the
+    // other two are always zero here.
+    const std::uint8_t reserved = deflateNegotiated_ ? static_cast<std::uint8_t>(first & ~RSV1_BIT & RSV_MASK)
+                                                     : static_cast<std::uint8_t>(first & RSV_MASK);
+    if (reserved != 0) {
         return std::unexpected(HttpError::protocol);
     }
 
