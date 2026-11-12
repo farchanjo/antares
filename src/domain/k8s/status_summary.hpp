@@ -18,8 +18,13 @@ struct StatusSummary {
     std::string reason;
     std::optional<std::uint32_t> ready;
     std::optional<std::uint32_t> total;
+    /// Container restarts across the pod's statuses, summed by the decoder.
+    std::uint32_t restarts = 0;
 
-    [[nodiscard]] bool empty() const noexcept { return reason.empty() && !ready && !total; }
+    [[nodiscard]] bool empty() const noexcept
+    {
+        return reason.empty() && !ready && !total && restarts == 0;
+    }
 
     friend bool operator==(const StatusSummary &, const StatusSummary &) noexcept = default;
 };

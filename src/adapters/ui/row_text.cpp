@@ -116,10 +116,12 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
         return entry.nodeName;
     case RowRole::qos:
         return entry.qosClass;
+    case RowRole::restarts:
+        return entry.status.restarts == 0 ? std::string{}
+                                          : std::to_string(entry.status.restarts);
     case RowRole::cpu:
     case RowRole::memory:
     case RowRole::disk:
-    case RowRole::restarts:
     case RowRole::version:
     case RowRole::keys:
     case RowRole::type:
