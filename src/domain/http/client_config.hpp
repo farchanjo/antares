@@ -34,6 +34,9 @@ struct ClientConfig {
 
     /// Verify the peer certificate and hostname (FR-009).
     bool verifyPeer = true;
+    /// Ask for a coded transfer and undo it before the caller sees the body. A
+    /// caller that names its own `accept-encoding` keeps it either way.
+    bool acceptEncoding = true;
 
     /// User agent, so the server side can tell builds apart.
     std::string userAgent = "antares/0.1";

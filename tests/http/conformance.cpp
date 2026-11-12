@@ -8,6 +8,9 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+
+#include <zlib.h>
+#include <zstd.h>
 #include <cctype>
 #include <cstring>
 #include <span>
@@ -966,6 +969,133 @@ void caseHundredStreamsStayUnblocked()
     check(sync.has_value(), "a sync call still got through");
 }
 
+/// A coded body is undone before the caller sees it. Each case builds the bytes
+/// with the real compressor, so a decoder that only looks right fails.
+std::string gzipOf(std::string_view plain)
+{
+    z_stream stream{};
+    (void)deflateInit2(&stream, Z_BEST_SPEED, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
+    std::string out(compressBound(plain.size()) + 64, '\0');
+    stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(plain.data()));
+    stream.avail_in = static_cast<uInt>(plain.size());
+    stream.next_out = reinterpret_cast<Bytef *>(out.data());
+    stream.avail_out = static_cast<uInt>(out.size());
+    (void)deflate(&stream, Z_FINISH);
+    out.resize(stream.total_out);
+    (void)deflateEnd(&stream);
+    return out;
+}
+
+std::string zstdOf(std::string_view plain)
+{
+    std::string out(ZSTD_compressBound(plain.size()), '\0');
+    const std::size_t written = ZSTD_compress(out.data(), out.size(), plain.data(), plain.size(), 1);
+    out.resize(written);
+    return out;
+}
+
+void caseContentEncodingGzip()
+{
+    const std::string plain = "antares gzip round trip";
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-encoding: gzip\r\ncontent-length: " +
+                                         std::to_string(gzipOf(plain).size()) + "\r\n\r\n" +
+                                         gzipOf(plain)};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "gzip response arrived");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  plain,
+              "the body came back decoded");
+    }
+}
+
+/// RFC 1952 §2.2: a gzip stream is a series of members. A decoder that stops at
+/// the first Z_STREAM_END loses every member after it.
+/// RFC 9110 §8.4: the field is a list applied in order, so a recipient undoes it
+/// from the end. Two codings must come off last-first.
+void caseContentEncodingStacked()
+{
+    const std::string plain = "stacked codings";
+    const std::string twice = zstdOf(gzipOf(plain));
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\ncontent-encoding: gzip, zstd\r\ncontent-length: " +
+        std::to_string(twice.size()) + "\r\n\r\n" + twice};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "stacked response arrived");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  plain,
+              "both codings were undone, last first");
+    }
+}
+
+void caseContentEncodingGzipMultiMember()
+{
+    const std::string first = "member-one;";
+    const std::string second = "member-two";
+    const std::string body = gzipOf(first) + gzipOf(second);
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-encoding: gzip\r\ncontent-length: " +
+                                         std::to_string(body.size()) + "\r\n\r\n" + body};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "multi-member gzip arrived");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  first + second,
+              "both members came back");
+    }
+}
+
+void caseContentEncodingZstd()
+{
+    const std::string plain = "antares zstd round trip";
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-encoding: zstd\r\ncontent-length: " +
+                                         std::to_string(zstdOf(plain).size()) + "\r\n\r\n" +
+                                         zstdOf(plain)};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "zstd response arrived");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  plain,
+              "the body came back decoded");
+    }
+}
+
+/// A coding this build cannot undo reaches the caller untouched rather than
+/// failing the request.
+void caseContentEncodingUnknownPassesThrough()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\ncontent-encoding: br\r\ncontent-length: 3\r\n\r\nraw"};
+    Stack stack;
+    auto result = stack.blocking().send(get(server.url() + "/"));
+    check(result.has_value(), "unknown coding still succeeds");
+    if (result) {
+        check(std::string{reinterpret_cast<const char *>(result->body.data()), result->body.size()} ==
+                  "raw",
+              "the bytes passed through");
+    }
+}
+
+/// The offer is on the wire for every request.
+void caseAcceptEncodingIsOffered()
+{
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"};
+    Stack stack;
+    (void)stack.blocking().send(get(server.url() + "/"));
+    const std::string seen = server.lastRequest();
+    // The serialiser keeps the caller's casing, so the lookup folds it.
+    std::string flat = seen;
+    std::transform(flat.begin(), flat.end(), flat.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    check(flat.find("accept-encoding:") != std::string::npos, "the header was sent");
+    check(flat.find("gzip") != std::string::npos, "gzip is offered");
+    check(flat.find("zstd") != std::string::npos, "zstd is offered");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1009,6 +1139,12 @@ std::span<const Case> cases()
         {"logger-receives-failures", caseLoggerReceivesFailures},
         {"ws-close-handshake", caseWsCloseHandshake},
         {"hundred-streams-stay-unblocked", caseHundredStreamsStayUnblocked},
+        {"content-encoding-gzip", caseContentEncodingGzip},
+        {"content-encoding-gzip-multi-member", caseContentEncodingGzipMultiMember},
+        {"content-encoding-stacked", caseContentEncodingStacked},
+        {"content-encoding-zstd", caseContentEncodingZstd},
+        {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
+        {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };
     return table;
 }

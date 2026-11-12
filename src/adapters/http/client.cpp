@@ -1,5 +1,7 @@
 #include "adapters/http/client.hpp"
 
+#include "adapters/http/content_decoder.hpp"
+
 #include <algorithm>
 #include <charconv>
 #include <chrono>
@@ -161,11 +163,25 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
         }
     }
 
+    // Offered once, here, so no caller has to remember it. A caller that named
+    // its own wins.
+    const bool acceptsCoded =
+        std::any_of(request.headers.begin(), request.headers.end(),
+                    [](const domain::http::Header &header) { return header.name == "Accept-Encoding"; });
+    if (!acceptsCoded) {
+        request.headers.push_back(
+            domain::http::Header{"Accept-Encoding", std::string{acceptedEncodings()}});
+    }
+    const bool decode = config_.acceptEncoding;
+
     // The counter is decremented only after the caller's completion returns, so
     // the destructor never resumes while a callback still uses this client.
     auto user = std::move(done);
-    auto guarded = [this, user = std::move(user)](std::expected<domain::http::Response,
-                                                               domain::http::HttpError> result) {
+    auto guarded = [this, user = std::move(user), decode](
+                       std::expected<domain::http::Response, domain::http::HttpError> result) {
+        if (result && decode) {
+            decodeContent(*result);
+        }
         user(std::move(result));
         pending_.fetch_sub(1, std::memory_order_acq_rel);
         drainCv_.notify_all();
@@ -645,6 +661,33 @@ void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
     }
 
     finish(attempt, std::move(result));
+}
+
+void HttpClient::decodeContent(domain::http::Response &response) const
+{
+    const std::string *coded = response.find("content-encoding");
+    if (coded == nullptr) {
+        return;
+    }
+    const std::vector<ContentEncoding> encodings = parseEncodings(*coded);
+    if (encodings.empty()) {
+        return;
+    }
+    if (std::find(encodings.begin(), encodings.end(), ContentEncoding::unknown) !=
+        encodings.end()) {
+        log(ports::log::Level::warn, "undecodable content-encoding: " + *coded);
+        return;
+    }
+
+    const std::string_view codedBytes{reinterpret_cast<const char *>(response.body.data()),
+                                      response.body.size()};
+    auto decoded = decodeBody(encodings, codedBytes);
+    if (!decoded) {
+        log(ports::log::Level::warn, "content-encoding could not be undone: " + *coded);
+        return;
+    }
+    response.body.assign(reinterpret_cast<const std::byte *>(decoded->data()),
+                         reinterpret_cast<const std::byte *>(decoded->data()) + decoded->size());
 }
 
 void HttpClient::finish(const std::shared_ptr<Attempt> &attempt,

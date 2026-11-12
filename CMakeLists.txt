@@ -127,6 +127,7 @@ set(ANTARES_HTTP_SOURCES
     src/adapters/http/tls_context.cpp
     src/adapters/log/console_logger.cpp
     src/adapters/http/connection.cpp
+    src/adapters/http/content_decoder.cpp
     src/adapters/http/h1_session.cpp
     src/adapters/http/h2_session.cpp
     src/adapters/http/websocket.cpp
@@ -135,7 +136,11 @@ set(ANTARES_HTTP_SOURCES
 )
 
 add_library(antares_http STATIC ${ANTARES_HTTP_SOURCES})
-target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2)
+pkg_check_modules(ZLIB REQUIRED IMPORTED_TARGET zlib)
+pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd)
+
+target_link_libraries(antares_http PUBLIC antares_io OpenSSL::SSL OpenSSL::Crypto PkgConfig::NGHTTP2
+                                      PkgConfig::ZLIB PkgConfig::ZSTD)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(antares_http PUBLIC PkgConfig::LIBURING)
 endif()
@@ -449,7 +454,13 @@ set(ANTARES_HTTP_CASES
     streaming-survives-retry
     logger-receives-failures
     ws-close-handshake
-    hundred-streams-stay-unblocked)
+    hundred-streams-stay-unblocked
+    content-encoding-gzip
+    content-encoding-gzip-multi-member
+    content-encoding-stacked
+    content-encoding-zstd
+    content-encoding-unknown-passes-through
+    accept-encoding-is-offered)
 
 foreach(case IN LISTS ANTARES_HTTP_CASES)
     add_test(NAME "http/${case}" COMMAND antares_http_conformance "${case}")
