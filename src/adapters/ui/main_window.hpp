@@ -15,6 +15,7 @@ class QToolBar;
 class QToolButton;
 class QPushButton;
 class QTreeWidget;
+class QTreeWidgetItem;
 
 namespace antares::adapters::ui {
 
@@ -54,6 +55,7 @@ private:
     QWidget *buildTablePage();
     QWidget *buildDetail();
     void buildTree();
+    void openFamily(QTreeWidgetItem *item);
     void buildEmptyState();
     QWidget *buildRailAvatar();
     void buildStatus(const QString &message);

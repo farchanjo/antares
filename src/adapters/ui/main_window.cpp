@@ -15,11 +15,12 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeView>
-#include <QTreeWidget>
+#include <QtWidgets/QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
+#include "adapters/ui/family.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
 
@@ -230,6 +231,9 @@ QWidget *MainWindow::buildNavigator()
     navigator_->setRootIsDecorated(true);
     navigator_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     buildTree();
+    // A click on a family opens its table; the tree owns the family index.
+    QObject::connect(navigator_, &QTreeWidget::itemClicked, this,
+                     [this](QTreeWidgetItem *item, int) { openFamily(item); });
     paneLayout->addWidget(navigator_, 1);
 
     return pane;
@@ -327,22 +331,23 @@ void MainWindow::buildTree()
     const struct {
         const char *label;
         bool isNew;
+        Family family;
     } families[] = {
-        {QT_TR_NOOP("Overview"), false},
-        {QT_TR_NOOP("Applications"), false},
-        {QT_TR_NOOP("Argo CD"), true},
-        {QT_TR_NOOP("Nodes"), false},
-        {QT_TR_NOOP("Workloads"), false},
-        {QT_TR_NOOP("Config"), false},
-        {QT_TR_NOOP("Network"), false},
-        {QT_TR_NOOP("Storage"), false},
-        {QT_TR_NOOP("Device Resources"), true},
-        {QT_TR_NOOP("Namespaces"), false},
-        {QT_TR_NOOP("Events"), false},
-        {QT_TR_NOOP("Helm"), false},
-        {QT_TR_NOOP("Access Control"), false},
-        {QT_TR_NOOP("Custom Resources"), false},
-        {QT_TR_NOOP("Security Center"), false},
+        {QT_TR_NOOP("Overview"), false, Family::pods},
+        {QT_TR_NOOP("Applications"), false, Family::deployments},
+        {QT_TR_NOOP("Argo CD"), true, Family::deployments},
+        {QT_TR_NOOP("Nodes"), false, Family::nodes},
+        {QT_TR_NOOP("Workloads"), false, Family::pods},
+        {QT_TR_NOOP("Config"), false, Family::configMaps},
+        {QT_TR_NOOP("Network"), false, Family::services},
+        {QT_TR_NOOP("Storage"), false, Family::persistentVolumeClaims},
+        {QT_TR_NOOP("Device Resources"), true, Family::customResources},
+        {QT_TR_NOOP("Namespaces"), false, Family::namespaces},
+        {QT_TR_NOOP("Events"), false, Family::events},
+        {QT_TR_NOOP("Helm"), false, Family::customResources},
+        {QT_TR_NOOP("Access Control"), false, Family::roles},
+        {QT_TR_NOOP("Custom Resources"), false, Family::customResources},
+        {QT_TR_NOOP("Security Center"), false, Family::customResources},
     };
 
     // A cluster expands to the families; the badge sits in the second column.
@@ -350,6 +355,7 @@ void MainWindow::buildTree()
         auto *item = new QTreeWidgetItem{parent, QStringList{name}};
         for (const auto &family : families) {
             auto *child = new QTreeWidgetItem{item, QStringList{tr(family.label)}};
+            child->setData(0, Qt::UserRole + 1, static_cast<int>(family.family));
             if (family.isNew) {
                 child->setText(1, tr("NEW"));
             }
@@ -372,6 +378,30 @@ void MainWindow::buildTree()
     static_cast<void>(teamwork);
 
     navigator_->expandAll();
+}
+
+void MainWindow::openFamily(QTreeWidgetItem *item)
+{
+    if (item == nullptr) {
+        return;
+    }
+    const QVariant index = item->data(0, Qt::UserRole + 1);
+    if (!index.isValid()) {
+        // A section or a cluster: nothing to open.
+        return;
+    }
+    const auto family = static_cast<Family>(index.toInt());
+    model_.setFamily(family);
+    // The tab is named `<Family> - <cluster>`, like the reference.
+    const QString label = QString::fromUtf8(familyLabel(family));
+    const QString title = tr("%1 - %2").arg(label, contextBox_->currentText());
+    if (content_->count() > 1) {
+        content_->setTabText(0, title);
+        content_->setCurrentIndex(0);
+        return;
+    }
+    content_->setTabText(0, title);
+    content_->setCurrentIndex(0);
 }
 
 void MainWindow::buildStatus(const QString &message)

@@ -144,4 +144,179 @@ std::span<const RowRole> familyColumns(Family family) noexcept
     return WORKLOAD;
 }
 
+
+const char *familyLabel(Family family) noexcept
+{
+    switch (family) {
+    case Family::pods:
+        return "Pods";
+    case Family::deployments:
+        return "Deployments";
+    case Family::daemonSets:
+        return "Daemon Sets";
+    case Family::statefulSets:
+        return "Stateful Sets";
+    case Family::replicaSets:
+        return "Replica Sets";
+    case Family::replicationControllers:
+        return "Replication Controllers";
+    case Family::jobs:
+        return "Jobs";
+    case Family::cronJobs:
+        return "Cron Jobs";
+    case Family::nodes:
+        return "Nodes";
+    case Family::namespaces:
+        return "Namespaces";
+    case Family::events:
+        return "Events";
+    case Family::services:
+        return "Services";
+    case Family::endpointSlices:
+        return "Endpoint Slices";
+    case Family::endpoints:
+        return "Endpoints";
+    case Family::ingresses:
+        return "Ingresses";
+    case Family::networkPolicies:
+        return "Network Policies";
+    case Family::configMaps:
+        return "Config Maps";
+    case Family::secrets:
+        return "Secrets";
+    case Family::resourceQuotas:
+        return "Resource Quotas";
+    case Family::limitRanges:
+        return "Limit Ranges";
+    case Family::horizontalPodAutoscalers:
+        return "Horizontal Pod Autoscalers";
+    case Family::podDisruptionBudgets:
+        return "Pod Disruption Budgets";
+    case Family::priorityClasses:
+        return "Priority Classes";
+    case Family::runtimeClasses:
+        return "Runtime Classes";
+    case Family::leases:
+        return "Leases";
+    case Family::persistentVolumeClaims:
+        return "Persistent Volume Claims";
+    case Family::persistentVolumes:
+        return "Persistent Volumes";
+    case Family::storageClasses:
+        return "Storage Classes";
+    case Family::serviceAccounts:
+        return "Service Accounts";
+    case Family::roles:
+        return "Roles";
+    case Family::roleBindings:
+        return "Role Bindings";
+    case Family::clusterRoles:
+        return "Cluster Roles";
+    case Family::clusterRoleBindings:
+        return "Cluster Role Bindings";
+    case Family::webhookConfigurations:
+        return "Webhook Configurations";
+    case Family::customResources:
+        return "Custom Resources";
+    }
+    return "Pods";
+}
+
+const char *familyResource(Family family) noexcept
+{
+    switch (family) {
+    case Family::pods:
+        return "pods";
+    case Family::deployments:
+        return "deployments";
+    case Family::daemonSets:
+        return "daemonsets";
+    case Family::statefulSets:
+        return "statefulsets";
+    case Family::replicaSets:
+        return "replicasets";
+    case Family::replicationControllers:
+        return "replicationcontrollers";
+    case Family::jobs:
+        return "jobs";
+    case Family::cronJobs:
+        return "cronjobs";
+    case Family::nodes:
+        return "nodes";
+    case Family::namespaces:
+        return "namespaces";
+    case Family::events:
+        return "events";
+    case Family::services:
+        return "services";
+    case Family::endpointSlices:
+        return "endpointslices";
+    case Family::endpoints:
+        return "endpoints";
+    case Family::ingresses:
+        return "ingresses";
+    case Family::networkPolicies:
+        return "networkpolicies";
+    case Family::configMaps:
+        return "configmaps";
+    case Family::secrets:
+        return "secrets";
+    case Family::resourceQuotas:
+        return "resourcequotas";
+    case Family::limitRanges:
+        return "limitranges";
+    case Family::horizontalPodAutoscalers:
+        return "horizontalpodautoscalers";
+    case Family::podDisruptionBudgets:
+        return "poddisruptionbudgets";
+    case Family::priorityClasses:
+        return "priorityclasses";
+    case Family::runtimeClasses:
+        return "runtimeclasses";
+    case Family::leases:
+        return "leases";
+    case Family::persistentVolumeClaims:
+        return "persistentvolumeclaims";
+    case Family::persistentVolumes:
+        return "persistentvolumes";
+    case Family::storageClasses:
+        return "storageclasses";
+    case Family::serviceAccounts:
+        return "serviceaccounts";
+    case Family::roles:
+        return "roles";
+    case Family::roleBindings:
+        return "rolebindings";
+    case Family::clusterRoles:
+        return "clusterroles";
+    case Family::clusterRoleBindings:
+        return "clusterrolebindings";
+    case Family::webhookConfigurations:
+        return "validatingwebhookconfigurations";
+    case Family::customResources:
+        return "customresourcedefinitions";
+    }
+    return "pods";
+}
+
+bool familyIsNamespaced(Family family) noexcept
+{
+    switch (family) {
+    case Family::nodes:
+    case Family::namespaces:
+    case Family::priorityClasses:
+    case Family::runtimeClasses:
+    case Family::persistentVolumes:
+    case Family::storageClasses:
+    case Family::clusterRoles:
+    case Family::clusterRoleBindings:
+    case Family::webhookConfigurations:
+    case Family::customResources:
+        return false;
+    default:
+        return true;
+    }
+}
+
 } // namespace antares::adapters::ui
+
