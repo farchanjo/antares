@@ -1,7 +1,6 @@
 #include "adapters/ui/preferences_page.hpp"
 
 #include <QCheckBox>
-#include <QTimer>
 #include <QToolButton>
 
 #include <cstdio>
@@ -110,7 +109,6 @@ PreferencesPage::PreferencesPage(QWidget *parent)
 
 void PreferencesPage::showPage(int index)
 {
-    std::fprintf(stderr, "  [pagina] %d de %d\n", index, pages_->count());
     if (index >= 0 && index < pages_->count()) {
         pages_->setCurrentIndex(index);
     }
