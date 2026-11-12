@@ -24,7 +24,6 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
-#include <cstdio>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
@@ -449,7 +448,6 @@ void MainWindow::refreshCount()
     // `QString::arg` drags in a metatype converter that the libstdc++-built Qt
     // cannot resolve against this libc++ tree, so the number is glued.
     const QString shown = QString::number(model_.rowCount(QModelIndex{}));
-    std::fprintf(stderr, "  [conta] %s\n", shown.toUtf8().constData());
     const std::size_t ticked = model_.tickedCount();
     count_->setText(ticked == 0 ? tr("items: ") + shown
                                 : tr("selected: ") + QString::number(static_cast<int>(ticked)) +
