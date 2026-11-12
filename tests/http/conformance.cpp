@@ -26,6 +26,7 @@
 #include "tls_server.hpp"
 #include "adapters/log/console_logger.hpp"
 #include "domain/http/sse.hpp"
+#include "domain/json/sequence.hpp"
 #include "domain/http/websocket.hpp"
 #include "support/await.hpp"
 
@@ -757,6 +758,77 @@ void caseWsRefusesBadAccept()
     check(reported == HttpError::protocol, "reported as a protocol failure");
 }
 
+/// A fragmented message is reassembled and delivered once, typed by its first
+/// frame (RFC 6455 §5.4), and a control frame interjected mid-message does not
+/// join it.
+void caseWsReassemblesFragments()
+{
+    std::string wire = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::text, "Hel", 0x01020304, /*fin=*/false);
+    wire += antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::ping, "p", 0x05060708);
+    wire += antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::continuation, "lo", 0x090A0B0C, /*fin=*/true);
+
+    antares::test::LoopbackServer server{
+        [wire](std::string_view request) { return upgradeResponse(request, "", wire); }};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await opened;
+    antares::test::Await messaged;
+    std::string received;
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onMessage([&](const auto &frame) {
+                received = frame.payload;
+                messaged.signal();
+            });
+            socket->onClose([&](HttpError) { messaged.signal(); });
+            opened.signal();
+        },
+        [&](HttpError) { opened.signal(); });
+
+    check(opened.wait(std::chrono::seconds{5}), "the upgrade settled");
+    check(messaged.wait(std::chrono::seconds{5}), "the message settled");
+    check(received == "Hello", "both fragments arrived as one message");
+}
+
+/// RSV bits are zero without an extension (RFC 6455 §5.2).
+void caseWsRejectsRsv()
+{
+    std::string wire = antares::domain::http::WsCodec::encode(
+        antares::domain::http::WsOpcode::text, "x", 0x01020304);
+    wire[0] = static_cast<char>(static_cast<unsigned char>(wire[0]) | 0x40);
+
+    antares::test::LoopbackServer server{
+        [wire](std::string_view request) { return upgradeResponse(request, "", wire); }};
+    Stack stack;
+    if (!stack.ok()) {
+        return;
+    }
+
+    antares::test::Await settled;
+    HttpError reported = HttpError::closed;
+
+    stack.client().openWebSocket(
+        *antares::domain::http::Url::parse(server.url() + "/ws"), "",
+        [&](std::shared_ptr<antares::adapters::http::WebSocket> socket) {
+            socket->onClose([&](HttpError error) {
+                reported = error;
+                settled.signal();
+            });
+        },
+        [&](HttpError) { settled.signal(); });
+
+    check(settled.wait(std::chrono::seconds{5}), "the bad frame settled");
+    check(reported == HttpError::protocol, "a set RSV bit is a protocol failure");
+}
+
 void caseWebSocketUpgrades()
 {
     // 101 plus one unmasked text frame ("hi") from the server.
@@ -1096,6 +1168,49 @@ void caseAcceptEncodingIsOffered()
     check(flat.find("zstd") != std::string::npos, "zstd is offered");
 }
 
+/// RFC 7464: RS delimits, the LF proves no truncation, and a malformed element
+/// is skipped rather than fatal.
+void caseJsonSequenceSplits()
+{
+    antares::domain::json::SequenceReader reader;
+    const std::string wire = "\x1e" "{\"a\":1}\n" "\x1e" "{\"b\":2}\n";
+    const auto texts = reader.feed(wire);
+    check(texts.size() == 2, "two texts");
+    if (texts.size() == 2) {
+        check(texts[0] == "{\"a\":1}", "first text kept");
+        check(texts[1] == "{\"b\":2}", "second text kept");
+    }
+    check(reader.rejected() == 0, "nothing rejected");
+}
+
+/// A top-level number without the trailing LF may be a truncated longer number,
+/// so §2.4 requires dropping it; a self-delimited value is kept.
+void caseJsonSequenceDropsTruncatedNumber()
+{
+    antares::domain::json::SequenceReader reader;
+    const auto texts = reader.feed("\x1e" "123" "\x1e" "{\"ok\":true}\n" "\x1e");
+    check(texts.size() == 1, "only the self-delimited text survived");
+    if (texts.size() == 1) {
+        check(texts[0] == "{\"ok\":true}", "and it is the right one");
+    }
+    check(reader.rejected() == 1, "the truncated number was counted");
+}
+
+/// A BOM opens an SSE stream and is not part of the first field name.
+void caseSseStripsBom()
+{
+    antares::domain::http::SseParser reader{antares::domain::Bytes{1024}};
+    const std::string wire = "\xEF" "\xBB" "\xBF" "data: hi\n\n";
+    auto events = reader.feed(reinterpret_cast<const std::byte *>(wire.data()), wire.size());
+    check(events.has_value(), "the stream parsed");
+    if (events) {
+        check(events->size() == 1, "one event");
+        if (!events->empty()) {
+            check((*events)[0].data == "hi", "the BOM did not reach the field name");
+        }
+    }
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1130,6 +1245,11 @@ std::span<const Case> cases()
         {"sse-ceiling-holds", caseSseCeilingHolds},
         {"ws-round-trips-frames", caseWsRoundTripsFrames},
         {"ws-splits-across-reads", caseWsSplitsAcrossReads},
+        {"ws-reassembles-fragments", caseWsReassemblesFragments},
+        {"ws-rejects-rsv", caseWsRejectsRsv},
+        {"json-sequence-splits", caseJsonSequenceSplits},
+        {"json-sequence-drops-truncated-number", caseJsonSequenceDropsTruncatedNumber},
+        {"sse-strips-bom", caseSseStripsBom},
         {"ws-close-closes", caseWsCloseCloses},
         {"websocket-upgrades", caseWebSocketUpgrades},
         {"ws-refuses-bad-accept", caseWsRefusesBadAccept},

@@ -121,6 +121,7 @@ set(ANTARES_HTTP_SOURCES
     src/domain/http/auth.cpp
     src/domain/http/retry_policy.cpp
     src/domain/http/sse.cpp
+    src/domain/json/sequence.cpp
     src/domain/http/websocket.cpp
     src/domain/http/request.cpp
     src/domain/units/bytes.cpp
@@ -446,6 +447,11 @@ set(ANTARES_HTTP_CASES
     sse-ceiling-holds
     ws-round-trips-frames
     ws-splits-across-reads
+    ws-reassembles-fragments
+    ws-rejects-rsv
+    json-sequence-splits
+    json-sequence-drops-truncated-number
+    sse-strips-bom
     ws-close-closes
     websocket-upgrades
     ws-refuses-bad-accept

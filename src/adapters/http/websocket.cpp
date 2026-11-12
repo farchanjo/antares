@@ -191,6 +191,36 @@ void WebSocket::receive(const std::byte *data, std::size_t length)
             finish(domain::http::HttpError::closed);
             return;
         }
+        // RFC 6455 §5.4: a fragmented message is one data frame with FIN clear
+        // and a real opcode, then continuation frames, closed by FIN. The
+        // fragments are concatenated and delivered once, typed by the first.
+        if (frame.opcode == domain::http::WsOpcode::continuation) {
+            if (!fragmented_) {
+                // A continuation with no message open is a protocol error.
+                finish(domain::http::HttpError::protocol);
+                return;
+            }
+            pending_ += frame.payload;
+            if (!frame.fin) {
+                continue;
+            }
+            fragmented_ = false;
+            domain::http::WsFrame whole;
+            whole.opcode = pendingOpcode_;
+            whole.payload = std::move(pending_);
+            pending_.clear();
+            if (message_) {
+                message_(whole);
+            }
+            continue;
+        }
+
+        if (!frame.fin) {
+            fragmented_ = true;
+            pendingOpcode_ = frame.opcode;
+            pending_ = frame.payload;
+            continue;
+        }
         if (message_) {
             message_(frame);
         }

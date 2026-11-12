@@ -103,6 +103,14 @@ std::expected<std::vector<SseEvent>, HttpError> SseParser::feed(const std::byte 
     }
     buffer_.append(reinterpret_cast<const char *>(data), length);
 
+    // A byte order mark opens the stream and is not part of the first line.
+    if (!bomChecked_) {
+        bomChecked_ = true;
+        if (buffer_.size() >= 3 && buffer_.compare(0, 3, "\xEF\xBB\xBF") == 0) {
+            buffer_.erase(0, 3);
+        }
+    }
+
     std::size_t start = 0;
     while (true) {
         const std::size_t end = buffer_.find('\n', start);

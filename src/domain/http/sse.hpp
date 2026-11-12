@@ -41,6 +41,7 @@ private:
     void dispatch();
 
     std::string buffer_;
+    bool bomChecked_ = false;
     std::string lastId_;
     SseEvent pending_;
     std::vector<SseEvent> ready_;

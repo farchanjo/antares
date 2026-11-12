@@ -9,6 +9,7 @@ namespace {
 
 constexpr std::uint8_t MASK_BIT = 0x80;
 constexpr std::uint8_t FIN_BIT = 0x80;
+constexpr std::uint8_t RSV_MASK = 0x70;
 constexpr std::uint8_t OPCODE_MASK = 0x0F;
 constexpr std::size_t MAX_CONTROL_PAYLOAD = 125;
 
@@ -116,7 +117,26 @@ std::expected<bool, HttpError> WsCodec::takeFrame()
         }
     }
 
-    if ((static_cast<std::uint8_t>(frame.opcode) & 0x08) != 0 && length > MAX_CONTROL_PAYLOAD) {
+    // RFC 6455 §5.2: RSV1-3 are zero unless an extension claimed them, and no
+    // extension is ever negotiated here.
+    if ((first & RSV_MASK) != 0) {
+        return std::unexpected(HttpError::protocol);
+    }
+
+    const auto code = static_cast<std::uint8_t>(frame.opcode);
+    const bool control = (code & 0x08) != 0;
+    if (control && length > MAX_CONTROL_PAYLOAD) {
+        return std::unexpected(HttpError::protocol);
+    }
+    // §5.5: control frames are never fragmented.
+    if (control && !frame.fin) {
+        return std::unexpected(HttpError::protocol);
+    }
+    // §5.2: 0x3-0x7 and 0xB-0xF are reserved, so nothing would interpret them.
+    if (code > 0x2 && !control && code != 0x0) {
+        return std::unexpected(HttpError::protocol);
+    }
+    if (control && code > 0xA) {
         return std::unexpected(HttpError::protocol);
     }
     if (frame.opcode == WsOpcode::close) {

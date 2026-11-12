@@ -71,6 +71,10 @@ private:
     std::shared_ptr<Connection> connection_;
     domain::http::WsCodec codec_;
     Message message_;
+    /// Fragments of the message being reassembled, and the opcode it opened with.
+    std::string pending_;
+    domain::http::WsOpcode pendingOpcode_ = domain::http::WsOpcode::text;
+    bool fragmented_ = false;
     Closed closed_;
     std::uint32_t mask_ = 0x1234ABCDU;
     std::uint64_t closeGeneration_ = 0;
