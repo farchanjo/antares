@@ -5,11 +5,11 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include "adapters/ui/resource_model.hpp"
+#include "adapters/ui/qt_list_model.hpp"
 
 namespace antares::adapters::ui {
 
-MainWindow::MainWindow(ResourceModel &model, const QString &context, const QString &message,
+MainWindow::MainWindow(QtListModel &model, const QString &context, const QString &message,
                        QWidget *parent)
     : QMainWindow(parent)
 {

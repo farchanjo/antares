@@ -57,13 +57,13 @@ target_include_directories(antares_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/s
 # window binds to, `resource_list_model` is the change-set applier the suite
 # drives without a widget. They converge later.
 set(ANTARES_UI_SOURCES
-    src/adapters/ui/resource_model.cpp
     src/adapters/ui/change_queue.cpp
     src/adapters/ui/page_error.cpp
     src/adapters/ui/resource_list_model.cpp
     src/adapters/ui/row_role.cpp
     src/adapters/ui/row_text.cpp
     src/adapters/ui/view_config.cpp
+    src/adapters/ui/kube_page_source.cpp
     src/adapters/ui/qt_list_model.cpp
 )
 

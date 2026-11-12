@@ -13,8 +13,9 @@
 #include "adapters/http/client.hpp"
 #include "adapters/k8s/http_kube_client.hpp"
 #include "adapters/log/console_logger.hpp"
+#include "adapters/ui/kube_page_source.hpp"
 #include "adapters/ui/main_window.hpp"
-#include "adapters/ui/resource_model.hpp"
+#include "adapters/ui/qt_list_model.hpp"
 #include "application/io/engine_pool.hpp"
 #include "application/k8s/object_store.hpp"
 
@@ -102,7 +103,8 @@ private:
     std::unique_ptr<application::k8s::ObjectStore> store_;
     /// The scope the model shows. Built with the store, before the window.
     domain::k8s::Scope scope_;
-    std::unique_ptr<ResourceModel> model_;
+    std::unique_ptr<KubePageSource> pages_;
+    std::unique_ptr<QtListModel> model_;
     std::unique_ptr<MainWindow> window_;
 
     QSocketNotifier *wakeupNotifier_ = nullptr;

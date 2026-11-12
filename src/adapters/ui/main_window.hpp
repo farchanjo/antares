@@ -8,7 +8,7 @@ class QListView;
 
 namespace antares::adapters::ui {
 
-class ResourceModel;
+class QtListModel;
 
 /// The only widget this feature owns (scope of 010).
 ///
@@ -22,7 +22,7 @@ public:
     /// `model` is not owned: the application keeps it and destroys the window
     /// first (FR-004). `context` names the current context, and `message` is the
     /// reason the list is empty, if any.
-    MainWindow(ResourceModel &model, const QString &context, const QString &message,
+    MainWindow(QtListModel &model, const QString &context, const QString &message,
                QWidget *parent = nullptr);
 
     /// The status line, so a case can assert the message and not just the widget.
