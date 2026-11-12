@@ -131,6 +131,12 @@ void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,
 
 int QtListModel::columnCount(const QModelIndex &parent) const
 {
+    static int shown = 0;
+    if (shown < 3) {
+        std::fprintf(stderr, "  [cols] familia=%d n=%zu\n", static_cast<int>(family_),
+                     familyColumns(family_).size());
+        ++shown;
+    }
     return parent.isValid() ? 0 : static_cast<int>(familyColumns(family_).size());
 }
 
