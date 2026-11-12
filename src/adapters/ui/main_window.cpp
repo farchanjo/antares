@@ -654,7 +654,7 @@ void MainWindow::applyColumnWidths()
     }
     const int ultima = static_cast<int>(shown.size()) - 1;
     std::fprintf(stderr, "  [fim] col6=%d visivel=%d viewport=%d\n",
-                 view_->columnWidth(ultima), view_->isColumnHidden(ultima),
+                 view_->columnWidth(ultima), view_->isColumnHidden(ultima) ? 1 : 0,
                  view_->viewport()->width());
 }
 
