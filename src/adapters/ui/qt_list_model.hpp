@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <set>
 #include <string>
 
 #include "adapters/ui/model_sink.hpp"
@@ -60,6 +61,16 @@ public:
 
     /// Drop the rows and ask for the first page again.
     void refresh();
+
+    /// Whether the row carries a tick. Kept on the model, not the view, so a
+    /// repaint or a re-sort keeps it.
+    [[nodiscard]] bool isTicked(std::uint32_t row) const;
+    /// Flip the tick of one row.
+    void toggleTick(std::uint32_t row);
+    /// How many rows are ticked.
+    [[nodiscard]] std::size_t tickedCount() const noexcept { return ticked_.size(); }
+    /// Clear every tick.
+    void clearTicks();
     [[nodiscard]] Family family() const noexcept { return family_; }
 
     // No default arguments here: the base declares them and re-specifying a
@@ -94,6 +105,8 @@ public:
 private:
     std::unique_ptr<ResourceListModel> model_;
     Family family_ = Family::pods;
+    /// Ticked rows, by position. Dropped when the family or the scope changes.
+    std::set<std::uint32_t> ticked_;
 };
 
 } // namespace antares::adapters::ui

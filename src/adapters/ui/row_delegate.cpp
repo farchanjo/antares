@@ -15,6 +15,7 @@ constexpr int PILL_RADIUS = 3;
 constexpr int PILL_MARGIN = 4;
 constexpr int METER_HEIGHT = 5;
 constexpr int METER_INSET = 8;
+constexpr int CHECK_INSET = 22;
 
 /// The colour a status word carries. Green runs, amber waits, red fails.
 QColor statusColour(const QString &word)
@@ -113,6 +114,20 @@ void RowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
         return;
     }
     switch (columns[static_cast<std::size_t>(index.column())]) {
+    case RowRole::name: {
+        // The name column carries the selection box before the text.
+        QStyleOptionViewItem shifted = option;
+        shifted.rect.setLeft(option.rect.left() + CHECK_INSET);
+        QStyleOptionButton box;
+        box.rect = QRect{option.rect.left() + 4, option.rect.center().y() - 7, 14, 14};
+        box.state = QStyle::State_Enabled;
+        if (model_.isTicked(static_cast<std::uint32_t>(index.row()))) {
+            box.state |= QStyle::State_On;
+        }
+        QApplication::style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &box, painter);
+        QStyledItemDelegate::paint(painter, shifted, index);
+        return;
+    }
     case RowRole::cpu:
     case RowRole::memory:
     case RowRole::disk: {

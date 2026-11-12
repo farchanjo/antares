@@ -134,7 +134,34 @@ int QtListModel::columnCount(const QModelIndex &parent) const
     return parent.isValid() ? 0 : static_cast<int>(familyColumns(family_).size());
 }
 
-void QtListModel::refresh() { model_->refresh(); }
+void QtListModel::refresh()
+{
+    ticked_.clear();
+    model_->refresh();
+}
+
+bool QtListModel::isTicked(std::uint32_t row) const
+{
+    return ticked_.contains(row);
+}
+
+void QtListModel::toggleTick(std::uint32_t row)
+{
+    if (ticked_.erase(row) == 0) {
+        ticked_.insert(row);
+    }
+    const QModelIndex at = index(static_cast<int>(row), 0);
+    Q_EMIT QAbstractListModel::dataChanged(at, at, {});
+}
+
+void QtListModel::clearTicks()
+{
+    if (ticked_.empty()) {
+        return;
+    }
+    ticked_.clear();
+    Q_EMIT QAbstractListModel::dataChanged(index(0, 0), index(rowCount(QModelIndex{}) - 1, 0), {});
+}
 
 void QtListModel::setScope(domain::k8s::Scope scope) { model_->setScope(std::move(scope)); }
 
@@ -152,6 +179,7 @@ void QtListModel::setFamily(Family family)
     }
     beginResetModel();
     family_ = family;
+    ticked_.clear();
     // The scope carries the resource: the list must ask the new one.
     domain::k8s::Scope scope = model_->scope();
     scope.type = domain::k8s::GroupVersionResource{

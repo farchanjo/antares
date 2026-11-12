@@ -316,8 +316,14 @@ QWidget *MainWindow::buildTablePage()
     QObject::connect(view_, &QTreeView::clicked, this, [this](const QModelIndex &index) {
         const std::span<const RowRole> columns = familyColumns(model_.family());
         if (!index.isValid() || index.column() < 0 ||
-            index.column() >= static_cast<int>(columns.size()) ||
-            columns[static_cast<std::size_t>(index.column())] != RowRole::actions) {
+            index.column() >= static_cast<int>(columns.size())) {
+            return;
+        }
+        if (columns[static_cast<std::size_t>(index.column())] == RowRole::name) {
+            model_.toggleTick(static_cast<std::uint32_t>(index.row()));
+            return;
+        }
+        if (columns[static_cast<std::size_t>(index.column())] != RowRole::actions) {
             return;
         }
         QMenu menu{this};
