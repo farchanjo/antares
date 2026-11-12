@@ -29,6 +29,10 @@ public:
 
     Labels() = default;
 
+    /// Reserve room for the blob, so a set of labels does not re-grow it once
+    /// per pair.
+    void reserve(std::size_t bytes) { blob_.reserve(bytes); }
+
     /// Keep one pair, or record the cut. Returns false once a ceiling is hit;
     /// the caller keeps calling but every later pair is cut too.
     bool append(std::string_view key, std::string_view value);

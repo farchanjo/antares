@@ -4,6 +4,7 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "domain/k8s/store_error.hpp"
 
@@ -24,6 +25,10 @@ public:
     [[nodiscard]] static std::expected<ObjectName, StoreError> of(std::string_view text);
 
     [[nodiscard]] const std::string &text() const noexcept { return text_; }
+
+    /// The text, moved out — the entry stores the name and does not need the
+    /// wrapper, so taking it saves a second allocation.
+    [[nodiscard]] std::string take() && noexcept { return std::move(text_); }
     [[nodiscard]] bool empty() const noexcept { return text_.empty(); }
 
     friend bool operator==(const ObjectName &, const ObjectName &) noexcept = default;

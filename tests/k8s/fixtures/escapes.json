@@ -1,0 +1,1 @@
+{"apiVersion":"v1","kind":"Pod","metadata":{"name":"e\"s\\c\b\f\n\r\t\u00e9\uD83D\uDE00","namespace":"shop","uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40","resourceVersion":"18422\/9","generation":1,"creationTimestamp":"2026-11-11T19:05:00Z","labels":{"app":"check\"out","escaped":"back\\slash","unicode":"\u00e9"}},"status":{"reason":"Run\"ning"}}

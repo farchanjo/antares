@@ -25,6 +25,8 @@ std::string_view storeErrorName(StoreError error) noexcept
         return "unknown entry";
     case StoreError::notRelisting:
         return "not relisting";
+    case StoreError::malformedDocument:
+        return "malformed document";
     }
     return "invalid";
 }

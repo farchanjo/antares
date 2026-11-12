@@ -28,6 +28,8 @@ enum class StoreError : std::uint8_t {
     unknownEntry,
     /// A relist page arrived without an open epoch, or for a stale one.
     notRelisting,
+    /// Neither the scanner nor the parser could read the document (FR-001).
+    malformedDocument,
 };
 
 [[nodiscard]] std::string_view storeErrorName(StoreError error) noexcept;

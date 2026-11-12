@@ -10,6 +10,11 @@ namespace antares::test {
 /// the case is deterministic and a regression names a number (P-03, FR-003).
 inline std::size_t liveBytes = 0;
 
+/// Live allocations through `operator new`, the count feature 008 pins: a
+/// scanner that decodes only the kept fields allocates a handful of strings,
+/// where a built document allocates one per member (FR-002).
+inline std::size_t liveAllocations = 0;
+
 namespace detail {
 inline bool active = false;
 } // namespace detail
@@ -26,6 +31,11 @@ public:
 [[nodiscard]] inline std::size_t live() noexcept
 {
     return liveBytes;
+}
+
+[[nodiscard]] inline std::size_t allocations() noexcept
+{
+    return liveAllocations;
 }
 
 } // namespace antares::test

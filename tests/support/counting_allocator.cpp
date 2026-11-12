@@ -19,6 +19,7 @@ constexpr std::size_t HEADER = 16;
     block[0] = size;
     if (antares::test::detail::active) {
         antares::test::liveBytes += size;
+        ++antares::test::liveAllocations;
     }
     return reinterpret_cast<char *>(block) + HEADER;
 }
@@ -31,6 +32,7 @@ void release(void *pointer) noexcept
     auto *block = reinterpret_cast<std::size_t *>(static_cast<char *>(pointer) - HEADER);
     if (antares::test::detail::active) {
         antares::test::liveBytes -= block[0];
+        --antares::test::liveAllocations;
     }
     std::free(block);
 }
