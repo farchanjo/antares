@@ -311,3 +311,17 @@ Known shortcuts: `⌘W` closes the active tab.
 5. The `⋮` row menu.
 6. The `+` under the last column, for the column picker.
 7. The four menus.
+
+## Family sub-tree: Config
+
+`Config Maps`, `Secrets`, `Resource Quotas`, `Limit Ranges`,
+`Horizontal Pod Autoscalers`, `Pod Disruption Budgets`, `Priority Classes`,
+`Runtime Classes`, `Leases`, `Mutating Webhook Configurations`,
+`Validating Webhook Configurations`, `Admission Policies` (`NEW`).
+
+### Truncation
+
+The navigator truncates a long label with an ellipsis (`Horizontal Pod Autoscal…`,
+`Mutating Webhook Con…`) rather than widening. The full text is the tooltip. This
+is the flexibility rule applied to the tree: the column is the splitter's, and a
+label that does not fit loses its tail, not the layout.
