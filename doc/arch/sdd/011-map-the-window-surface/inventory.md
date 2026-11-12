@@ -487,3 +487,17 @@ Columns: `☐` · `Name` · `Value` · `Global Default` · `Age` · `⋮`. `2 it
 
 `Value` is a raw integer (`2000000000`). `Global Default` is the literal `false`
 — a boolean renders as the word, not a tick.
+
+## Table view (Leases)
+
+Columns: `☐` · `Name` · `Namespace` · `Holder` · `Age` · `⋮`. `0 items` here.
+
+`Runtime Classes` sits between Priority Classes and Leases and is cluster-scoped
+like a priority class.
+
+## Config family, complete
+
+`Config Maps`, `Secrets`, `Resource Quotas`, `Limit Ranges`,
+`Horizontal Pod Autoscalers`, `Pod Disruption Budgets`, `Priority Classes`,
+`Runtime Classes`, `Leases`, `Mutating Webhook Configurations`,
+`Validating Webhook Configurations`, `Admission Policies`.
