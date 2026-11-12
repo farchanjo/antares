@@ -738,3 +738,11 @@ to your project's .mcp.json.`
 
 A connected card shows its source count and a collapse chevron; a disconnected one
 shows `Not Connected` in grey with a single primary action.
+
+### Tables
+
+One setting: `ROW LINE HEIGHT`, numeric field, `20`.
+
+The page is nearly empty on purpose — a settings page does not pad itself out. It
+is also the reason the row height can be driven from configuration rather than
+hard-coded.
