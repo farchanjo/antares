@@ -27,6 +27,11 @@ protected:
     bool armAccept(PendingOp &op) override;
     bool armConnect(PendingOp &op) override;
 
+    /// Drops the registration an `EV_ONESHOT` left behind. Without it a cancelled
+    /// op stays armed with `udata` pointing at freed memory, and the next byte on
+    /// that descriptor reaches it (FR-001).
+    void forget(PendingOp &op) override;
+
 private:
     bool arm(PendingOp &op, std::int16_t filter);
 

@@ -327,7 +327,8 @@ set(ANTARES_IO_CASES
     stop-settles-pending
     stop-is-reversible
     resolve-two-jobs-one-window
-    stats-cancel-counts)
+    stats-cancel-counts
+    forget-drops-registration)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)

@@ -683,6 +683,48 @@ void caseStatsCancelCounts()
     ::close(pair[1]);
 }
 
+/// After a cancel the descriptor must not reach the op it pointed at. On kqueue
+/// the registration survives `EV_ONESHOT` unless it is deleted, so a write after
+/// the cancel would fire on freed memory (FR-001).
+void caseForgetDropsRegistration()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    std::atomic<int> completions{0};
+    antares::test::Await cancelled;
+    (void)engine.submitRead(*handle, std::nullopt, Bytes{8},
+                            [&](std::expected<Buffer, IoError>) {
+                                completions.fetch_add(1);
+                                cancelled.signal();
+                            });
+
+    engine.cancelPending(*handle);
+    check(cancelled.wait(), "the read was cancelled");
+
+    // The descriptor is now readable. A stale registration would complete into
+    // the freed op; the loop would crash or count twice under ASan.
+    const char byte = 'x';
+    check(::write(pair[1], &byte, 1) == 1, "wrote to the peer");
+
+    antares::test::Await tick;
+    engine.post([&] { tick.signal(); });
+    check(tick.wait(), "the loop survived the stale registration");
+    check(completions.load() == 1, "the cancelled op did not complete twice");
+
+    ::close(pair[1]);
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -707,6 +749,7 @@ std::span<const Case> cases()
         {"stop-is-reversible", caseStopIsReversible},
         {"resolve-two-jobs-one-window", caseResolveTwoJobsOneWindow},
         {"stats-cancel-counts", caseStatsCancelCounts},
+        {"forget-drops-registration", caseForgetDropsRegistration},
     };
     return table;
 }

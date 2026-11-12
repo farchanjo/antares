@@ -49,6 +49,22 @@ bool KqueueEngine::arm(PendingOp &op, std::int16_t filter)
     return ::kevent(queue_, &change, 1, nullptr, 0, nullptr) == 0;
 }
 
+void KqueueEngine::forget(PendingOp &op)
+{
+    if (queue_ < 0 || op.handle == nullptr) {
+        return;
+    }
+
+    // Both filters are deleted, because the op may have been armed for either and
+    // `EV_ONESHOT` does not say which one is still registered. ENOENT means it
+    // already fired or was never armed, which is not a failure.
+    const std::uintptr_t descriptor = static_cast<std::uintptr_t>(op.handle->native());
+    struct kevent changes[2] {};
+    EV_SET(&changes[0], descriptor, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+    EV_SET(&changes[1], descriptor, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+    (void)::kevent(queue_, changes, 2, nullptr, 0, nullptr);
+}
+
 void KqueueEngine::armWakeup()
 {
     if (queue_ < 0 || wakeReader() < 0) {
