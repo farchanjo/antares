@@ -616,7 +616,10 @@ void MainWindow::applyColumnWidths()
             [role](const ColumnWidth &column) { return column.role == role; });
         weightTotal += wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
     }
-    const int room = view_->viewport()->width();
+    // The menu column is reserved before the rest is shared: it carries no weight
+    // of its own and would otherwise be squeezed to the floor and clipped.
+    constexpr int MENU_WIDTH = 30;
+    const int room = view_->viewport()->width() - MENU_WIDTH;
     if (room <= 60 || weightTotal <= 0) {
         return;
     }
@@ -626,8 +629,11 @@ void MainWindow::applyColumnWidths()
             config.columns().begin(), config.columns().end(),
             [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
         const int weight = wanted == config.columns().end() ? 100 : static_cast<int>(wanted->width);
-        const int sized =
-            (at + 1 == shown.size()) ? room - used : (room * weight) / weightTotal;
+        if (shown[at] == RowRole::actions) {
+            view_->setColumnWidth(static_cast<int>(at), MENU_WIDTH);
+            continue;
+        }
+        const int sized = (room * weight) / weightTotal;
         view_->setColumnWidth(static_cast<int>(at), sized > 24 ? sized : 24);
         used += sized > 24 ? sized : 24;
     }
