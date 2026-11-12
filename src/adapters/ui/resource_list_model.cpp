@@ -1,5 +1,7 @@
 #include "adapters/ui/resource_list_model.hpp"
 
+#include <cstdio>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -121,6 +123,8 @@ void ResourceListModel::retry()
 
 void ResourceListModel::apply(const ChangeSet &changes)
 {
+    std::fprintf(stderr, "  [apply] escopo=%p ins=%zu\n", static_cast<const void *>(stored()),
+                 changes.inserted.size());
     if (stored() == nullptr) {
         return;
     }
