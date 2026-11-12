@@ -40,8 +40,13 @@ struct WatchEvent {
 
 /// Decode one frame. A blank line is a keep-alive, not a failure, so the caller
 /// skips it rather than tearing the stream down.
+///
+/// The frame is read with the selective scan (feature 008): only `type`, the
+/// object's resource version and the projection are decoded, so the document is
+/// never built. `scannerRefused` is set when the scan fell back to the parser,
+/// which is the signal `KubeStats::scanFailures` publishes (T010).
 [[nodiscard]] std::expected<std::optional<WatchEvent>, ApiError>
-decodeWatchEvent(std::string_view line);
+decodeWatchEvent(std::string_view line, bool *scannerRefused = nullptr);
 
 /// The same over an already parsed document, for a caller that holds one.
 [[nodiscard]] std::expected<std::optional<WatchEvent>, ApiError>

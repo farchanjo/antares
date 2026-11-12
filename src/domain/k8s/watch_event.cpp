@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "domain/json/scalar_scan.hpp"
 #include "domain/k8s/entry_decoder.hpp"
 #include "domain/k8s/status.hpp"
 #include "domain/k8s/store_error.hpp"
@@ -127,19 +128,98 @@ std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(const json::
     return std::optional<WatchEvent>{std::move(event)};
 }
 
-std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(std::string_view line)
+std::expected<std::optional<WatchEvent>, ApiError> decodeWatchEvent(std::string_view line,
+                                                                   bool *scannerRefused)
 {
     const std::string_view text = trimmed(line);
     if (text.empty()) {
         return std::optional<WatchEvent>{};
     }
 
-    const auto document = json::Value::parse(text);
-    if (!document) {
-        return std::unexpected(
-            ApiError{Reason::unexpected, 0, "watch frame is not a JSON object"});
+    const auto malformed = []() {
+        return std::unexpected(ApiError{Reason::unexpected, 0, "watch frame is not a JSON object"});
+    };
+
+    // The envelope is walked, not built: `type` is a short literal and `object`
+    // is a byte range of the frame, so an ERROR status and a BOOKMARK are the
+    // only frames that reach the parser (T010).
+    json::ScalarScan scan{text};
+    if (!scan.begin('{')) {
+        return malformed();
     }
-    return decodeWatchEvent(*document);
+
+    std::string type;
+    std::string_view object;
+    bool first = true;
+    while (true) {
+        const auto state = scan.nextEntry('}', first);
+        if (state == json::ScalarScan::EntryState::failed) {
+            return malformed();
+        }
+        if (state == json::ScalarScan::EntryState::closed) {
+            break;
+        }
+        first = false;
+
+        std::string_view key;
+        if (!scan.memberName(key)) {
+            return malformed();
+        }
+        if (key == "type") {
+            std::string_view value;
+            if (!scan.stringValue(value)) {
+                return malformed();
+            }
+            type = std::string{value};
+            continue;
+        }
+        if (key == "object") {
+            const std::size_t start = scan.offset();
+            if (!scan.skipValue(1)) {
+                return malformed();
+            }
+            object = text.substr(start, scan.offset() - start);
+            continue;
+        }
+        if (!scan.skipValue(1)) {
+            return malformed();
+        }
+    }
+
+    const std::optional<EventType> kind = typeFromToken(type);
+    if (!kind) {
+        return std::unexpected(
+            ApiError{Reason::unexpected, 0, "unknown watch frame type: " + type});
+    }
+
+    WatchEvent event;
+    event.type = *kind;
+    if (event.type == EventType::error) {
+        const auto status = json::Value::parse(object);
+        if (!status) {
+            return malformed();
+        }
+        event.failure = failureFromStatus(*status);
+        return std::optional<WatchEvent>{std::move(event)};
+    }
+    if (event.type == EventType::bookmark) {
+        // A bookmark is a metadata-only object; parsing it is cheaper than a
+        // second walk and it never carries a payload.
+        const auto document = json::Value::parse(object);
+        if (document) {
+            event.resourceVersion = std::string{document->member("metadata").textAt("resourceVersion")};
+        }
+        return std::optional<WatchEvent>{std::move(event)};
+    }
+
+    auto entry = decodeEntry(object, scannerRefused);
+    if (!entry) {
+        return std::unexpected(ApiError{Reason::unexpected, 0,
+                                        std::string{storeErrorName(entry.error())}});
+    }
+    event.resourceVersion = entry->resourceVersion;
+    event.entry = std::move(*entry);
+    return std::optional<WatchEvent>{std::move(event)};
 }
 
 FrameCursor::FrameCursor(std::string &buffer) noexcept : buffer_(buffer) {}

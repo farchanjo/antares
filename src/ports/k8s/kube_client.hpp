@@ -36,6 +36,10 @@ struct KubeStats {
     /// most once per chunk (FR-005).
     std::uint64_t framesParsed = 0;
     std::uint64_t bufferCompactions = 0;
+    /// Documents the selective scan refused and the parser had to read (FR-001,
+    /// feature 008). A steady non-zero count is a shape the scanner does not
+    /// cover yet; the fallback keeps the frame correct meanwhile.
+    std::uint64_t scanFailures = 0;
 };
 
 /// A value that arrived from the server. `body` is the raw JSON so the caller
