@@ -715,3 +715,26 @@ The editor settings are a two-column row when the control is small (`MINIMAP` an
 
 `FONT FAMILY` — dropdown, `RobotoMono`. The editor's font is free text, the
 terminal's is a list.
+
+### Integrations
+
+Two headings, each a group of connector cards.
+
+`Kubernetes Environments`:
+
+| Card | Description | State | Actions |
+|---|---|---|---|
+| `AWS EKS` | Automatically discover and connect to Kubernetes clusters across your AWS accounts. | `⌁ Not Connected` | `Add AWS Account` |
+| `AZURE AKS` | the same, for Azure | `⌁ Not Connected` | `Add Azure Account` |
+| `LOCAL KUBECONFIGS` | Discover and manage Kubernetes clusters from kubeconfig files on your local filesystem. | `⌁ Connected  1 source  ^` | `Watch files & folders`, `Manually add kubeconfig` |
+
+`AI & Intelligence Integrations`:
+
+`ENABLE LENS MCP SERVER` — toggle on. `Expose Lens capabilities to AI agents and
+tools via the Model Context Protocol (MCP). Works with Claude Code, Cursor, GitHub
+Copilot, and other MCP-compatible clients.` Under it, a disclosure `Configure your
+MCP client` with `Add this configuration to your MCP client. For example, add it
+to your project's .mcp.json.`
+
+A connected card shows its source count and a collapse chevron; a disconnected one
+shows `Not Connected` in grey with a single primary action.
