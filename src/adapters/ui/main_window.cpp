@@ -25,6 +25,7 @@
 
 #include "adapters/ui/avatar.hpp"
 #include "adapters/ui/detail_pane.hpp"
+#include "adapters/ui/preferences_page.hpp"
 #include "adapters/ui/family.hpp"
 #include "adapters/ui/qt_list_model.hpp"
 #include "adapters/ui/view_config.hpp"
@@ -269,6 +270,8 @@ QWidget *MainWindow::buildContent()
     // The tab strip is the reference's, and its first tab is the start page:
     // the watermark while nothing is open, the rows once a family is chosen.
     content_->addTab(buildTablePage(), tr("Start"));
+    // Preferences is a tab of its own, as the reference opens it.
+    content_->insertTab(0, new PreferencesPage{content_}, tr("Preferences"));
     return content_;
 }
 

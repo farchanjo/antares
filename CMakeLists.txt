@@ -73,6 +73,7 @@ set(ANTARES_UI_SOURCES
     src/adapters/ui/detail_pane.cpp
     src/adapters/ui/family.cpp
     src/adapters/ui/kube_page_source.cpp
+    src/adapters/ui/preferences_page.cpp
     src/adapters/ui/qt_list_model.cpp
 )
 
