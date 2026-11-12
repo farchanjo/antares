@@ -746,3 +746,13 @@ One setting: `ROW LINE HEIGHT`, numeric field, `20`.
 The page is nearly empty on purpose — a settings page does not pad itself out. It
 is also the reason the row height can be driven from configuration rather than
 hard-coded.
+
+### Telemetry
+
+`IN-APP SURVEYS` — toggle on. `Allow in-app surveys` / `This will allow you to
+participate in surveys to improve the Lens experience.`
+
+`TELEMETRY & USAGE TRACKING` — toggle on. `Allow telemetry & usage tracking` /
+`Telemetry & usage data is collected to continuously improve the Lens experience.`
+
+Both on by default. Each is a free-standing toggle, not a nested group.
