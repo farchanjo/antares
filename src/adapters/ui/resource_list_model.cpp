@@ -181,6 +181,10 @@ void ResourceListModel::apply(const ChangeSet &changes)
         return;
     }
 
+    // The row map is rebuilt before anything is emitted: the ranges below are
+    // store rows, and with no filter the map is the identity, so they line up.
+    rebuildVisible();
+
     for (const RowRange &range : changes.removed) {
         sink_.rowsRemoved(range.first, range.last - 1);
     }

@@ -1,6 +1,7 @@
 #include "adapters/ui/main_window.hpp"
 
 #include <QComboBox>
+#include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -292,31 +293,71 @@ QWidget *MainWindow::buildDetail()
 
 void MainWindow::buildTree()
 {
-    auto *root = new QTreeWidgetItem{navigator_, QStringList{tr("Cluster")}};
-    root->setExpanded(true);
-    const struct {
-        const char *label;
-        bool isNew;
-    } families[] = {
-        {QT_TR_NOOP("Overview"), false},   {QT_TR_NOOP("Applications"), false},
-        {QT_TR_NOOP("Argo CD"), true},     {QT_TR_NOOP("Nodes"), false},
-        {QT_TR_NOOP("Workloads"), false},  {QT_TR_NOOP("Config"), false},
-        {QT_TR_NOOP("Network"), false},    {QT_TR_NOOP("Storage"), false},
-        {QT_TR_NOOP("Device Resources"), true}, {QT_TR_NOOP("Namespaces"), false},
-        {QT_TR_NOOP("Events"), false},     {QT_TR_NOOP("Helm"), false},
-        {QT_TR_NOOP("Access Control"), false}, {QT_TR_NOOP("Custom Resources"), false},
-        {QT_TR_NOOP("Security Center"), false},
-    };
-    for (const auto &family : families) {
-        auto *item = new QTreeWidgetItem{root, QStringList{tr(family.label)}};
-        if (family.isNew) {
-            item->setText(1, tr("NEW"));
-        }
-    }
     navigator_->setColumnCount(2);
     navigator_->header()->setStretchLastSection(false);
     navigator_->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     navigator_->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+
+    // A section header: caps, small, not selectable.
+    const auto section = [this](const QString &label) {
+        auto *item = new QTreeWidgetItem{navigator_, QStringList{label.toUpper()}};
+        item->setFirstColumnSpanned(true);
+        item->setFlags(Qt::ItemIsEnabled);
+        QFont font = item->font(0);
+        font.setBold(true);
+        font.setPixelSize(10);
+        item->setFont(0, font);
+        return item;
+    };
+
+    const struct {
+        const char *label;
+        bool isNew;
+    } families[] = {
+        {QT_TR_NOOP("Overview"), false},
+        {QT_TR_NOOP("Applications"), false},
+        {QT_TR_NOOP("Argo CD"), true},
+        {QT_TR_NOOP("Nodes"), false},
+        {QT_TR_NOOP("Workloads"), false},
+        {QT_TR_NOOP("Config"), false},
+        {QT_TR_NOOP("Network"), false},
+        {QT_TR_NOOP("Storage"), false},
+        {QT_TR_NOOP("Device Resources"), true},
+        {QT_TR_NOOP("Namespaces"), false},
+        {QT_TR_NOOP("Events"), false},
+        {QT_TR_NOOP("Helm"), false},
+        {QT_TR_NOOP("Access Control"), false},
+        {QT_TR_NOOP("Custom Resources"), false},
+        {QT_TR_NOOP("Security Center"), false},
+    };
+
+    // A cluster expands to the families; the badge sits in the second column.
+    const auto cluster = [&families](QTreeWidgetItem *parent, const QString &name) {
+        auto *item = new QTreeWidgetItem{parent, QStringList{name}};
+        for (const auto &family : families) {
+            auto *child = new QTreeWidgetItem{item, QStringList{tr(family.label)}};
+            if (family.isNew) {
+                child->setText(1, tr("NEW"));
+            }
+        }
+        return item;
+    };
+
+    auto *clusters = section(tr("Kubernetes clusters"));
+    auto *aks = new QTreeWidgetItem{clusters, QStringList{tr("AKS")}};
+    static_cast<void>(aks);
+    auto *eks = new QTreeWidgetItem{clusters, QStringList{tr("EKS")}};
+    static_cast<void>(eks);
+
+    auto *local = new QTreeWidgetItem{clusters, QStringList{tr("Local Kubeconfigs")}};
+    for (int index = 0; index < contextBox_->count(); ++index) {
+        static_cast<void>(cluster(local, contextBox_->itemText(index)));
+    }
+
+    auto *teamwork = section(tr("Teamwork"));
+    static_cast<void>(teamwork);
+
+    navigator_->expandAll();
 }
 
 void MainWindow::buildStatus(const QString &message)
