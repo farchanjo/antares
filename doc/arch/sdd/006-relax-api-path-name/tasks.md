@@ -11,7 +11,7 @@
       function guards which (FR-002).
 - [x] T004 Replace the single refusal message with the closed reason class and
       its mapping (FR-003).
-- [ ] T005 Add the agreement case between the store rule and the path rule
+- [x] T005 Add the agreement case between the store rule and the path rule
       (FR-005).
 
 ## Dependencies

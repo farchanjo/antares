@@ -132,20 +132,18 @@ void caseHostileNameRefused()
     check(!isDnsSubdomain("a..b"), "subdomain refuses an empty label");
 }
 
-/// FR-001, FR-004, FR-005 — the eleven name classes of the spec table. The
-/// table is the contract: a name the server would take has to build, because a
-/// row the app shows must be openable, and the four classes that would break
-/// the path have to be refused, because widening the rule must not reopen
-/// traversal. `.` and `..` resolve as segments, `/` splits one, and `%` would
-/// reach the server unescaped.
-void caseNameClasses()
-{
-    struct Row {
-        std::string name;
-        bool accepted;
-    };
+struct NameClass {
+    std::string name;
+    bool accepted;
+};
 
-    const std::vector<Row> table{
+/// The eleven name classes of the spec table, in its order. `.` and `..`
+/// resolve as segments, `/` splits one and `%` would reach the server
+/// unescaped; everything else is a name the server takes, because a row the app
+/// shows must be openable.
+[[nodiscard]] const std::vector<NameClass> &nameClasses()
+{
+    static const std::vector<NameClass> table{
         {"System:Controller:Persistent-Volume-Binder", true},
         {"web_0", true},
         {"system:controller:persistent-volume-binder", true},
@@ -158,11 +156,30 @@ void caseNameClasses()
         {"a/b", false},
         {"a%b", false},
     };
+    return table;
+}
+
+/// The store's `#ObjectName` rule, mirrored from
+/// `doc/arch/schemas/bound-the-event-memory.cue`: 1 to 253 bytes, no `/` and
+/// no `%`, and neither `.` nor `..`. The same sentence as `isPathSegment`,
+/// spelled apart so the agreement case compares two rules instead of one with
+/// itself.
+[[nodiscard]] bool storeAccepts(std::string_view name)
+{
+    return !name.empty() && name.size() <= SEGMENT_CEILING &&
+           name.find_first_of("/%") == std::string_view::npos && name != "." && name != "..";
+}
+
+/// FR-001, FR-004 — the table is the contract: an accepted name builds and
+/// stays one segment, a refused one never reaches the path.
+void caseNameClasses()
+{
+    const std::vector<NameClass> &table = nameClasses();
     check(table.size() == 11, "the table carries every class once");
 
     const ApiPath base{corePods(), std::nullopt, std::nullopt, Subresource::none};
     for (std::size_t index = 0; index < table.size(); ++index) {
-        const Row &row = table[index];
+        const NameClass &row = table[index];
         const std::string label = "class " + std::to_string(index) + " accepted";
         const std::string refused = "class " + std::to_string(index) + " refused";
 
@@ -171,9 +188,33 @@ void caseNameClasses()
         if (!built || !row.accepted) {
             continue;
         }
-        // An accepted name stays one segment: no separator is introduced by the
-        // builder, so the name renders between the resource and the end.
+        // An accepted name stays one segment: the builder introduces no
+        // separator, so the name renders between the resource and the end.
         checkEqual(built->render(), "/api/v1/pods/" + row.name, "name stays one segment");
+    }
+}
+
+/// FR-005 — a row the store holds has to be openable. Both rules are fed every
+/// class and must answer alike, and the four widened classes are also asserted
+/// on the store mirror alone so a typo there cannot agree by accident. The
+/// store does not re-check the length, so 254 bytes is the one class the path
+/// still refuses on its own.
+void caseStorePathAgreement()
+{
+    check(storeAccepts("System:Controller"), "the store takes uppercase");
+    check(storeAccepts("web_0"), "the store takes an underscore");
+    check(storeAccepts("system:controller"), "the store takes a colon");
+    check(!storeAccepts("a/b"), "the store refuses a separator");
+    check(!storeAccepts("a%b"), "the store refuses an escape");
+    check(!storeAccepts("."), "the store refuses a dot");
+    check(!storeAccepts(".."), "the store refuses a dotdot");
+    check(!storeAccepts(""), "the store refuses the empty name");
+
+    const ApiPath base{corePods(), std::nullopt, std::nullopt, Subresource::none};
+    for (const NameClass &row : nameClasses()) {
+        const bool pathAccepts = base.named(row.name).has_value();
+        check(pathAccepts == row.accepted, "the path answers the table");
+        check(pathAccepts == storeAccepts(row.name), "the store and the path agree");
     }
 }
 
@@ -633,6 +674,7 @@ constexpr Case cases[] = {
     {"hostile-name-refused", caseHostileNameRefused},
     {"name-classes", caseNameClasses},
     {"name-refusal-reason", caseNameRefusalReason},
+    {"store-path-agreement", caseStorePathAgreement},
     {"list-options-rendered", caseListOptionsRendered},
     {"list-options-empty", caseListOptionsEmpty},
     {"patch-content-types", casePatchContentTypes},

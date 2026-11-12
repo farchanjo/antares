@@ -400,6 +400,7 @@ set(ANTARES_K8S_CASES
     hostile-name-refused
     name-classes
     name-refusal-reason
+    store-path-agreement
     list-options-rendered
     list-options-empty
     patch-content-types
