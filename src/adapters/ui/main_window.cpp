@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QTabWidget>
 #include <QStatusBar>
 #include <QStyle>
 #include <QToolBar>
@@ -68,7 +69,7 @@ MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QS
     splitter_ = new QSplitter{Qt::Horizontal, central};
     splitter_->addWidget(buildRail());
     splitter_->addWidget(buildNavigator());
-    splitter_->addWidget(buildTable());
+    splitter_->addWidget(buildContent());
     splitter_->addWidget(buildDetail());
     splitter_->setStretchFactor(0, 0);
     splitter_->setStretchFactor(1, 0);
@@ -234,7 +235,19 @@ QWidget *MainWindow::buildNavigator()
     return pane;
 }
 
-QWidget *MainWindow::buildTable()
+QWidget *MainWindow::buildContent()
+{
+    content_ = new QTabWidget{this};
+    content_->setDocumentMode(true);
+    content_->setTabsClosable(true);
+    content_->setMovable(true);
+    // The tab strip is the reference's, and its first tab is the start page:
+    // the watermark while nothing is open, the rows once a family is chosen.
+    content_->addTab(buildTablePage(), tr("Start"));
+    return content_;
+}
+
+QWidget *MainWindow::buildTablePage()
 {
     // The empty state sits in a stack with the rows, so a scope with nothing in
     // it says why instead of showing a blank grid.
@@ -264,6 +277,7 @@ QWidget *MainWindow::buildTable()
     stack->addWidget(view_);
     stack->addWidget(emptyState_);
     stack->setCurrentWidget(view_);
+    pages_ = stack;
     return stack;
 }
 
@@ -389,6 +403,8 @@ QComboBox *MainWindow::namespaceBox() const noexcept { return namespaceBox_; }
 QTreeWidget *MainWindow::navigator() const noexcept { return navigator_; }
 
 QTreeView *MainWindow::table() const noexcept { return view_; }
+
+QTabWidget *MainWindow::content() const noexcept { return content_; }
 
 QSplitter *MainWindow::splitter() const noexcept { return splitter_; }
 

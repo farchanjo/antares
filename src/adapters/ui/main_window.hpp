@@ -8,6 +8,8 @@ class QComboBox;
 class QLabel;
 class QLineEdit;
 class QSplitter;
+class QStackedWidget;
+class QTabWidget;
 class QTreeView;
 class QToolBar;
 class QToolButton;
@@ -41,13 +43,15 @@ public:
     [[nodiscard]] QComboBox *namespaceBox() const noexcept;
     [[nodiscard]] QTreeWidget *navigator() const noexcept;
     [[nodiscard]] QTreeView *table() const noexcept;
+    [[nodiscard]] QTabWidget *content() const noexcept;
     [[nodiscard]] QSplitter *splitter() const noexcept;
 
 private:
     void buildToolBar();
     QWidget *buildRail();
     QWidget *buildNavigator();
-    QWidget *buildTable();
+    QWidget *buildContent();
+    QWidget *buildTablePage();
     QWidget *buildDetail();
     void buildTree();
     void buildEmptyState();
@@ -67,6 +71,8 @@ private:
     QLabel *region_ = nullptr;
     QLabel *count_ = nullptr;
     QLabel *emptyState_ = nullptr;
+    QTabWidget *content_ = nullptr;
+    QStackedWidget *pages_ = nullptr;
     QSplitter *splitter_ = nullptr;
 };
 
