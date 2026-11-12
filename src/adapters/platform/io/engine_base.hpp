@@ -49,6 +49,10 @@ struct PendingOp {
     std::list<std::unique_ptr<PendingOp>>::iterator slot;
 
     OpKind kind = OpKind::read;
+    /// Backend-assigned request tag. `io_uring` completes by tag rather than by
+    /// address, so a completion that lands after the op was released is skipped
+    /// instead of dereferencing freed memory. Other backends leave it alone.
+    std::uint64_t tag = 0;
     const IoHandle *handle = nullptr;
     Buffer buffer;
     Bytes offset{};

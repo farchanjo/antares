@@ -167,27 +167,39 @@ it bites on the first Linux UI build.
 
 ## Measurements
 
-`doc/arch/spikes/hosted-loop/` on macOS 27.0.1 arm64, `-O2`, 2026-11-12, with the
-phase windows the spec names (30 s idle and saturated, 10 s per nested loop, 60 s
-occluded). `VERDICT pass`: every threshold held.
+`doc/arch/spikes/hosted-loop/` on macOS 27.0.1 arm64, 16 cores, `-O2`,
+2026-11-12, with a real Cocoa window, frontmost, one FR per process. Every
+threshold in the spec held.
 
 | Ref | What it proves | Number |
 |---|---|---|
-| FR-001 | the notifier wakes on the backend descriptor | 5 wakes, 226 µs |
-| FR-002 | a turn does not block the paint | 63.3 idle fps against 62.5 saturated, ratio 0.987 over 58 340 turns and 954 MB |
-| FR-003 | a modal opened from a completion does not deadlock | opens; 99.3 MB delivered under it |
-| FR-004 | nested Cocoa loops still deliver socket events | 331.2 MB through a resize, 331.7 MB through a held menu, 5 924 frames |
-| FR-005 | `nextDeadline` drives a host timer | 248.6 ms against a 200 ms request, on the main thread |
-| FR-006 | a turn honours its deadline | p99 1 006 µs, 40 overruns in 82 882 turns |
-| FR-007 | App Nap does not stall the loop | occluded p99 255.3 ms against 253.6 ms with activity |
-| FR-008 | one loop carries thirty-two watches | 62.5 fps, 2 703 MB, every watch served |
+| FR-001 | the notifier wakes on the backend descriptor | 5 wakes, 192–1 211 µs over four runs |
+| FR-002 | a turn does not block the paint | 62.2 idle fps against 62.5 saturated, ratio 1.004 |
+| FR-003 | a modal opened from a completion does not deadlock | opens; 60.2 MB delivered under it |
+| FR-004 | nested Cocoa loops still deliver socket events | 260.8 MB through a resize, 281.9 MB through a held menu |
+| FR-005 | `nextDeadline` drives a host timer | 274 ms against a 200 ms request, on the main thread |
+| FR-006 | a turn honours its deadline | p99 50.0 ms, 40 overruns in 49 turns |
+| FR-007 | App Nap does not stall the loop | occluded p99 253.2 ms against 253.2 ms with activity |
+| FR-008 | one loop carries thirty-two watches | 63.3 fps, 926 MB, p99 turn 8.5 ms |
 
-FR-005 and FR-007 sit near 255 ms rather than 200 ms and 33 ms: the offscreen
-platform plugin clamps the timer to its own quantum. What the record reads is the
-ratio between the occluded and the active run, which is 1.007.
+The idle loop is quiet — 121 turns in the 30 s baseline against 104 282 while
+saturated — so the paint cost comes from the work and not from the hosting. Under
+thirty-two watches the p99 turn reaches 8.5 ms, which is the whole budget: the
+frame rate holds, and a turn that is over budget is the failure mode this record
+already names.
+
+Two properties of the platform are worth recording. A background app is throttled
+by App Nap to ~70 ms per wake against ~1 ms frontmost, so the spike activates
+itself. An occluded app has its *timer* delivery deferred too, to the point where
+an unattended run stalls; the spike holds an `NSProcessInfo` activity for
+everything except FR-007, which is the case that measures occlusion on its own.
+
+Run under `leaks`, the spike reports 5 147 leaks for 694 KB, every root in
+AppKit, HIToolbox or Qt and none in the engine, the harness or a connection.
 
 ## Consequences
 
 The loop is hosted, so the engine owns no thread in the windowed path. A
 completion that blocks blocks the paint; the turn budget is the only bound. The
-spike numbers above are the floor a regression is measured against.
+spike numbers above are the floor a regression is measured against, and
+`tests/io/hosted.cpp` is where a regression is caught on Linux.

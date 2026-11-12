@@ -191,6 +191,10 @@ private:
     void turn()
     {
         if (stopFlag_ != nullptr && *stopFlag_) {
+            static long skipped = 0;
+            if (++skipped % 20000 == 0) {
+                std::fprintf(stderr, "SKIPPED %ld turns\n", skipped);
+            }
             return;
         }
         ++wakes_;
