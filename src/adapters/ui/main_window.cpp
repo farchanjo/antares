@@ -642,7 +642,9 @@ void MainWindow::showEvent(QShowEvent *event)
 {
     QMainWindow::showEvent(event);
     // After the first layout pass, so the sections exist at their final count.
-    QTimer::singleShot(0, this, [this] {
+    // Long enough for the splitter and the tab widget to have sized the pane: at
+    // zero the view is still a hundred pixels wide and the shares come out wrong.
+    QTimer::singleShot(400, this, [this] {
         applyColumnWidths();
         std::fprintf(stderr, "  [pos] n=%d w5=%d\n", view_->header()->count(),
                      view_->columnWidth(5));
