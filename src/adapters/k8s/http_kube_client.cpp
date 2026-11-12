@@ -76,8 +76,10 @@ void scanPageMetadata(domain::json::ScalarScan &scan, ports::k8s::ListPage &page
 
         std::string_view key;
         if (!scan.memberName(key)) {
+            std::fprintf(stderr, "  [scan] memberName failed\n");
             return;
         }
+        std::fprintf(stderr, "  [scan] key=%.20s\n", key.data());
         if (key == "continue") {
             std::string_view value;
             if (!scan.stringValue(value)) {
@@ -120,8 +122,10 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
 
         std::string_view key;
         if (!scan.memberName(key)) {
+            std::fprintf(stderr, "  [scan] memberName failed\n");
             return;
         }
+        std::fprintf(stderr, "  [scan] key=%.20s\n", key.data());
         if (key == "metadata") {
             scanPageMetadata(scan, page);
             continue;
