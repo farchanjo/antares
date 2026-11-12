@@ -124,6 +124,7 @@ private:
     PageToken continueToken_;
     std::thread::id owner_ = std::this_thread::get_id();
     bool fetching_ = false;
+    bool started_ = false;
     std::optional<PageError> failure_;
 };
 

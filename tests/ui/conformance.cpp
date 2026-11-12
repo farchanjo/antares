@@ -148,11 +148,16 @@ void caseFetchAsksTheLimit()
 
 void caseCanFetchMoreNeedsAToken()
 {
-    Harness empty;
-    empty.build("shop", "");
-    check(!empty.model->canFetchMore(), "no token, no fetch");
-    empty.model->fetchMore();
-    check(empty.pages.fetches == 0, "fetchMore is a no-op without a token");
+    // The first page has no token yet: an empty one must not stop it, or the
+    // window opens on an empty list forever.
+    Harness fresh;
+    fresh.build("shop", "");
+    check(fresh.model->canFetchMore(), "the first page needs no token");
+    fresh.model->fetchMore();
+    check(fresh.pages.fetches == 1, "the first page is asked for");
+    fresh.pages.queuePage({}, "");
+    fresh.model->fetchMore();
+    check(!fresh.model->canFetchMore(), "an empty page ends the fetch");
 
     Harness harness;
     harness.build();

@@ -89,7 +89,9 @@ bool ResourceListModel::canFetchMore() const noexcept
     if (fetching_ || failure_) {
         return false;
     }
-    return !continueToken_.empty();
+    // The first page has no token yet, so an empty one only stops the loop after
+    // a page has landed and returned none.
+    return !started_ || !continueToken_.empty();
 }
 
 void ResourceListModel::fetchMore()
@@ -98,6 +100,7 @@ void ResourceListModel::fetchMore()
         return;
     }
     fetching_ = true;
+    started_ = true;
     // The completion may run on any thread; `onPage` queues and wakes, so the
     // token is only ever stored on the model's own thread.
     pages_.fetch(scope_, continueToken_, pageLimit,
