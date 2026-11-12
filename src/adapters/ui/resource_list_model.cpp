@@ -123,8 +123,8 @@ void ResourceListModel::retry()
 
 void ResourceListModel::apply(const ChangeSet &changes)
 {
-    std::fprintf(stderr, "  [apply] escopo=%p ins=%zu\n", static_cast<const void *>(stored()),
-                 changes.inserted.size());
+    std::fprintf(stderr, "  [apply] escopo=%p rows=%u ins=%zu\n",
+                 static_cast<const void *>(stored()), storedRows(), changes.inserted.size());
     if (stored() == nullptr) {
         return;
     }
