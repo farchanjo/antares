@@ -40,6 +40,11 @@ struct KubeStats {
     /// invisible: `submitted` counts the call, this counts a page that landed,
     /// so the two drifting apart names the loop.
     std::uint64_t pagesFetched = 0;
+
+    /// Documents the selective scan refused and the parser had to read (FR-001,
+    /// feature 008). A steady non-zero count is a shape the scanner does not
+    /// cover yet; the fallback keeps the frame correct meanwhile.
+    std::uint64_t scanFailures = 0;
 };
 
 /// A value that arrived from the server. `body` is the raw JSON so the caller

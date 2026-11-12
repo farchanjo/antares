@@ -189,6 +189,7 @@ set_target_properties(antares_http PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OF
 # The Kubernetes API client: a pure domain, a port and one adapter over
 # antares_http. It adds no transport and no third-party dependency.
 set(ANTARES_K8S_SOURCES
+    src/domain/json/scan_error.cpp
     src/domain/json/value.cpp
     src/domain/yaml/node.cpp
     src/domain/k8s/api_error.cpp
@@ -542,6 +543,12 @@ set(ANTARES_K8S_CASES
     entry-refuses-hostile
     entry-labels-truncated
     entry-worst-case-bound
+    scan-matches-projection
+    scan-skips-without-allocating
+    scan-reports-offset
+    scan-resolves-escapes
+    scan-name-stops
+    scan-is-faster
     store-bounds-5000-pods
     store-shares-entry
     store-upsert-in-place

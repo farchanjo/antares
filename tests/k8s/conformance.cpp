@@ -2,10 +2,14 @@
 // requirement: the shape of a request, the mapping of a failure, and the
 // framing of a stream, proven without a cluster.
 
+#include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -14,6 +18,8 @@
 #include <vector>
 
 #include "application/k8s/object_store.hpp"
+#include "domain/json/scan_error.hpp"
+#include "domain/json/scalar_scan.hpp"
 #include "domain/json/value.hpp"
 #include "domain/k8s/api_path.hpp"
 #include "domain/k8s/discovery.hpp"
@@ -902,6 +908,255 @@ void caseEntryWorstCaseBound()
     std::printf("  worst-case entry: %zu bytes\n", used);
 }
 
+// --- feature 008: the selective scan -----------------------------------
+
+/// Every fixture the two paths must agree on. `pod.json` and `worst-entry.json`
+/// come from feature 005; the CRD, the Secret and the escape document are the
+/// shapes the projection skips the most of (FR-002, FR-004).
+constexpr std::array<std::string_view, 5> SCAN_FIXTURES{
+    "pod.json", "crd.json", "secret.json", "escapes.json", "worst-entry.json"};
+
+// FR-001 — the scanner produces the same entry as the parser, field by field.
+void caseScanMatchesProjection()
+{
+    for (const std::string_view name : SCAN_FIXTURES) {
+        const std::string text = readFixture(name);
+        check(!text.empty(), "fixture is readable");
+
+        const auto scanned = scanEntry(text);
+        check(scanned.has_value(), (std::string{"fixture scans: "} + std::string{name}));
+
+        const auto document = json::Value::parse(text);
+        check(document.has_value(), "fixture parses");
+        if (!scanned || !document) {
+            continue;
+        }
+
+        const auto projected = decodeEntry(*document);
+        check(projected.has_value(), "fixture projects");
+        if (!projected) {
+            continue;
+        }
+
+        check(scanned->identity.uid == projected->identity.uid, "uid agrees");
+        checkEqual(scanned->identity.name, projected->identity.name, "name agrees");
+        checkEqual(scanned->resourceVersion, projected->resourceVersion, "version agrees");
+        check(scanned->generation == projected->generation, "generation agrees");
+        checkEqual(scanned->creationTimestamp, projected->creationTimestamp, "timestamp agrees");
+        checkEqual(scanned->labels.blob(), projected->labels.blob(), "labels agree");
+        check(scanned->labelsTruncated() == projected->labelsTruncated(), "label cut agrees");
+        checkEqual(scanned->status.reason, projected->status.reason, "reason agrees");
+        check(scanned->status.ready == projected->status.ready, "ready count agrees");
+        check(scanned->status.total == projected->status.total, "total count agrees");
+    }
+}
+
+// FR-002 — a skipped value costs no allocation, and the parser path does.
+void caseScanSkipsWithoutAllocating()
+{
+    const std::string text = readFixture("pod.json");
+    check(!text.empty(), "fixture is readable");
+    if (text.empty()) {
+        return;
+    }
+
+    std::size_t scannedAllocations = 0;
+    {
+        const antares::test::CountingScope counting;
+        const std::size_t before = antares::test::allocations();
+        const auto entry = scanEntry(text);
+        scannedAllocations = antares::test::allocations() - before;
+        check(entry.has_value(), "fixture scans");
+    }
+
+    std::size_t parsedAllocations = 0;
+    {
+        const antares::test::CountingScope counting;
+        const std::size_t before = antares::test::allocations();
+        const auto document = json::Value::parse(text);
+        check(document.has_value(), "fixture parses");
+        if (document) {
+            const auto entry = decodeEntry(*document);
+            check(entry.has_value(), "parser path decodes");
+        }
+        parsedAllocations = antares::test::allocations() - before;
+    }
+
+    check(scannedAllocations <= 16, "a scanned frame stays under sixteen allocations");
+    check(parsedAllocations >= 10 * scannedAllocations,
+          "the parser path allocates an order above the scan");
+    std::printf("  scanned frame: %zu allocations, parser path: %zu\n", scannedAllocations,
+                parsedAllocations);
+}
+
+// FR-003 — skipping validates: a truncation and a mis-nesting report an offset.
+void caseScanReportsOffset()
+{
+    const std::string text = readFixture("pod.json");
+    const std::size_t inside = text.find("\"managedFields\"");
+    check(inside != std::string::npos, "fixture carries managedFields");
+    if (inside == std::string::npos) {
+        return;
+    }
+
+    const std::string truncated = text.substr(0, inside + 30);
+    const auto shortScan = scanEntry(truncated);
+    check(!shortScan.has_value(), "a document ending inside a skip is refused");
+    if (!shortScan) {
+        check(shortScan.error().offset == truncated.size(), "the offset is the truncation");
+        checkEqual(scanReasonName(shortScan.error().reason), "unterminated string",
+                   "a cut string is named");
+    }
+
+    // A `]` closing an object: the skip has to catch it where it stands.
+    const std::string misNested =
+        R"({"kind":"Pod","metadata":{"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+        R"("name":"p"},"spec":{"a":1]})";
+    const std::size_t bracket = misNested.rfind(']');
+    const auto nestedScan = scanEntry(misNested);
+    check(!nestedScan.has_value(), "a mis-nested document is refused");
+    if (!nestedScan) {
+        check(nestedScan.error().offset == bracket, "the offset is the stray bracket");
+        checkEqual(scanReasonName(nestedScan.error().reason), "expected ',' or the closing delimiter",
+                   "a mis-nesting is named");
+    }
+}
+
+// FR-004 — every escape decodes into the kept value.
+void caseScanResolvesEscapes()
+{
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 8> ESCAPES{{
+        {R"(\")", "\""},
+        {R"(\\)", "\\"},
+        {R"(\b)", "\b"},
+        {R"(\f)", "\f"},
+        {R"(\n)", "\n"},
+        {R"(\r)", "\r"},
+        {R"(\t)", "\t"},
+        {R"(\u00e9)", "\u00e9"},
+    }};
+
+    for (const auto &[escaped, decoded] : ESCAPES) {
+        const std::string document =
+            R"({"kind":"Pod","metadata":{"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+            R"("name":"x)" +
+            std::string{escaped} + R"(x"}})";
+        const auto entry = scanEntry(document);
+        check(entry.has_value(), "an escaped name scans");
+        if (entry) {
+            checkEqual(entry->identity.name, "x" + std::string{decoded} + "x", "escape decoded");
+        }
+    }
+
+    // `/` is the one escape a name cannot carry, so it round-trips elsewhere.
+    const std::string slash = R"({"kind":"Pod","metadata":{"uid":)"
+                              R"("5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40","name":"p",)"
+                              R"("creationTimestamp":"a\/b"}})";
+    const auto slashed = scanEntry(slash);
+    check(slashed.has_value(), "a slash escape scans");
+    if (slashed) {
+        checkEqual(slashed->creationTimestamp, "a/b", "slash decoded");
+    }
+
+    // The fixture carries the whole table in the name, surrogate pair included.
+    const auto fixture = scanEntry(readFixture("escapes.json"));
+    check(fixture.has_value(), "the escape fixture scans");
+    if (fixture) {
+        // The surrogate pair is spelled in bytes: a narrow literal rejects the
+        // pair, and the scanner must produce the four-byte UTF-8 form.
+        // clang encodes a surrogate pair as two three-byte forms, so the
+        // expected text is spelled in bytes: UTF-8 is one four-byte form.
+        checkEqual(fixture->identity.name,
+                   "e\"s\\c\b\f\n\r\t\xC3\xA9" "\xF0\x9F\x98\x80",
+                   "the fixture name is decoded");
+    }
+
+    // A lone surrogate is a refusal, not a replacement character.
+    const std::string loneHigh =
+        R"({"kind":"Pod","metadata":{"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+        R"("name":"\uD83D"}})";
+    const auto high = scanEntry(loneHigh);
+    check(!high.has_value(), "a lone high surrogate is refused");
+    const std::string loneLow =
+        R"({"kind":"Pod","metadata":{"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+        R"("name":"\uDE00"}})";
+    check(!scanEntry(loneLow).has_value(), "a lone low surrogate is refused");
+}
+
+// FR-005 — the key lookup stops at the name instead of reading the frame.
+void caseScanNameStops()
+{
+    const std::string filler(64 * 1024, 'x');
+    const std::string document =
+        R"({"kind":"Pod","metadata":{"uid":"5b6f0f1e-2c4a-4d38-9a11-7f3e6c2b8d40",)"
+        R"("name":"web-0","labels":{"a":")" +
+        filler + R"("}},"spec":{"blob":")" + filler + R"("}})";
+
+    std::size_t consumed = 0;
+    const auto name = scanName(document, &consumed);
+    check(name.has_value(), "the name is found");
+    checkEqual(name.value_or(std::string{}), "web-0", "the name is decoded");
+    check(consumed < 128, "the walk stops at the name");
+    check(consumed < document.size() / 100, "far short of the document");
+
+    const auto missing = scanName(R"({"kind":"Pod","metadata":{}})");
+    check(!missing.has_value(), "a document without a name is refused");
+    if (!missing) {
+        checkEqual(scanReasonName(missing.error().reason), "missing metadata.name",
+                   "the absence is named");
+    }
+}
+
+// FR-006 — the saving is measured over the same fixture and must clear 4x.
+void caseScanIsFaster()
+{
+    const std::string text = readFixture("pod.json");
+    check(!text.empty(), "fixture is readable");
+    if (text.empty()) {
+        return;
+    }
+
+    constexpr std::size_t ROUNDS = 5;
+    constexpr std::size_t ITERATIONS = 2000;
+
+    const auto measure = [&text](bool scanning) {
+        volatile std::uint64_t sink = 0;
+        const auto start = std::chrono::steady_clock::now();
+        for (std::size_t index = 0; index < ITERATIONS; ++index) {
+            if (scanning) {
+                const auto entry = scanEntry(text);
+                if (entry) {
+                    sink += entry->identity.name.size() + entry->labels.size();
+                }
+                continue;
+            }
+            const auto document = json::Value::parse(text);
+            if (document) {
+                const auto entry = decodeEntry(*document);
+                if (entry) {
+                    sink += entry->identity.name.size() + entry->labels.size();
+                }
+            }
+        }
+        const auto stop = std::chrono::steady_clock::now();
+        static_cast<void>(sink);
+        return static_cast<std::int64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count());
+    };
+
+    std::int64_t scanBest = std::numeric_limits<std::int64_t>::max();
+    std::int64_t parseBest = scanBest;
+    for (std::size_t round = 0; round < ROUNDS; ++round) {
+        scanBest = std::min(scanBest, measure(true));
+        parseBest = std::min(parseBest, measure(false));
+    }
+
+    const auto ratio = static_cast<double>(parseBest) / static_cast<double>(scanBest);
+    std::printf("  scan %lld ns, parse %lld ns, %.1fx\n", static_cast<long long>(scanBest),
+                static_cast<long long>(parseBest), ratio);
+    check(ratio >= 4.0, "the scanner is at least 4x faster");
+}
+
 // FR-003 — five thousand fixture pods stay inside 2 560 000 bytes.
 void caseStoreBounds5000Pods()
 {
@@ -1314,6 +1569,12 @@ constexpr Case cases[] = {
     {"entry-refuses-hostile", caseEntryRefusesHostile},
     {"entry-labels-truncated", caseEntryLabelsTruncated},
     {"entry-worst-case-bound", caseEntryWorstCaseBound},
+    {"scan-matches-projection", caseScanMatchesProjection},
+    {"scan-skips-without-allocating", caseScanSkipsWithoutAllocating},
+    {"scan-reports-offset", caseScanReportsOffset},
+    {"scan-resolves-escapes", caseScanResolvesEscapes},
+    {"scan-name-stops", caseScanNameStops},
+    {"scan-is-faster", caseScanIsFaster},
     {"store-bounds-5000-pods", caseStoreBounds5000Pods},
     {"store-shares-entry", caseStoreSharesEntry},
     {"store-upsert-in-place", caseStoreUpsertInPlace},

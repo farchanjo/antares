@@ -217,7 +217,15 @@ private:
                 break;
             case 'u':
                 if (auto code = readUnicode(); code) {
-                    appendUtf8(out, *code);
+                    // A surrogate pair is one code point, so the low half is
+                    // consumed here and the pair encodes as four bytes. The
+                    // scanner does the same, which is what keeps the two paths
+                    // byte-equal (FR-001, feature 008).
+                    if (auto point = combineSurrogate(*code); point) {
+                        appendUtf8(out, *point);
+                    } else {
+                        return std::unexpected(point.error());
+                    }
                 } else {
                     return std::unexpected(code.error());
                 }
@@ -229,8 +237,35 @@ private:
         return fail("unterminated string");
     }
 
-    [[nodiscard]] std::expected<std::uint32_t, ParseError> readUnicode()
+    /// A high surrogate followed by `\u` and a low one is one code point.
+    /// Any other shape leaves the unit as it stands, which is the lenient
+    /// half of the contract: the caller's document still parses.
+    [[nodiscard]] std::expected<std::uint32_t, ParseError> combineSurrogate(std::uint32_t code)
     {
+        constexpr std::uint32_t HIGH_FIRST = 0xD800U;
+        constexpr std::uint32_t HIGH_LAST = 0xDBFFU;
+        constexpr std::uint32_t LOW_FIRST = 0xDC00U;
+        constexpr std::uint32_t LOW_LAST = 0xDFFFU;
+        constexpr std::uint32_t BASE = 0x10000U;
+
+        if (code < HIGH_FIRST || code > HIGH_LAST) {
+            return code;
+        }
+        if (at_ + 1 >= text_.size() || text_[at_] != '\\' || text_[at_ + 1] != 'u') {
+            return code;
+        }
+        at_ += 2;
+        auto low = readUnicode();
+        if (!low) {
+            return std::unexpected(low.error());
+        }
+        if (*low < LOW_FIRST || *low > LOW_LAST) {
+            return code;
+        }
+        return BASE + ((code - HIGH_FIRST) << 10U) + (*low - LOW_FIRST);
+    }
+
+    [[nodiscard]] std::expected<std::uint32_t, ParseError> readUnicode()    {
         if (at_ + 4 > text_.size()) {
             return fail("short unicode escape");
         }

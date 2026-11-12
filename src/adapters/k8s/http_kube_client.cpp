@@ -5,6 +5,7 @@
 #include <string_view>
 #include <utility>
 
+#include "domain/json/scalar_scan.hpp"
 #include "domain/json/value.hpp"
 #include "domain/k8s/entry_decoder.hpp"
 
@@ -50,6 +51,145 @@ constexpr std::string_view ACCEPT_TYPE = "application/json";
         object.meta = domain::k8s::ObjectMeta::fromJson(object.body);
     }
     return object;
+}
+
+/// The two `metadata` fields a page carries. The rest of the block is stepped
+/// over, so a page of five thousand items costs two strings, not five thousand
+/// metadata trees.
+void scanPageMetadata(domain::json::ScalarScan &scan, ports::k8s::ListPage &page)
+{
+    if (!scan.begin('{')) {
+        // A `metadata` that is not an object still has to be stepped over, or
+        // the page walk would trip on it.
+        static_cast<void>(scan.skipValue(2));
+        return;
+    }
+
+    bool first = true;
+    while (true) {
+        const auto state = scan.nextEntry('}', first);
+        if (state == domain::json::ScalarScan::EntryState::failed ||
+            state == domain::json::ScalarScan::EntryState::closed) {
+            return;
+        }
+        first = false;
+
+        std::string_view key;
+        if (!scan.memberName(key)) {
+            return;
+        }
+        if (key == "continue") {
+            std::string_view value;
+            if (!scan.stringValue(value)) {
+                return;
+            }
+            page.continueToken = std::string{value};
+            continue;
+        }
+        if (key == "resourceVersion") {
+            std::string_view value;
+            if (!scan.stringValue(value)) {
+                return;
+            }
+            page.resourceVersion = std::string{value};
+            continue;
+        }
+        if (!scan.skipValue(2)) {
+            return;
+        }
+    }
+}
+
+/// Walk one list document into a page. The continue token, the page version and
+/// each item's projection are the only fields read, so the document never
+/// becomes a tree (FR-002, FR-005); a refused shape falls back to the parser
+/// inside `decodeEntry` and is counted (FR-001).
+void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64_t *scanFailures)
+{
+    domain::json::ScalarScan scan{body};
+    if (!scan.begin('{')) {
+        return;
+    }
+
+    bool first = true;
+    while (true) {
+        if (scan.nextEntry('}', first) != domain::json::ScalarScan::EntryState::more) {
+            return;
+        }
+        first = false;
+
+        std::string_view key;
+        if (!scan.memberName(key)) {
+            return;
+        }
+        if (key == "metadata") {
+            scanPageMetadata(scan, page);
+            continue;
+        }
+        if (key == "items") {
+            if (!scan.begin('[')) {
+                return;
+            }
+            bool firstItem = true;
+            while (true) {
+                if (scan.nextEntry(']', firstItem) != domain::json::ScalarScan::EntryState::more) {
+                    break;
+                }
+                firstItem = false;
+                bool refused = false;
+                auto entry = domain::k8s::decodeEntry(scan, &refused);
+                if (refused && scanFailures != nullptr) {
+                    ++*scanFailures;
+                }
+                if (entry) {
+                    page.items.push_back(std::move(*entry));
+                }
+            }
+            continue;
+        }
+        if (!scan.skipValue(1)) {
+            return;
+        }
+    }
+}
+
+/// Drain the complete frames of the accumulator into the handler. The cursor
+/// reads them in place and compacts once per chunk, so nothing is copied out.
+void consumeFrames(std::string &buffer, ports::k8s::WatchHandler &handler,
+                   ports::k8s::KubeStats *stats)
+{
+    {
+        domain::k8s::FrameCursor cursor{buffer};
+        while (const std::optional<std::string_view> frame = cursor.next()) {
+            bool refused = false;
+            auto event = domain::k8s::decodeWatchEvent(*frame, &refused);
+            if (refused && stats != nullptr) {
+                ++stats->scanFailures;
+            }
+            if (!event) {
+                continue;
+            }
+            const std::optional<domain::k8s::WatchEvent> &maybe = *event;
+            if (!maybe) {
+                continue;
+            }
+            const domain::k8s::WatchEvent &decoded = *maybe;
+            if (stats != nullptr) {
+                ++stats->framesParsed;
+                if (decoded.type == domain::k8s::EventType::bookmark) {
+                    ++stats->bookmarks;
+                } else {
+                    ++stats->watchEvents;
+                }
+            }
+            if (handler.onEvent) {
+                handler.onEvent(decoded);
+            }
+        }
+        if (cursor.compact() > 0 && stats != nullptr) {
+            ++stats->bufferCompactions;
+        }
+    }
 }
 
 /// Forward a completion onto the caller's thread, keeping the functor alive
@@ -187,20 +327,7 @@ HttpKubeClient::list(const domain::k8s::ApiPath &path, const domain::k8s::ListOp
             ++self->stats_.succeeded;
         }
         ports::k8s::ListPage page;
-        const auto document = domain::json::Value::parse(toText(result->body));
-        if (document) {
-            page.continueToken = std::string{document->member("metadata").textAt("continue")};
-            page.resourceVersion =
-                std::string{document->member("metadata").textAt("resourceVersion")};
-            // The document dies with this completion; only the projection
-            // survives, so the page is not a second tree (FR-005).
-            for (const domain::json::Value &item : document->member("items").items()) {
-                auto entry = domain::k8s::decodeEntry(item);
-                if (entry) {
-                    page.items.push_back(std::move(*entry));
-                }
-            }
-        }
+        scanListPage(toText(result->body), page, self ? &self->stats_.scanFailures : nullptr);
         done(ports::k8s::ListResult{std::move(page)});
     };
 
@@ -316,34 +443,8 @@ HttpKubeClient::watch(const domain::k8s::ApiPath &path,
     ports::http::StreamHandler streaming;
     streaming.onChunk = [buffer, sharedHandler, weak](std::span<const std::byte> chunk) {
         buffer->append(reinterpret_cast<const char *>(chunk.data()), chunk.size());
-
-        std::size_t compacted = 0;
-        {
-            domain::k8s::FrameCursor cursor{*buffer};
-            while (const std::optional<std::string_view> frame = cursor.next()) {
-                auto event = domain::k8s::decodeWatchEvent(*frame);
-                if (!event || !*event) {
-                    continue;
-                }
-                const auto self = weak.lock();
-                if (self) {
-                    ++self->stats_.framesParsed;
-                    if ((**event).type == domain::k8s::EventType::bookmark) {
-                        ++self->stats_.bookmarks;
-                    } else {
-                        ++self->stats_.watchEvents;
-                    }
-                }
-                if (sharedHandler->onEvent) {
-                    sharedHandler->onEvent(**event);
-                }
-            }
-            compacted = cursor.compact();
-        }
         const auto self = weak.lock();
-        if (self && compacted > 0) {
-            ++self->stats_.bufferCompactions;
-        }
+        consumeFrames(*buffer, *sharedHandler, self ? &self->stats_ : nullptr);
     };
 
     auto completion = [weak, sharedHandler, done = std::move(done)](
