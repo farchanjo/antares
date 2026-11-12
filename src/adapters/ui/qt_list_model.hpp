@@ -69,6 +69,7 @@ public:
     void toggleTick(std::uint32_t row);
     /// How many rows are ticked.
     [[nodiscard]] std::size_t tickedCount() const noexcept { return ticked_.size(); }
+    [[nodiscard]] std::uint32_t storedRows() const { return model_->storedRows(); }
     /// Clear every tick.
     void clearTicks();
 
