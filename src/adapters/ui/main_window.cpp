@@ -329,6 +329,11 @@ QWidget *MainWindow::buildDetail()
     paneLayout->addWidget(heading);
 
     detail_ = new DetailPane{pane};
+    // The close action collapses the pane; the splitter remembers the width.
+    QObject::connect(detail_, &DetailPane::closed, this, [this] {
+        detail_->setVisible(false);
+        splitter_->setSizes({RAIL_WIDTH, NAVIGATOR_WIDTH, 1, 0});
+    });
     paneLayout->addWidget(detail_, 1);
 
     return pane;
@@ -411,6 +416,7 @@ void MainWindow::showDetail(const QModelIndex &index)
         detail_->clear();
         return;
     }
+    detail_->setVisible(true);
     // Every column of the row, labelled, so the pane is useful without a
     // per-family layout.
     const std::span<const RowRole> columns = familyColumns(model_.family());
