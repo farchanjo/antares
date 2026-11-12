@@ -48,7 +48,12 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     if (!index.isValid()) {
         return {};
     }
-    const auto wanted = roleForIndex(static_cast<std::uint32_t>(role));
+    // A view may ask by role (the registered 257..260) or, as a table view does
+    // for the default role, by column. Both resolve to the same field.
+    std::optional<RowRole> wanted = roleForIndex(static_cast<std::uint32_t>(role));
+    if (!wanted && index.column() >= 0 && index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
+        wanted = static_cast<RowRole>(index.column());
+    }
     if (!wanted) {
         return {};
     }
