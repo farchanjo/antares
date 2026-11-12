@@ -686,3 +686,19 @@ Kubernetes cluster version`.
 
 A `Helm` heading follows with a `CHARTS` section, so one page can carry more than
 one heading.
+
+### Editor
+
+`MINIMAP` — toggle on, label `Show minimap`, and a right-aligned `Position`
+dropdown (`right`).
+
+`LINE NUMBERS` — dropdown, `On`.
+
+`TAB SIZE` — numeric field, `2`.
+
+`FONT SIZE` — numeric field, `12`.
+
+`FONT FAMILY` — text field, `RobotoMono`.
+
+The editor settings are a two-column row when the control is small (`MINIMAP` and
+`Position` share a line) and full width otherwise.
