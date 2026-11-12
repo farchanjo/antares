@@ -57,9 +57,10 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
     // other role is answered by a registered one, or not at all — returning text
     // for `SizeHintRole` gives the row a zero height and nothing draws.
     std::optional<RowRole> wanted = roleForIndex(static_cast<std::uint32_t>(role));
+    const std::span<const RowRole> columns = familyColumns(family_);
     if (!wanted && role == Qt::DisplayRole && index.column() >= 0 &&
-        index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
-        wanted = static_cast<RowRole>(index.column());
+        index.column() < static_cast<int>(columns.size())) {
+        wanted = columns[static_cast<std::size_t>(index.column())];
     }
     if (!wanted) {
         return {};
@@ -130,18 +131,28 @@ void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,
 
 int QtListModel::columnCount(const QModelIndex &parent) const
 {
-    const int columns = parent.isValid() ? 0 : static_cast<int>(ROW_ROLE_COUNT);
-    return columns;
+    return parent.isValid() ? 0 : static_cast<int>(familyColumns(family_).size());
+}
+
+void QtListModel::setFamily(Family family)
+{
+    if (family == family_) {
+        return;
+    }
+    beginResetModel();
+    family_ = family;
+    endResetModel();
 }
 
 QVariant QtListModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    const std::span<const RowRole> columns = familyColumns(family_);
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole || section < 0 ||
-        section >= static_cast<int>(ROW_ROLE_COUNT)) {
+        section >= static_cast<int>(columns.size())) {
         return {};
     }
     // The header is the only translatable part of the table; a cell is data.
-    return tr(rowRoleName(static_cast<RowRole>(section)).data());
+    return tr(rowRoleName(columns[static_cast<std::size_t>(section)]).data());
 }
 
 void QtListModel::dataChanged(std::uint32_t first, std::uint32_t last,

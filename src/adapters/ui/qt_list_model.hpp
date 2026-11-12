@@ -10,6 +10,7 @@
 #include "adapters/ui/model_sink.hpp"
 #include "adapters/ui/model_wakeup.hpp"
 #include "adapters/ui/resource_list_model.hpp"
+#include "adapters/ui/family.hpp"
 #include "domain/k8s/scope.hpp"
 
 #if defined(ANTARES_HAS_QT)
@@ -47,6 +48,10 @@ public:
     /// Forward a store batch to the model below.
     void observe(const domain::k8s::ChangeSet &changes);
 
+    /// Which family the table shows. Its columns are the family's.
+    void setFamily(Family family);
+    [[nodiscard]] Family family() const noexcept { return family_; }
+
     // No default arguments here: the base declares them and re-specifying a
     // default on an override is what `google-default-arguments` refuses.
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;
@@ -78,6 +83,7 @@ public:
 
 private:
     std::unique_ptr<ResourceListModel> model_;
+    Family family_ = Family::pods;
 };
 
 } // namespace antares::adapters::ui
