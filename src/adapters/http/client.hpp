@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "adapters/http/connection.hpp"
+#include "domain/http/cache.hpp"
 #include "domain/http/cookie_jar.hpp"
 #include "adapters/http/h1_session.hpp"
 #include "adapters/http/h2_session.hpp"
@@ -74,6 +75,12 @@ private:
     /// Record every `set-cookie` the response carries, against the URL that was
     /// actually requested.
     void storeCookies(const domain::http::Response &response);
+
+    /// Revalidate: keep a validator from a 200, and hand back the stored answer
+    /// when the origin answers 304.
+    void cached(domain::http::Response &response);
+
+    [[nodiscard]] static std::string cacheKey(const domain::http::Url &url);
     void connect(const std::shared_ptr<Attempt> &attempt);
     void onReady(const std::shared_ptr<Attempt> &attempt);
     void finish(const std::shared_ptr<Attempt> &attempt,
@@ -103,6 +110,7 @@ private:
     /// h1-only, for the upgrade path. Never used for ordinary requests.
     std::unique_ptr<TlsContext> tlsUpgrade_;
     domain::http::CookieJar jar_;
+    domain::http::ConditionalCache cache_;
     /// The URL of the request in flight, for the cookie scope.
     domain::http::Url current_;
     /// Keyed by loop *and* authority: a connection may only be reused from

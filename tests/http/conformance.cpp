@@ -1344,6 +1344,43 @@ void caseCookiePathBoundary()
     check(pathMatches("/foo", "/foo"), "an exact path matches");
 }
 
+/// A 200 with a validator is offered back as `If-None-Match`, and a 304 hands
+/// the stored answer over instead of an empty body (RFC 9111 §4.3.1).
+void caseCacheRevalidates()
+{
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 200 OK\r\nETag: \"v1\"\r\ncontent-length: 4\r\n\r\nbody",
+        "HTTP/1.1 304 Not Modified\r\nETag: \"v1\"\r\ncontent-length: 0\r\n\r\n"}};
+    Stack stack;
+
+    auto first = stack.blocking().send(get(server.url() + "/thing"));
+    check(first.has_value(), "the first answer arrived");
+    check(server.lastRequest().find("If-None-Match") == std::string::npos,
+          "the first request was not conditional");
+
+    auto second = stack.blocking().send(get(server.url() + "/thing"));
+    check(server.lastRequest().find("If-None-Match: \"v1\"") != std::string::npos,
+          "the second request carried the validator");
+    check(second.has_value(), "the revalidation succeeded");
+    if (second) {
+        check(second->status == 200, "the stored answer came back as 200");
+        check(std::string{reinterpret_cast<const char *>(second->body.data()),
+                          second->body.size()} == "body",
+              "with the stored body");
+    }
+}
+
+/// A response with no validator leaves nothing to revalidate against.
+void caseCacheNeedsValidator()
+{
+    antares::test::LoopbackServer server{"HTTP/1.1 200 OK\r\ncontent-length: 2\r\n\r\nhi"};
+    Stack stack;
+    (void)stack.blocking().send(get(server.url() + "/plain"));
+    (void)stack.blocking().send(get(server.url() + "/plain"));
+    check(server.lastRequest().find("If-None-Match") == std::string::npos,
+          "no validator, no conditional request");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1403,6 +1440,8 @@ std::span<const Case> cases()
         {"cookie-rejects-foreign-domain", caseCookieRejectsForeignDomain},
         {"cookie-expires", caseCookieExpires},
         {"cookie-path-boundary", caseCookiePathBoundary},
+        {"cache-revalidates", caseCacheRevalidates},
+        {"cache-needs-validator", caseCacheNeedsValidator},
         {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
         {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };

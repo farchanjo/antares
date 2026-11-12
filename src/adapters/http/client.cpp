@@ -179,6 +179,21 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     }
     const bool decode = config_.acceptEncoding;
 
+    // Revalidate instead of refetching when a validator is on file (RFC 9111
+    // §4.3.1). Only a GET carries one: the others are not safely repeatable as a
+    // cache hit here.
+    if (config_.cache && method == domain::http::Method::get) {
+        if (const auto known = cache_.validatorsFor(request.url); known.has_value()) {
+            if (!known->etag.empty()) {
+                request.headers.push_back(domain::http::Header{"If-None-Match", known->etag});
+            }
+            if (!known->lastModified.empty()) {
+                request.headers.push_back(
+                    domain::http::Header{"If-Modified-Since", known->lastModified});
+            }
+        }
+    }
+
     // Cookies are offered for the target, not for the origin the attempt came
     // from, so a redirect is followed with the right set.
     if (config_.cookies && !parsed->host.empty()) {
@@ -200,6 +215,9 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
         }
         if (result && config_.cookies) {
             storeCookies(*result);
+        }
+        if (result && config_.cache) {
+            cached(*result);
         }
         user(std::move(result));
         pending_.fetch_sub(1, std::memory_order_acq_rel);
@@ -692,6 +710,28 @@ void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
     }
 
     finish(attempt, std::move(result));
+}
+
+std::string HttpClient::cacheKey(const domain::http::Url &url)
+{
+    // Scheme, authority and target together: two URLs that differ anywhere are
+    // two entries.
+    return (url.isTls() ? "https://" : "http://") + url.authority + url.target;
+}
+
+void HttpClient::cached(domain::http::Response &response)
+{
+    if (response.status == 304) {
+        // A 304 carries no body: the stored answer is what the caller asked for.
+        if (auto kept = cache_.take(cacheKey(current_)); kept.has_value()) {
+            kept->status = 200;
+            response = std::move(*kept);
+        }
+        return;
+    }
+    if (response.status == 200) {
+        cache_.store(cacheKey(current_), response);
+    }
 }
 
 void HttpClient::storeCookies(const domain::http::Response &response)

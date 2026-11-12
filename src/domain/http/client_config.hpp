@@ -39,6 +39,8 @@ struct ClientConfig {
     bool acceptEncoding = true;
     /// Keep a cookie jar and honour it. Off means neither side is processed.
     bool cookies = true;
+    /// Revalidate a stored answer instead of refetching it.
+    bool cache = true;
 
     /// User agent, so the server side can tell builds apart.
     std::string userAgent = "antares/0.1";

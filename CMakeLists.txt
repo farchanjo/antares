@@ -117,6 +117,7 @@ endif()
 
 set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
+    src/domain/http/cache.cpp
     src/domain/http/cookie_jar.cpp
     src/domain/http/url.cpp
     src/domain/http/auth.cpp
@@ -474,6 +475,8 @@ set(ANTARES_HTTP_CASES
     cookie-rejects-foreign-domain
     cookie-expires
     cookie-path-boundary
+    cache-revalidates
+    cache-needs-validator
     content-encoding-unknown-passes-through
     accept-encoding-is-offered)
 
