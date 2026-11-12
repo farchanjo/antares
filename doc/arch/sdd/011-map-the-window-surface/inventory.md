@@ -363,3 +363,8 @@ The menu bar is the platform's: `Lens`, `File`, `Edit`, `View`, `Help`.
 | Quit | ⌘Q |
 
 The first two are the application menu's; `Preferences` carries ⌘,.
+
+`Edit`, with nothing focused in the table: `Close Window` ⇧⌘W. The menu is
+context-sensitive — a focused table adds the clipboard items.
+
+`View` follows.
