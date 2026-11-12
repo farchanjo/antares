@@ -28,7 +28,8 @@ struct Selector {
 ///
 /// The group and version are validated as DNS-1123 subdomains and the resource
 /// as a DNS-1123 label, so a hostile name cannot traverse the built path
-/// (FR-001, Security: input validation).
+/// (FR-001, Security: input validation). The object name is not part of this
+/// descriptor and follows the wider `isPathSegment` rule instead.
 struct GroupVersionResource {
     std::string group;
     std::string version;
@@ -56,21 +57,42 @@ struct ApiPath {
     /// a subresource its own segment.
     [[nodiscard]] std::string render() const;
 
-    /// Same value with a namespace attached; refuses a name outside DNS-1123.
+    /// Same value with a namespace attached. A namespace stays a DNS-1123
+    /// label — the server does enforce that — so `isDnsLabel` guards this one
+    /// and refuses uppercase, `_` and `:` (FR-002).
     [[nodiscard]] std::expected<ApiPath, ApiError> inNamespace(std::string name) const;
 
-    /// Same value addressing one object.
+    /// Same value addressing one object. An object name is a path segment, not
+    /// a DNS label, so `isPathSegment` guards this one and takes uppercase, `_`
+    /// and `:` where `inNamespace` refuses them (FR-001). The two rules diverge
+    /// on purpose; the server draws the same line.
     [[nodiscard]] std::expected<ApiPath, ApiError> named(std::string name) const;
 
     [[nodiscard]] ApiPath with(Subresource subresource) const;
 };
 
-/// True when `text` is a DNS-1123 label: lowercase alphanumeric or `-`, at most
-/// 63 characters, starting and ending alphanumeric.
-[[nodiscard]] bool isDnsLabel(std::string_view text) noexcept;
-
 /// The ceiling the server puts on a name, in bytes (FR-001, D-05).
 inline constexpr std::size_t SEGMENT_CEILING = 253;
+
+/// True when `text` is a DNS-1123 label: lowercase alphanumeric or `-`, at most
+/// 63 characters, starting and ending alphanumeric.
+///
+/// This is the namespace rule (`inNamespace`) and the version and resource
+/// rule. It is *not* the object-name rule — reach for `isPathSegment` there.
+[[nodiscard]] bool isDnsLabel(std::string_view text) noexcept;
+
+/// How a name fails the path-segment rule (FR-003). Closed on purpose: the
+/// message stays bounded, the `debug` log line stays greppable, and a rule
+/// added later is a compile error at every `switch`. The spellings match
+/// `#RefusalReason` in `doc/arch/schemas/relax-api-path-name.cue`.
+enum class NameRefusal : std::uint8_t { empty, tooLong, dot, dotdot, separator, escape };
+
+/// The reason class as the token the refusal message carries.
+[[nodiscard]] std::string_view refusalReason(NameRefusal refusal) noexcept;
+
+/// The rule `text` breaks, or nothing when it is a legal segment (FR-003).
+/// `isPathSegment` is this answer collapsed to a bool.
+[[nodiscard]] std::optional<NameRefusal> segmentRefusal(std::string_view text) noexcept;
 
 /// True when `text` is a path segment the server accepts as `metadata.name`:
 /// 1 to 253 bytes, no `/` and no `%`, and neither `.` nor `..` (FR-001).
@@ -83,6 +105,9 @@ inline constexpr std::size_t SEGMENT_CEILING = 253;
 
 /// True when `text` is a DNS-1123 subdomain: dot-separated labels, at most 253
 /// characters.
+///
+/// Only the group still uses this; `metadata.name` used to and no longer does,
+/// so a reader who needs the name rule wants `isPathSegment`.
 [[nodiscard]] bool isDnsSubdomain(std::string_view text) noexcept;
 
 } // namespace antares::domain::k8s

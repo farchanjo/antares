@@ -53,15 +53,51 @@ bool isDnsLabel(std::string_view text) noexcept
     });
 }
 
+std::string_view refusalReason(NameRefusal refusal) noexcept
+{
+    switch (refusal) {
+    case NameRefusal::empty:
+        return "empty";
+    case NameRefusal::tooLong:
+        return "tooLong";
+    case NameRefusal::dot:
+        return "dot";
+    case NameRefusal::dotdot:
+        return "dotdot";
+    case NameRefusal::separator:
+        return "separator";
+    case NameRefusal::escape:
+        return "escape";
+    }
+    return "escape";
+}
+
+std::optional<NameRefusal> segmentRefusal(std::string_view text) noexcept
+{
+    if (text.empty()) {
+        return NameRefusal::empty;
+    }
+    if (text.size() > SEGMENT_CEILING) {
+        return NameRefusal::tooLong;
+    }
+    if (text == ".") {
+        return NameRefusal::dot;
+    }
+    if (text == "..") {
+        return NameRefusal::dotdot;
+    }
+    if (text.find('/') != std::string_view::npos) {
+        return NameRefusal::separator;
+    }
+    if (text.find('%') != std::string_view::npos) {
+        return NameRefusal::escape;
+    }
+    return std::nullopt;
+}
+
 bool isPathSegment(std::string_view text) noexcept
 {
-    if (text.empty() || text.size() > SEGMENT_CEILING) {
-        return false;
-    }
-    if (text == "." || text == "..") {
-        return false;
-    }
-    return text.find_first_of("/%") == std::string_view::npos;
+    return !segmentRefusal(text).has_value();
 }
 
 bool isDnsSubdomain(std::string_view text) noexcept
@@ -141,8 +177,10 @@ std::expected<ApiPath, ApiError> ApiPath::inNamespace(std::string name) const
 
 std::expected<ApiPath, ApiError> ApiPath::named(std::string name) const
 {
-    if (!isPathSegment(name)) {
-        return std::unexpected(rejected("name is not a path segment: " + name));
+    const std::optional<NameRefusal> refusal = segmentRefusal(name);
+    if (refusal) {
+        return std::unexpected(rejected("name is not a path segment (" +
+                                        std::string{refusalReason(*refusal)} + "): " + name));
     }
     ApiPath copy = *this;
     copy.name = std::move(name);

@@ -7,7 +7,7 @@
       FR-004).
 - [x] T002 Add `SEGMENT_CEILING` and `isPathSegment`; point `named` at it
       (FR-001, FR-004).
-- [ ] T003 Keep `isDnsLabel` on `inNamespace` and say in the header which
+- [x] T003 Keep `isDnsLabel` on `inNamespace` and say in the header which
       function guards which (FR-002).
 - [ ] T004 Replace the single refusal message with the closed reason class and
       its mapping (FR-003).
