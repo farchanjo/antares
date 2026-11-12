@@ -592,9 +592,9 @@ void MainWindow::buildStatus(const QString &message)
 
     QObject::connect(&model_, &QtListModel::ticksChanged, this, &MainWindow::refreshCount);
     QObject::connect(&model_, &QtListModel::rowsChanged, this, &MainWindow::refreshCount);
-    // A model reset only happens once the page has landed, which is after the
-    // splitter has given the pane its width; a timer at show time is too early.
-    QObject::connect(&model_, &QAbstractItemModel::modelReset, this,
+    // The table lives in a hidden tab at start-up, so it has no width until the
+    // tab is first shown; every earlier measurement returned the minimum.
+    QObject::connect(content_, &QTabWidget::currentChanged, this,
                      [this] { applyColumnWidths(); });
     refreshCount();
 
