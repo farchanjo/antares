@@ -702,3 +702,16 @@ dropdown (`right`).
 
 The editor settings are a two-column row when the control is small (`MINIMAP` and
 `Position` share a line) and full width otherwise.
+
+### Terminal
+
+`TERMINAL SHELL PATH` — text field, `/bin/zsh`.
+
+`TERMINAL COPY & PASTE` — toggle on. `Copy on select and paste on right-click`.
+
+`TERMINAL THEME` — dropdown, `Match Lens Theme`.
+
+`FONT SIZE` — numeric field, `12`.
+
+`FONT FAMILY` — dropdown, `RobotoMono`. The editor's font is free text, the
+terminal's is a list.
