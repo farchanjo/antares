@@ -399,6 +399,7 @@ set(ANTARES_K8S_CASES
     subresource-segment
     hostile-name-refused
     name-classes
+    name-refusal-reason
     list-options-rendered
     list-options-empty
     patch-content-types

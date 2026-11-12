@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "domain/json/value.hpp"
@@ -173,6 +174,32 @@ void caseNameClasses()
         // An accepted name stays one segment: no separator is introduced by the
         // builder, so the name renders between the resource and the end.
         checkEqual(built->render(), "/api/v1/pods/" + row.name, "name stays one segment");
+    }
+}
+
+/// FR-003 — a refusal names the rule it broke, and echoes the name the
+/// operator supplied. The reason is a closed class, so the debug log line a
+/// caller writes from the message stays bounded.
+void caseNameRefusalReason()
+{
+    const std::string longName(SEGMENT_CEILING + 1, 'a');
+    const ApiPath base{corePods(), std::nullopt, std::nullopt, Subresource::none};
+
+    const std::pair<std::string_view, std::string_view> table[] = {
+        {"", "empty"},         {longName, "tooLong"}, {".", "dot"},
+        {"..", "dotdot"},      {"a/b", "separator"}, {"a%b", "escape"},
+    };
+
+    for (const auto &[name, reason] : table) {
+        const auto refused = base.named(std::string{name});
+        check(!refused.has_value(), "the name is refused");
+        if (refused) {
+            continue;
+        }
+        check(refused.error().reason == Reason::invalid, "the reason stays rejected");
+        check(refused.error().message.find(reason) != std::string::npos,
+              "the refusal names the rule");
+        check(refused.error().message.find(name) != std::string::npos, "the name is echoed");
     }
 }
 
@@ -605,6 +632,7 @@ constexpr Case cases[] = {
     {"subresource-segment", caseSubresourceSegment},
     {"hostile-name-refused", caseHostileNameRefused},
     {"name-classes", caseNameClasses},
+    {"name-refusal-reason", caseNameRefusalReason},
     {"list-options-rendered", caseListOptionsRendered},
     {"list-options-empty", caseListOptionsEmpty},
     {"patch-content-types", casePatchContentTypes},

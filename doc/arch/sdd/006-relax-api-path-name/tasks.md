@@ -9,7 +9,7 @@
       (FR-001, FR-004).
 - [x] T003 Keep `isDnsLabel` on `inNamespace` and say in the header which
       function guards which (FR-002).
-- [ ] T004 Replace the single refusal message with the closed reason class and
+- [x] T004 Replace the single refusal message with the closed reason class and
       its mapping (FR-003).
 - [ ] T005 Add the agreement case between the store rule and the path rule
       (FR-005).
