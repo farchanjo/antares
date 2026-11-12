@@ -141,8 +141,10 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
         }
         if (key == "items") {
             if (!scan.begin('[')) {
+                std::fprintf(stderr, "  [items] begin falhou at=%zu\n", scan.offset());
                 return;
             }
+            std::fprintf(stderr, "  [items] aberto at=%zu\n", scan.offset());
             bool firstItem = true;
             while (true) {
                 if (scan.nextEntry(']', firstItem) != domain::json::ScalarScan::EntryState::more) {
@@ -151,6 +153,8 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
                 firstItem = false;
                 bool refused = false;
                 auto entry = domain::k8s::decodeEntry(scan, &refused);
+                std::fprintf(stderr, "  [items] entry=%d refused=%d at=%zu\n", entry ? 1 : 0,
+                             refused ? 1 : 0, scan.offset());
                 if (refused && scanFailures != nullptr) {
                     ++*scanFailures;
                 }
