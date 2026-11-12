@@ -17,6 +17,8 @@
 #include <QTreeView>
 #include <QtWidgets/QTreeWidget>
 #include <QVBoxLayout>
+
+#include <algorithm>
 #include <QWidget>
 
 #include "adapters/ui/avatar.hpp"
@@ -269,8 +271,16 @@ QWidget *MainWindow::buildTablePage()
     view_->header()->setStretchLastSection(true);
     view_->header()->setSectionResizeMode(QHeaderView::Interactive);
     view_->header()->setDefaultSectionSize(160);
-    for (const ColumnWidth &column : config.columns()) {
-        view_->setColumnWidth(static_cast<int>(column.role), static_cast<int>(column.width));
+    // A role is a stable id, not a position: the width is looked up by role and
+    // applied at the column index the family gives it.
+    const std::span<const RowRole> shown = familyColumns(model_.family());
+    for (std::size_t at = 0; at < shown.size(); ++at) {
+        const auto wanted = std::find_if(
+            config.columns().begin(), config.columns().end(),
+            [role = shown[at]](const ColumnWidth &column) { return column.role == role; });
+        if (wanted != config.columns().end()) {
+            view_->setColumnWidth(static_cast<int>(at), static_cast<int>(wanted->width));
+        }
     }
     view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
