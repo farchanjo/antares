@@ -19,6 +19,9 @@ public:
 
     [[nodiscard]] std::string_view name() const noexcept override;
 
+    /// The set itself: epoll becomes readable while an event is pending.
+    [[nodiscard]] int waitHandle() const noexcept override;
+
     /// False when the kernel refused the set; the factory then falls back.
     [[nodiscard]] bool ready() const noexcept;
 

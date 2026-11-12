@@ -27,6 +27,9 @@ public:
 
     [[nodiscard]] std::string_view name() const noexcept override;
 
+    /// The ring descriptor: a pending completion makes it readable.
+    [[nodiscard]] int waitHandle() const noexcept override;
+
     /// False when the kernel refused the ring; the factory then falls back.
     [[nodiscard]] bool ready() const noexcept;
 

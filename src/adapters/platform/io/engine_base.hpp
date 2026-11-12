@@ -101,6 +101,15 @@ public:
     /// Idempotent. After it returns, no completion fires until `run()` again.
     void stop() override;
 
+    // Hosted mode (ADR 0020). `attach()` records this thread as the loop and
+    // arms the wakeup, so `post()` queues instead of running inline; the host
+    // then calls `runOnce()` for as long as it is willing to process.
+    void attach() override;
+    void runOnce(domain::Duration budget) override;
+    [[nodiscard]] int waitHandle() const noexcept override;
+    [[nodiscard]] std::optional<domain::Instant> nextDeadline() const override;
+    void shutdown() override;
+
 protected:
     /// Wait for readiness. Returns true when at least one op made progress.
     /// Implemented by the backend; the timeout bounds an idle loop. The wait
@@ -174,6 +183,10 @@ private:
     void fireDueTimers();
     [[nodiscard]] int nextWaitMilliseconds() const;
     void drainUntil(std::chrono::steady_clock::time_point deadline);
+
+    /// Signal the resolver thread to finish and reap it. Split out of `stop()`
+    /// because `shutdown()` also needs it and runs on the host thread.
+    void stopResolver();
 
     /// Settle one op as cancelled: the shared tail of `cancelPending` and `stop`.
     void completeCancelled(PendingOp &op);

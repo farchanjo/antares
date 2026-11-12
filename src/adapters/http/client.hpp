@@ -49,6 +49,11 @@ public:
 
     [[nodiscard]] ports::http::ClientStats stats() const noexcept override { return stats_; }
 
+    [[nodiscard]] std::size_t pending() const noexcept override
+    {
+        return pending_.load(std::memory_order_acquire);
+    }
+
     /// Open a WebSocket: sends the upgrade and hands over the socket on 101.
     /// h1 only — the h2 path would need RFC 8441 extended CONNECT.
     using SocketReady = std::function<void(std::shared_ptr<WebSocket>)>;

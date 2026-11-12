@@ -24,6 +24,9 @@
 #   dtor                 ~EngineBase calls stop() on purpose; the derived state
 #                        is already gone and the base stop is the one wanted
 #                        (clang-analyzer-optin.cplusplus.VirtualCall)
+#   qt-ownership         a QObject is owned by its parent, so `new` lands in a
+#                        raw member by design and gsl::owner is not linked in
+#                        (cppcoreguidelines-owning-memory)
 Checks: >
   *,
   -fuchsia-*,
@@ -35,6 +38,7 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-type-vararg,
   -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-owning-memory,
   -bugprone-easily-swappable-parameters,
   -altera-*,
   -boost-*,

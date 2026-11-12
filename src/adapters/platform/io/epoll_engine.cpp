@@ -25,6 +25,8 @@ EpollEngine::~EpollEngine()
 
 std::string_view EpollEngine::name() const noexcept { return "epoll"; }
 
+int EpollEngine::waitHandle() const noexcept { return set_; }
+
 bool EpollEngine::ready() const noexcept { return set_ >= 0; }
 
 bool EpollEngine::arm(PendingOp& op, std::uint32_t events) const {

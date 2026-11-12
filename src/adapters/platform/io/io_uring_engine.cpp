@@ -53,6 +53,8 @@ IoUringEngine::~IoUringEngine()
 
 std::string_view IoUringEngine::name() const noexcept { return "io_uring"; }
 
+int IoUringEngine::waitHandle() const noexcept { return ring_ == nullptr ? -1 : ring_->ring_fd; }
+
 bool IoUringEngine::ready() const noexcept { return ring_ != nullptr; }
 
 bool IoUringEngine::flushLocked()
