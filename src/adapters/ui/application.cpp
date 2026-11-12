@@ -1,5 +1,7 @@
 #include "adapters/ui/application.hpp"
 
+#include <cstdio>
+
 #include <algorithm>
 #include <atomic>
 #include <cerrno>
@@ -239,7 +241,9 @@ std::expected<void, StartupError> Application::build()
         }
         namespaces.append(QString::fromUtf8(initialNamespace.c_str()));
     }
+    std::fprintf(stderr, "  [build] janela\n");
     window_ = std::make_unique<MainWindow>(*model_, contexts, context, namespaces, message);
+    std::fprintf(stderr, "  [build] janela ok\n");
     if (!window_) {
         destroy();
         return std::unexpected(StartupError::window);
@@ -276,7 +280,9 @@ std::expected<void, StartupError> Application::build()
         });
     }
 
+    std::fprintf(stderr, "  [build] show\n");
     window_->show();
+    std::fprintf(stderr, "  [build] mostrada\n");
     built_ = true;
     return {};
 }
