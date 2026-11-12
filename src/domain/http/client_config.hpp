@@ -37,6 +37,8 @@ struct ClientConfig {
     /// Ask for a coded transfer and undo it before the caller sees the body. A
     /// caller that names its own `accept-encoding` keeps it either way.
     bool acceptEncoding = true;
+    /// Keep a cookie jar and honour it. Off means neither side is processed.
+    bool cookies = true;
 
     /// User agent, so the server side can tell builds apart.
     std::string userAgent = "antares/0.1";

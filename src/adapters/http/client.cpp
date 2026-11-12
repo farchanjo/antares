@@ -4,6 +4,7 @@
 
 namespace {
 constexpr std::string_view AUTHORIZATION = "authorization";
+constexpr std::string_view COOKIE_FIELD = "set-cookie";
 }
 
 #include <algorithm>
@@ -178,6 +179,17 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
     }
     const bool decode = config_.acceptEncoding;
 
+    // Cookies are offered for the target, not for the origin the attempt came
+    // from, so a redirect is followed with the right set.
+    if (config_.cookies && !parsed->host.empty()) {
+        const std::string cookie =
+            jar_.headerFor(parsed->host, parsed->target.empty() ? "/" : parsed->target,
+                           parsed->isTls());
+        if (!cookie.empty()) {
+            request.headers.push_back(domain::http::Header{"Cookie", cookie});
+        }
+    }
+
     // The counter is decremented only after the caller's completion returns, so
     // the destructor never resumes while a callback still uses this client.
     auto user = std::move(done);
@@ -185,6 +197,9 @@ HttpClient::submitStreaming(domain::http::Request request, ports::http::StreamHa
                        std::expected<domain::http::Response, domain::http::HttpError> result) {
         if (result && decode) {
             decodeContent(*result);
+        }
+        if (result && config_.cookies) {
+            storeCookies(*result);
         }
         user(std::move(result));
         pending_.fetch_sub(1, std::memory_order_acq_rel);
@@ -265,6 +280,9 @@ void HttpClient::start(const std::shared_ptr<Attempt> &attempt)
 
 void HttpClient::connect(const std::shared_ptr<Attempt> &attempt)
 {
+    // The scope the response will be filed under. Only one attempt is in flight
+    // per client at a time on this loop, so a member is enough.
+    current_ = attempt->url_;
     attempt->connection_ = acquire(*attempt->engine_, attempt->url_);
     if (attempt->connection_) {
         ++stats_.reused;
@@ -674,6 +692,20 @@ void HttpClient::settle(const std::shared_ptr<Attempt> &attempt,
     }
 
     finish(attempt, std::move(result));
+}
+
+void HttpClient::storeCookies(const domain::http::Response &response)
+{
+    for (const domain::http::Header &header : response.headers) {
+        if (header.name.size() != COOKIE_FIELD.size() ||
+            !std::equal(header.name.begin(), header.name.end(), COOKIE_FIELD.begin(),
+                        [](char left, char right) {
+                            return std::tolower(static_cast<unsigned char>(left)) == right;
+                        })) {
+            continue;
+        }
+        jar_.store(header.value, current_.host, current_.target, current_.isTls());
+    }
 }
 
 void HttpClient::decodeContent(domain::http::Response &response) const

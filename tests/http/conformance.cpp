@@ -27,6 +27,7 @@
 #include "tls_server.hpp"
 #include "adapters/log/console_logger.hpp"
 #include "domain/http/sse.hpp"
+#include "domain/http/cookie_jar.hpp"
 #include "domain/json/sequence.hpp"
 #include "domain/http/websocket.hpp"
 #include "support/await.hpp"
@@ -1282,6 +1283,67 @@ void casePriorityClampsToSeven()
     check(seen.find("u=7") != std::string::npos, "urgency clamped to 7");
 }
 
+/// A cookie a server sets comes back on the next request to that host and path.
+void caseCookieRoundTrips()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc; Path=/\r\ncontent-length: 0\r\n\r\n"};
+    Stack stack;
+    (void)stack.blocking().send(get(server.url() + "/"));
+    (void)stack.blocking().send(get(server.url() + "/next"));
+
+    const std::string seen = server.lastRequest();
+    std::string flat = seen;
+    std::transform(flat.begin(), flat.end(), flat.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    check(flat.find("cookie: sid=abc") != std::string::npos, "the cookie came back");
+}
+
+/// A cookie whose Domain does not cover the host is refused (§5.2.3).
+void caseCookieRejectsForeignDomain()
+{
+    antares::test::LoopbackServer server{
+        "HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc; Domain=elsewhere.test\r\n"
+        "content-length: 0\r\n\r\n"};
+    Stack stack;
+    (void)stack.blocking().send(get(server.url() + "/"));
+    (void)stack.blocking().send(get(server.url() + "/next"));
+
+    const std::string seen = server.lastRequest();
+    std::string flat = seen;
+    std::transform(flat.begin(), flat.end(), flat.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    check(flat.find("cookie:") == std::string::npos, "the foreign cookie was not stored");
+}
+
+/// Max-Age=0 deletes, so the next request carries nothing (§5.2.2, §5.3).
+void caseCookieExpires()
+{
+    antares::test::LoopbackServer server{std::vector<std::string>{
+        "HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc; Path=/\r\ncontent-length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nSet-Cookie: sid=; Max-Age=0; Path=/\r\ncontent-length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"}};
+    Stack stack;
+    (void)stack.blocking().send(get(server.url() + "/"));
+    (void)stack.blocking().send(get(server.url() + "/"));
+    (void)stack.blocking().send(get(server.url() + "/"));
+
+    const std::string seen = server.lastRequest();
+    std::string flat = seen;
+    std::transform(flat.begin(), flat.end(), flat.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    check(flat.find("cookie:") == std::string::npos, "the deleted cookie stayed gone");
+}
+
+/// §5.1.4: a prefix only matches on a `/` boundary.
+void caseCookiePathBoundary()
+{
+    using antares::domain::http::pathMatches;
+    check(pathMatches("/foo/bar", "/foo"), "a segment boundary matches");
+    check(!pathMatches("/foobar", "/foo"), "a bare prefix does not");
+    check(pathMatches("/foo", "/foo"), "an exact path matches");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -1337,6 +1399,10 @@ std::span<const Case> cases()
         {"content-encoding-brotli", caseContentEncodingBrotli},
         {"redirect-drops-lowercase-auth", caseRedirectDropsLowercaseAuth},
         {"priority-clamps-to-seven", casePriorityClampsToSeven},
+        {"cookie-round-trips", caseCookieRoundTrips},
+        {"cookie-rejects-foreign-domain", caseCookieRejectsForeignDomain},
+        {"cookie-expires", caseCookieExpires},
+        {"cookie-path-boundary", caseCookiePathBoundary},
         {"content-encoding-unknown-passes-through", caseContentEncodingUnknownPassesThrough},
         {"accept-encoding-is-offered", caseAcceptEncodingIsOffered},
     };

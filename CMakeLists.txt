@@ -117,6 +117,7 @@ endif()
 
 set(ANTARES_HTTP_SOURCES
     src/domain/http/response.cpp
+    src/domain/http/cookie_jar.cpp
     src/domain/http/url.cpp
     src/domain/http/auth.cpp
     src/domain/http/retry_policy.cpp
@@ -469,6 +470,10 @@ set(ANTARES_HTTP_CASES
     content-encoding-brotli
     redirect-drops-lowercase-auth
     priority-clamps-to-seven
+    cookie-round-trips
+    cookie-rejects-foreign-domain
+    cookie-expires
+    cookie-path-boundary
     content-encoding-unknown-passes-through
     accept-encoding-is-offered)
 

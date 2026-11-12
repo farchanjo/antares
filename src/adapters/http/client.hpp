@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "adapters/http/connection.hpp"
+#include "domain/http/cookie_jar.hpp"
 #include "adapters/http/h1_session.hpp"
 #include "adapters/http/h2_session.hpp"
 #include "adapters/http/websocket.hpp"
@@ -69,6 +70,10 @@ private:
     /// Undo the `content-encoding` the peer applied. An answer this build cannot
     /// decode fails as a protocol error rather than reaching the caller as bytes.
     void decodeContent(domain::http::Response &response) const;
+
+    /// Record every `set-cookie` the response carries, against the URL that was
+    /// actually requested.
+    void storeCookies(const domain::http::Response &response);
     void connect(const std::shared_ptr<Attempt> &attempt);
     void onReady(const std::shared_ptr<Attempt> &attempt);
     void finish(const std::shared_ptr<Attempt> &attempt,
@@ -97,6 +102,9 @@ private:
     std::unique_ptr<TlsContext> tls_;
     /// h1-only, for the upgrade path. Never used for ordinary requests.
     std::unique_ptr<TlsContext> tlsUpgrade_;
+    domain::http::CookieJar jar_;
+    /// The URL of the request in flight, for the cookie scope.
+    domain::http::Url current_;
     /// Keyed by loop *and* authority: a connection may only be reused from
     /// the loop that owns it.
     std::map<std::pair<ports::io::IoEngine *, std::string>,
