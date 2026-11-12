@@ -631,9 +631,9 @@ void MainWindow::applyColumnWidths()
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
-    // The pane is the only thing that knows how wide it now is: the header cannot
-    // measure it, and at show time the window is still the default size.
-    applyColumnWidths();
+    // Deferred past the layout pass: the splitter has not sized the pane yet when
+    // this handler runs, so measuring now would share the old width.
+    QTimer::singleShot(0, this, [this] { applyColumnWidths(); });
 }
 
 void MainWindow::showEvent(QShowEvent *event)
