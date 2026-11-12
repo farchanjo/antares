@@ -8,7 +8,7 @@
 #include <QLineEdit>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QTableView>
+#include <QTreeView>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -180,16 +180,19 @@ QWidget *MainWindow::buildNavigator()
 
 QWidget *MainWindow::buildTable()
 {
-    view_ = new QTableView{this};
+    // A tree view, not a table one: the reference shows a flat tree, and the
+    // widget draws a header over columns the same way without a proxy.
+    view_ = new QTreeView{this};
+    view_->setRootIsDecorated(false);
+    view_->setItemsExpandable(false);
+    view_->setAllColumnsShowFocus(true);
     view_->setModel(&model_);
     const ViewConfig config;
-    view_->verticalHeader()->setVisible(false);
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
-    view_->setShowGrid(false);
     view_->setAlternatingRowColors(true);
-    view_->horizontalHeader()->setStretchLastSection(true);
-    view_->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    view_->horizontalHeader()->setDefaultSectionSize(160);
+    view_->header()->setStretchLastSection(true);
+    view_->header()->setSectionResizeMode(QHeaderView::Interactive);
+    view_->header()->setDefaultSectionSize(160);
     for (const ColumnWidth &column : config.columns()) {
         view_->setColumnWidth(static_cast<int>(column.role), static_cast<int>(column.width));
     }
@@ -257,7 +260,7 @@ QComboBox *MainWindow::namespaceBox() const noexcept { return namespaceBox_; }
 
 QTreeWidget *MainWindow::navigator() const noexcept { return navigator_; }
 
-QTableView *MainWindow::table() const noexcept { return view_; }
+QTreeView *MainWindow::table() const noexcept { return view_; }
 
 QSplitter *MainWindow::splitter() const noexcept { return splitter_; }
 

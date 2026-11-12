@@ -8,7 +8,7 @@ class QComboBox;
 class QLabel;
 class QLineEdit;
 class QSplitter;
-class QTableView;
+class QTreeView;
 class QToolBar;
 class QToolButton;
 class QTreeWidget;
@@ -39,7 +39,7 @@ public:
     [[nodiscard]] QComboBox *contextBox() const noexcept;
     [[nodiscard]] QComboBox *namespaceBox() const noexcept;
     [[nodiscard]] QTreeWidget *navigator() const noexcept;
-    [[nodiscard]] QTableView *table() const noexcept;
+    [[nodiscard]] QTreeView *table() const noexcept;
     [[nodiscard]] QSplitter *splitter() const noexcept;
 
 private:
@@ -58,7 +58,7 @@ private:
     QComboBox *kindBox_ = nullptr;
     QLineEdit *filterBox_ = nullptr;
     QTreeWidget *navigator_ = nullptr;
-    QTableView *view_ = nullptr;
+    QTreeView *view_ = nullptr;
     QLabel *detail_ = nullptr;
     QLabel *status_ = nullptr;
     QLabel *region_ = nullptr;
