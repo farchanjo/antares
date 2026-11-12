@@ -589,3 +589,18 @@ Collapsed by default. Columns `#`, `Summary`, `Pods`, `Age`.
 - `Labels` shows a **count** and expands; it is not dumped inline.
 - Metrics is a **chart with a provenance line and an interval selector**.
 - The header carries **edit, delete and close**, so the pane is where writing starts.
+
+### The chart, once loaded
+
+A filled outline in the accent blue, no grid, a legend below it with a matching
+swatch (`■ CPU Usage`). The Y axis rescales to the series (`0.000`…`0.010`). The
+spinner is replaced by the plot; a failure would put the provenance line in red.
+
+The interval selector offers `1h` by default; the refresh and fullscreen icons sit
+beside it.
+
+## What the detail pane proves
+
+The pane is the product's centre of gravity: it is where an object is read
+(Properties), watched (Metrics) and rolled (Deploy Revisions). The list is a way to
+choose one. A port that renders only the list has the smaller half.
