@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <cstdio>
 #include <string>
 
 #include "domain/k8s/status_summary.hpp"
@@ -120,6 +121,8 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
         return entry.status.restarts == 0 ? std::string{}
                                           : std::to_string(entry.status.restarts);
     case RowRole::cpu:
+        std::fprintf(stderr, "  [cel] cpu nano=%llu\n",
+                     static_cast<unsigned long long>(entry.cpuNano));
         if (entry.cpuNano > 0) {
             return std::to_string(entry.cpuNano / 1'000'000) + "m";
         }
