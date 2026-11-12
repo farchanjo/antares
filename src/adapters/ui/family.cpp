@@ -7,11 +7,11 @@ namespace antares::adapters::ui {
 namespace {
 
 // One table per family, exactly the columns the reference shows.
-constexpr std::array<RowRole, 11> PODS{
-    RowRole::name,      RowRole::namespaceName, RowRole::cpu,
-    RowRole::memory,    RowRole::restarts,      RowRole::controlledBy,
-    RowRole::node,      RowRole::qos,           RowRole::status,
-    RowRole::age, RowRole::actions};
+// Seven sections: the reference shows a short set per family and leaves the rest
+// to a picker, because eleven of them do not fit a split pane.
+constexpr std::array<RowRole, 7> PODS{
+    RowRole::name,   RowRole::namespaceName, RowRole::status, RowRole::cpu,
+    RowRole::memory, RowRole::age,           RowRole::actions};
 constexpr std::array<RowRole, 5> WORKLOAD{RowRole::name, RowRole::namespaceName, RowRole::status,
                                           RowRole::age, RowRole::actions};
 constexpr std::array<RowRole, 8> JOBS{RowRole::name, RowRole::namespaceName, RowRole::completions,
