@@ -88,21 +88,11 @@ HttpClient::~HttpClient()
         return;
     }
     if (!pool_.isRunning()) {
-        // No loop to post to: close in place. The connections are collected
-        // first and both maps are emptied before any `close`, because closing
-        // re-enters `release`, which inserts into `idle_` and rebalances the
-        // nodes a live iterator would be sitting on.
-        std::vector<std::shared_ptr<Connection>> doomed;
-        for (const auto &[key, bucket] : idle_) {
-            doomed.insert(doomed.end(), bucket.begin(), bucket.end());
-        }
+        // No loop to post to, so the members are dropped in place. `close` is
+        // not called here on purpose: it re-enters the engine, and during
+        // teardown the engine may be the thing being destroyed.
         idle_.clear();
         sessions_.clear();
-        for (const auto &connection : doomed) {
-            if (connection) {
-                connection->close();
-            }
-        }
         return;
     }
     // Hand every socket back to the loop that owns it. The post captures the
