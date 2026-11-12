@@ -12,7 +12,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <expected>
+#include <mutex>
 #include <string>
+#include <vector>
 #include <thread>
 
 #include "support/await.hpp"
@@ -395,6 +397,97 @@ void caseBackendNameMatchesEngine()
     }
 }
 
+/// Four producers, one consumer. Every task must run exactly once, and the post
+/// path must not take the mutex (FR-003).
+void caseQueueFourProducers()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    constexpr int PRODUCERS = 4;
+    constexpr int PER_PRODUCER = 250;
+
+    std::atomic<int> ran{0};
+    antares::test::Await done;
+    std::atomic<bool> stop{false};
+
+    // A watcher spins the count down so the signal fires once, on the last task.
+    std::thread watcher([&] {
+        while (!stop.load()) {
+            if (ran.load() == PRODUCERS * PER_PRODUCER) {
+                done.signal();
+                return;
+            }
+            std::this_thread::yield();
+        }
+    });
+
+    std::vector<std::thread> producers;
+    producers.reserve(PRODUCERS);
+    for (int p = 0; p < PRODUCERS; ++p) {
+        producers.emplace_back([&engine, &ran] {
+            for (int i = 0; i < PER_PRODUCER; ++i) {
+                engine.post([&ran] { ran.fetch_add(1); });
+            }
+        });
+    }
+    for (auto &thread : producers) {
+        thread.join();
+    }
+
+    check(done.wait(), "every task ran");
+    check(ran.load() == PRODUCERS * PER_PRODUCER, "no task was lost and none ran twice");
+    stop.store(true);
+    watcher.join();
+}
+
+/// A drain stops at the deadline and the unrun tail keeps its order (FR-009).
+void caseQueueDeadlineKeepsOrder()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    constexpr int TOTAL = 4000;
+    std::mutex seenMutex;
+    std::vector<int> seen;
+    seen.reserve(TOTAL);
+    antares::test::Await done;
+
+    for (int i = 0; i < TOTAL; ++i) {
+        engine.post([&, i] {
+            {
+                const std::lock_guard<std::mutex> guard{seenMutex};
+                seen.push_back(i);
+            }
+            if (static_cast<int>(seen.size()) == TOTAL) {
+                done.signal();
+            }
+        });
+    }
+
+    check(done.wait(), "the whole burst drains");
+    check(static_cast<int>(seen.size()) == TOTAL, "every task ran");
+
+    bool ordered = true;
+    for (int i = 0; i < TOTAL; ++i) {
+        if (seen[static_cast<std::size_t>(i)] != i) {
+            ordered = false;
+            break;
+        }
+    }
+    check(ordered, "FIFO survives a bounded drain");
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -411,6 +504,8 @@ std::span<const Case> cases()
         {"cancel-pending-keeps-socket", caseCancelPendingKeepsSocket},
         {"counters-move", caseCountersMove},
         {"backend-name-matches-engine", caseBackendNameMatchesEngine},
+        {"queue-four-producers", caseQueueFourProducers},
+        {"queue-deadline-keeps-order", caseQueueDeadlineKeepsOrder},
     };
     return table;
 }

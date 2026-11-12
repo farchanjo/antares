@@ -320,7 +320,9 @@ set(ANTARES_IO_CASES
     no-callback-after-stop
     cancel-pending-keeps-socket
     counters-move
-    backend-name-matches-engine)
+    backend-name-matches-engine
+    queue-four-producers
+    queue-deadline-keeps-order)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)

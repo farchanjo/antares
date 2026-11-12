@@ -30,6 +30,10 @@ namespace {
 constexpr int POLL_TIMEOUT_MS = 50;
 constexpr std::size_t READ_CHUNK = std::size_t{64} * 1024;
 
+/// How long one turn keeps draining before it yields (FR-009). A burst of five
+/// thousand tasks is 60 ms today; without a bound it would all run in one turn.
+constexpr std::chrono::milliseconds TURN_BUDGET{4};
+
 } // namespace
 
 EngineBase::EngineBase()
@@ -373,12 +377,33 @@ void EngineBase::cancelPending(const IoHandle &handle)
     });
 }
 
+void EngineBase::pushTask(PostedTask task)
+{
+    auto *node = new TaskNode{std::move(task), nullptr};
+    node->next = head_.load(std::memory_order_relaxed);
+    // Release publishes the node contents; a failure means another producer won
+    // and the expected value was refreshed for us.
+    while (!head_.compare_exchange_weak(node->next, node, std::memory_order_release,
+                                        std::memory_order_relaxed)) {
+    }
+}
+
+EngineBase::TaskNode *EngineBase::takeTasks() noexcept
+{
+    TaskNode *stack = head_.exchange(nullptr, std::memory_order_acquire);
+    TaskNode *ordered = nullptr;
+    while (stack != nullptr) {
+        TaskNode *next = stack->next;
+        stack->next = ordered;
+        ordered = stack;
+        stack = next;
+    }
+    return ordered;
+}
+
 void EngineBase::post(PostedTask task)
 {
-    {
-        const std::lock_guard<std::mutex> guard(mutex_);
-        tasks_.push_back(std::move(task));
-    }
+    pushTask(std::move(task));
     poke();
 }
 
@@ -391,7 +416,7 @@ void EngineBase::run()
     armWakeup();
     while (!stopped_.load()) {
         drainWakeup();
-        drainTasks();
+        drainUntil(std::chrono::steady_clock::now() + TURN_BUDGET);
         fireDueTimers();
         if (stopped_.load()) {
             break;
@@ -441,7 +466,7 @@ void EngineBase::fireDueTimers()
 
     for (Timer &timer : timers_) {
         if (timer.due <= now) {
-            tasks_.push_back(std::move(timer.task));
+            pushTask(std::move(timer.task));
             continue;
         }
         pending.push_back(std::move(timer));
@@ -452,7 +477,7 @@ void EngineBase::fireDueTimers()
 int EngineBase::nextWaitMilliseconds() const
 {
     // A queued task must run before any wait, or it sits until the next event.
-    if (!tasks_.empty()) {
+    if (head_.load(std::memory_order_acquire) != nullptr) {
         return 0;
     }
 
@@ -494,15 +519,39 @@ void EngineBase::drainWakeup()
     }
 }
 
-void EngineBase::drainTasks()
+void EngineBase::drainUntil(std::chrono::steady_clock::time_point deadline)
 {
-    std::deque<PostedTask> ready;
-    {
-        const std::lock_guard<std::mutex> guard(mutex_);
-        ready.swap(tasks_);
-    }
-    for (auto &task : ready) {
+    TaskNode *queue = takeTasks();
+    bool ranAny = false;
+    while (queue != nullptr) {
+        // Between tasks, never inside one: a completion that stops half way
+        // leaves torn state. The first task always runs, so a turn makes
+        // progress even on an expired deadline.
+        if (ranAny && std::chrono::steady_clock::now() >= deadline) {
+            break;
+        }
+
+        TaskNode *node = queue;
+        queue = node->next;
+
+        PostedTask task = std::move(node->task);
+        delete node;
         task();
+        ranAny = true;
+    }
+
+    if (queue == nullptr) {
+        return;
+    }
+    // Put the unrun tail back at the top, keeping its order. The exchange hands
+    // back whatever was pushed meanwhile, and it goes behind the tail.
+    TaskNode *tail = queue;
+    while (tail->next != nullptr) {
+        tail = tail->next;
+    }
+    tail->next = head_.load(std::memory_order_relaxed);
+    while (!head_.compare_exchange_weak(tail->next, queue, std::memory_order_release,
+                                        std::memory_order_relaxed)) {
     }
 }
 

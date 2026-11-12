@@ -4,6 +4,7 @@
 #include <expected>
 #include <thread>
 #include <cstdint>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <list>
@@ -162,7 +163,7 @@ private:
     void drainWakeup();
     void fireDueTimers();
     [[nodiscard]] int nextWaitMilliseconds() const;
-    void drainTasks();
+    void drainUntil(std::chrono::steady_clock::time_point deadline);
     void completeFileRead(PendingOp &op);
     void completeFileWrite(PendingOp &op);
 
@@ -208,8 +209,20 @@ private:
     std::atomic<std::uint64_t> resolveSerial_{0};
     std::atomic<std::uint64_t> resolveSettled_{0};
 
-    std::deque<PostedTask> tasks_;
-    std::mutex mutex_;
+    /// Posted tasks, multi-producer and lock-free (FR-003). A node enters once and
+    /// only the loop removes it, so there is no ABA: `head_` is the whole state.
+    struct TaskNode {
+        PostedTask task;
+        TaskNode *next = nullptr;
+    };
+
+    /// Push onto the stack. Safe from any thread.
+    void pushTask(PostedTask task);
+
+    /// Take the whole stack, newest first, and reverse it to arrival order.
+    [[nodiscard]] TaskNode *takeTasks() noexcept;
+
+    std::atomic<TaskNode *> head_{nullptr};
     std::atomic<bool> stopped_{false};
     std::atomic<std::thread::id> loopThread_{};
     int wake_[2] = {-1, -1};

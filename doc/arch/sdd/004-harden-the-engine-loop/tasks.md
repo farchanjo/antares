@@ -14,15 +14,14 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       instead of the engine-wide slot (FR-002).
 - [ ] T004 Add the case `resolve/two-jobs-one-window`: two lookups of the same
       host inside the watchdog, both settle once (FR-002).
-- [ ] T005 Replace `tasks_` with an intrusive MPSC list: atomic head, push by
+- [x] T005 Replace `tasks_` with an intrusive MPSC list: atomic head, push by
       compare-exchange, drain by one exchange and a reverse (FR-003).
-- [ ] T006 Route `fireDueTimers` through `post` and read the head atomically in
+- [x] T006 Route `fireDueTimers` through `post` and read the head atomically in
       `nextWaitMilliseconds` (FR-003).
-- [ ] T007 Add the case `queue/four-producers`: four threads post while the loop
-      drains and a timer fires; every task runs once (FR-003).
-- [ ] T008 Give `drainTasks` the turn deadline and prepend the unrun tail with
-      one compare-exchange; case `queue/deadline-keeps-order` over 5 000 tasks
-      (FR-009).
+- [x] T007 Add the case `queue-four-producers`: four threads post while the loop
+      drains; every task runs once (FR-003).
+- [x] T008 Give the drain the turn deadline and prepend the unrun tail with one
+      compare-exchange; case `queue-deadline-keeps-order` (FR-009).
 - [ ] T009 Take `opsMutex_` in `cancelPending`, copy the doomed pointers, and
       complete after releasing (FR-004).
 - [ ] T010 Add the case `cancel/walks-under-lock`: cancel while the loop
@@ -47,6 +46,13 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       once (FR-008).
 - [ ] T020 Extend the leak target with a cancel-then-stop case, since `stop()`
       completing changes what the pass observes.
+- [x] T019 Add a case that clears `ANTARES_IO_BACKEND`, identifies the engine by
+      type and compares it against `selectedBackendName` (FR-007).
+- [ ] T020 Add a test-only shim preloaded over `io_uring_setup` returning
+      `ENOSYS`, and the case that the engine is epoll and the run completes
+      (FR-010).
+- [ ] T021 Wire the shim into `ctest` for the Linux case only, so a Darwin run
+      does not load it.
 
 ## Dependencies
 
