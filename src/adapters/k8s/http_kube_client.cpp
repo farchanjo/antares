@@ -106,7 +106,8 @@ void scanPageMetadata(domain::json::ScalarScan &scan, ports::k8s::ListPage &page
 /// each item's projection are the only fields read, so the document never
 /// becomes a tree (FR-002, FR-005); a refused shape falls back to the parser
 /// inside `decodeEntry` and is counted (FR-001).
-void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64_t *scanFailures)
+void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64_t *scanFailures,
+                  bool trace)
 {
     domain::json::ScalarScan scan{body};
     if (!scan.begin('{')) {
@@ -129,12 +130,13 @@ void scanListPage(std::string_view body, ports::k8s::ListPage &page, std::uint64
         if (key == "metadata") {
             std::fprintf(stderr, "  [list] metadata ->\n");
             scanPageMetadata(scan, page);
-            const auto at = scan.offset();
-            const auto body = toText(result->body);
-            std::fprintf(stderr, "  [list] at=%zu err=%u ctx=[%.*s]\n", at,
-                         static_cast<unsigned>(scan.error().reason),
-                         static_cast<int>(at + 30 < body.size() ? 30 : body.size() - at),
-                         body.data() + at);
+            if (trace) {
+                const auto at = scan.offset();
+                std::fprintf(stderr, "  [list] at=%zu err=%u ctx=[%.*s]\n", at,
+                             static_cast<unsigned>(scan.error().reason),
+                             static_cast<int>(at + 30 < body.size() ? 30 : body.size() - at),
+                             body.data() + at);
+            }
             continue;
         }
         if (key == "items") {
@@ -340,7 +342,7 @@ HttpKubeClient::list(const domain::k8s::ApiPath &path, const domain::k8s::ListOp
         ports::k8s::ListPage page;
         std::fprintf(stderr, "  [list] status=%d body=%zu\n", result->status,
                      toText(result->body).size());
-        scanListPage(toText(result->body), page, self ? &self->stats_.scanFailures : nullptr);
+        scanListPage(toText(result->body), page, self ? &self->stats_.scanFailures : nullptr, true);
         std::fprintf(stderr, "  [list] items=%zu\n", page.items.size());
         done(ports::k8s::ListResult{std::move(page)});
     };
