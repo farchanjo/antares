@@ -15,25 +15,36 @@ ViewConfig::ViewConfig(std::span<const ColumnWidth> savedLayout) noexcept : colu
     if (!coversEveryRole(savedLayout)) {
         return;
     }
-    for (std::size_t at = 0; at < savedLayout.size(); ++at) {
-        columns_[at] = savedLayout[at];
+    // Applied by role, not by position: a saved layout written before a family
+    // gained a column still restores the widths it does name. A zero width or a
+    // duplicate is ignored.
+    std::array<bool, ROW_ROLE_COUNT> seen{};
+    for (const ColumnWidth &column : savedLayout) {
+        const auto slot = static_cast<std::size_t>(column.role);
+        if (seen[slot] || column.width == 0) {
+            continue;
+        }
+        seen[slot] = true;
+        columns_[slot] = column;
     }
 }
 
 bool ViewConfig::coversEveryRole(std::span<const ColumnWidth> layout) noexcept
 {
-    if (layout.size() != ROW_ROLE_COUNT) {
-        return false;
-    }
+    // The four base roles are the contract: a saved layout that does not name
+    // all of them came from a build this one cannot read, and the defaults win.
     std::array<bool, ROW_ROLE_COUNT> seen{};
     for (const ColumnWidth &column : layout) {
         const auto slot = static_cast<std::size_t>(column.role);
-        if (seen[slot] || column.width == 0) {
+        if (slot >= ROW_ROLE_COUNT) {
             return false;
         }
         seen[slot] = true;
     }
-    return std::all_of(seen.begin(), seen.end(), [](bool seenRole) { return seenRole; });
+    return seen[static_cast<std::size_t>(RowRole::name)] &&
+           seen[static_cast<std::size_t>(RowRole::namespaceName)] &&
+           seen[static_cast<std::size_t>(RowRole::status)] &&
+           seen[static_cast<std::size_t>(RowRole::age)];
 }
 
 void ViewConfig::noteRowHeight(std::uint32_t height) noexcept

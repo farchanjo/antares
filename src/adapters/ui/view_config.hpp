@@ -25,11 +25,51 @@ class ViewConfig {
 public:
     static constexpr std::uint32_t defaultBatchSize = 100;
 
+    /// Every role gets a width, so a saved layout can be validated by size
+    /// alone. A family shows only its own columns; the rest are never asked for.
     static constexpr std::array<ColumnWidth, ROW_ROLE_COUNT> defaultLayout{
         ColumnWidth{RowRole::name, 320},
         ColumnWidth{RowRole::namespaceName, 160},
         ColumnWidth{RowRole::status, 140},
         ColumnWidth{RowRole::age, 120},
+        ColumnWidth{RowRole::labels, 160},
+        ColumnWidth{RowRole::keys, 160},
+        ColumnWidth{RowRole::type, 120},
+        ColumnWidth{RowRole::cpu, 120},
+        ColumnWidth{RowRole::memory, 120},
+        ColumnWidth{RowRole::disk, 120},
+        ColumnWidth{RowRole::restarts, 90},
+        ColumnWidth{RowRole::controlledBy, 140},
+        ColumnWidth{RowRole::node, 140},
+        ColumnWidth{RowRole::qos, 110},
+        ColumnWidth{RowRole::conditions, 160},
+        ColumnWidth{RowRole::webhooks, 100},
+        ColumnWidth{RowRole::version, 110},
+        ColumnWidth{RowRole::taints, 90},
+        ColumnWidth{RowRole::roles, 110},
+        ColumnWidth{RowRole::clusterIp, 130},
+        ColumnWidth{RowRole::ports, 180},
+        ColumnWidth{RowRole::externalIp, 130},
+        ColumnWidth{RowRole::selector, 160},
+        ColumnWidth{RowRole::schedule, 130},
+        ColumnWidth{RowRole::suspend, 90},
+        ColumnWidth{RowRole::active, 80},
+        ColumnWidth{RowRole::lastSchedule, 140},
+        ColumnWidth{RowRole::nextExecution, 140},
+        ColumnWidth{RowRole::timezone, 110},
+        ColumnWidth{RowRole::metrics, 120},
+        ColumnWidth{RowRole::minPods, 90},
+        ColumnWidth{RowRole::maxPods, 90},
+        ColumnWidth{RowRole::replicas, 90},
+        ColumnWidth{RowRole::minAvailable, 110},
+        ColumnWidth{RowRole::maxUnavailable, 110},
+        ColumnWidth{RowRole::currentHealthy, 120},
+        ColumnWidth{RowRole::desiredHealthy, 120},
+        ColumnWidth{RowRole::value, 120},
+        ColumnWidth{RowRole::globalDefault, 120},
+        ColumnWidth{RowRole::holder, 160},
+        ColumnWidth{RowRole::completions, 110},
+        ColumnWidth{RowRole::argocd, 110},
     };
 
     ViewConfig() noexcept;

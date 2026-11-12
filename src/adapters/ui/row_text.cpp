@@ -37,6 +37,48 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
         return statusText(entry.status);
     case RowRole::age:
         return entry.creationTimestamp;
+    case RowRole::conditions:
+        return entry.status.reason;
+    case RowRole::cpu:
+    case RowRole::memory:
+    case RowRole::disk:
+    case RowRole::restarts:
+    case RowRole::node:
+    case RowRole::qos:
+    case RowRole::controlledBy:
+    case RowRole::version:
+    case RowRole::labels:
+    case RowRole::keys:
+    case RowRole::type:
+    case RowRole::webhooks:
+    case RowRole::taints:
+    case RowRole::roles:
+    case RowRole::clusterIp:
+    case RowRole::ports:
+    case RowRole::externalIp:
+    case RowRole::selector:
+    case RowRole::schedule:
+    case RowRole::suspend:
+    case RowRole::active:
+    case RowRole::lastSchedule:
+    case RowRole::nextExecution:
+    case RowRole::timezone:
+    case RowRole::metrics:
+    case RowRole::minPods:
+    case RowRole::maxPods:
+    case RowRole::replicas:
+    case RowRole::minAvailable:
+    case RowRole::maxUnavailable:
+    case RowRole::currentHealthy:
+    case RowRole::desiredHealthy:
+    case RowRole::value:
+    case RowRole::globalDefault:
+    case RowRole::holder:
+    case RowRole::completions:
+    case RowRole::argocd:
+        // The projection does not carry these yet; an empty cell is honest and
+        // the column keeps its place.
+        return {};
     }
     return {};
 }
