@@ -1,5 +1,7 @@
 #include "adapters/ui/qt_list_model.hpp"
 
+#include <cstdio>
+
 #if defined(ANTARES_HAS_QT)
 
 #include <array>
@@ -40,7 +42,9 @@ int QtListModel::rowCount(const QModelIndex &parent) const
     if (parent.isValid()) {
         return 0;
     }
-    return static_cast<int>(model_->rowCount());
+    const int rows = static_cast<int>(model_->rowCount());
+    std::fprintf(stderr, "  [rowCount] %d\n", rows);
+    return rows;
 }
 
 QVariant QtListModel::data(const QModelIndex &index, int role) const
