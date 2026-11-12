@@ -1,5 +1,6 @@
 #include "adapters/ui/kube_page_source.hpp"
 
+#include <cstdio>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -22,6 +23,8 @@ KubePageSource::~KubePageSource() = default;
 void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view continueToken,
                            std::uint32_t limit, Done done)
 {
+    std::fprintf(stderr, "  [fetch] ns=%s res=%s\n", scope.namespaceName.text().c_str(),
+                 scope.type.resource.c_str());
     const domain::k8s::ApiPath path{scope.type, std::nullopt, std::nullopt,
                                     domain::k8s::Subresource::none};
     domain::k8s::ListOptions options;
@@ -37,10 +40,13 @@ void KubePageSource::fetch(const domain::k8s::Scope &scope, std::string_view con
     static_cast<void>(reader_.list(
         path, options,
         [this, shared, done = std::move(done)](ports::k8s::ListResult result) {
+            std::fprintf(stderr, "  [page] result=%d\n", result ? 1 : 0);
             if (!result) {
                 done(std::unexpected(PageError::transport));
                 return;
             }
+            std::fprintf(stderr, "  [page] items=%zu token=%zu\n", result->items.size(),
+                         result->continueToken.size());
 
             std::vector<domain::k8s::WatchEvent> batch;
             batch.reserve(result->items.size());
