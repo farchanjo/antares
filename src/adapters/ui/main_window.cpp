@@ -592,6 +592,10 @@ void MainWindow::buildStatus(const QString &message)
 
     QObject::connect(&model_, &QtListModel::ticksChanged, this, &MainWindow::refreshCount);
     QObject::connect(&model_, &QtListModel::rowsChanged, this, &MainWindow::refreshCount);
+    // A model reset only happens once the page has landed, which is after the
+    // splitter has given the pane its width; a timer at show time is too early.
+    QObject::connect(&model_, &QAbstractItemModel::modelReset, this,
+                     [this] { applyColumnWidths(); });
     refreshCount();
 
     status_ = new QLabel{message, this};
@@ -655,7 +659,7 @@ void MainWindow::showEvent(QShowEvent *event)
     // After the first layout pass, so the sections exist at their final count.
     // Long enough for the splitter and the tab widget to have sized the pane: at
     // zero the view is still a hundred pixels wide and the shares come out wrong.
-    QTimer::singleShot(400, this, [this] { applyColumnWidths(); });
+    applyColumnWidths();
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }
