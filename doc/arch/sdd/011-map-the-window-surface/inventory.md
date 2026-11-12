@@ -368,3 +368,21 @@ The first two are the application menu's; `Preferences` carries ⌘,.
 context-sensitive — a focused table adds the clipboard items.
 
 `View` follows.
+
+`View`:
+
+| Item | Shortcut |
+|---|---|
+| Toggle Toolbar | |
+| Command Palette… | ⇧⌘P |
+| Back | ⌘[ |
+| Forward | ⌘] |
+| Reload | ⌘R |
+| Actual Size | ⌘0 |
+| Zoom In | ⌘+ |
+| Zoom Out | ⌘- |
+| Toggle Full Screen | ⌃⌘F |
+
+`Command Palette` is the keyboard-first surface: every action is reachable by
+name without the tree. `Back` and `Forward` are the toolbar arrows, and `Reload`
+is the table refresh.
