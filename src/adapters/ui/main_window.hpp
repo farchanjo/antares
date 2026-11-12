@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <QStringList>
 
 class QComboBox;
 class QLabel;
@@ -29,8 +30,11 @@ public:
     /// `model` is not owned: the application keeps it and destroys the window
     /// first (FR-004). `context` names the current context, and `message` is the
     /// reason the list is empty, if any.
-    MainWindow(QtListModel &model, const QString &context, const QString &message,
-               QWidget *parent = nullptr);
+    /// `contexts` fills the context selector and `namespaces` the namespace one;
+    /// both are handed in so the window owns no loader. `context` is the current
+    /// one and is selected.
+    MainWindow(QtListModel &model, const QStringList &contexts, const QString &context,
+               const QStringList &namespaces, const QString &message, QWidget *parent = nullptr);
 
     /// The status line, so a case can assert the message and not just the widget.
     [[nodiscard]] QLabel *status() const noexcept;
@@ -45,6 +49,7 @@ private:
     void buildBar();
     QWidget *buildNavigator();
     QWidget *buildTable();
+    void buildTree();
 
     QtListModel &model_;
     QToolBar *bar_ = nullptr;

@@ -17,8 +17,8 @@
 
 namespace antares::adapters::ui {
 
-MainWindow::MainWindow(QtListModel &model, const QString &context, const QString &message,
-                       QWidget *parent)
+MainWindow::MainWindow(QtListModel &model, const QStringList &contexts, const QString &context,
+                       const QStringList &namespaces, const QString &message, QWidget *parent)
     : QMainWindow(parent)
     , model_(model)
 {
@@ -33,6 +33,12 @@ MainWindow::MainWindow(QtListModel &model, const QString &context, const QString
     layout->setContentsMargins({});
 
     buildBar();
+    contextBox_->addItems(contexts);
+    if (!context.isEmpty()) {
+        contextBox_->setCurrentText(context);
+    }
+    namespaceBox_->addItem(tr("All namespaces"), QString{});
+    namespaceBox_->addItems(namespaces);
     layout->addWidget(bar_);
 
     // Navigator on the left, rows on the right. The splitter is the only place
@@ -44,6 +50,8 @@ MainWindow::MainWindow(QtListModel &model, const QString &context, const QString
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
     splitter->setChildrenCollapsible(false);
+    // The navigator is a fixed-ish column; the table takes the rest.
+    splitter->setSizes({240, 860});
     layout->addWidget(splitter, 1);
 
     status_ = new QLabel{message, central};
@@ -75,6 +83,7 @@ QWidget *MainWindow::buildNavigator()
     navigator_->setRootIsDecorated(true);
     // The tree is the only expanding child of the pane.
     navigator_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    buildTree();
     paneLayout->addWidget(navigator_, 1);
 
     return pane;
@@ -127,6 +136,28 @@ void MainWindow::buildBar()
     scopeLayout->addWidget(namespaceBox_);
 
     bar_->addWidget(scope);
+}
+
+void MainWindow::buildTree()
+{
+    // The families the API exposes, in the order the reference screen uses. A
+    // later feature replaces this with discovery; the shape stays.
+    const struct Family {
+        const char *label;
+        bool expandable;
+    } families[] = {
+        {QT_TR_NOOP("Overview"), false},   {QT_TR_NOOP("Workloads"), true},
+        {QT_TR_NOOP("Config"), true},      {QT_TR_NOOP("Network"), true},
+        {QT_TR_NOOP("Storage"), true},     {QT_TR_NOOP("Namespaces"), false},
+        {QT_TR_NOOP("Events"), false},     {QT_TR_NOOP("Access Control"), true},
+    };
+
+    for (const Family &family : families) {
+        auto *item = new QTreeWidgetItem{navigator_, QStringList{tr(family.label)}};
+        if (family.expandable) {
+            item->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+        }
+    }
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }

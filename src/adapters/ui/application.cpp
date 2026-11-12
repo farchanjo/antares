@@ -230,7 +230,16 @@ std::expected<void, StartupError> Application::build()
     if (model_->canFetchMore({})) {
         model_->fetchMore({});
     }
-    window_ = std::make_unique<MainWindow>(*model_, context, message);
+    // The window owns no loader: the lists are read once here and handed over.
+    QStringList contexts;
+    QStringList namespaces;
+    if (config) {
+        for (const domain::k8s::Context &known : config->contexts) {
+            contexts.append(QString::fromUtf8(known.name.c_str()));
+        }
+        namespaces.append(QString::fromUtf8(initialNamespace.c_str()));
+    }
+    window_ = std::make_unique<MainWindow>(*model_, contexts, context, namespaces, message);
     if (!window_) {
         destroy();
         return std::unexpected(StartupError::window);
