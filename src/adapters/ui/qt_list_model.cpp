@@ -71,7 +71,11 @@ void QtListModel::multiData(const QModelIndex &index, QModelRoleDataSpan span) c
     std::array<std::uint32_t, ROW_ROLE_COUNT> positions{};
     std::size_t count = 0;
     for (const QModelRoleData &entry : span) {
-        const auto role = roleForIndex(static_cast<std::uint32_t>(entry.role()));
+        std::optional<RowRole> role = roleForIndex(static_cast<std::uint32_t>(entry.role()));
+        // Same rule as `data`: a column stands in for an unregistered role.
+        if (!role && index.column() >= 0 && index.column() < static_cast<int>(ROW_ROLE_COUNT)) {
+            role = static_cast<RowRole>(index.column());
+        }
         if (!role || count >= ROW_ROLE_COUNT) {
             continue;
         }
