@@ -92,10 +92,12 @@ bool WebSocket::verifyHandshake(std::string_view head, std::string_view key,
     if (subprotocol.empty()) {
         return true;
     }
-    // The server picks one of the offers; anything else is a downgrade we did
-    // not ask for.
+    // A server that names a protocol must name one of the offers. RFC 6455 §4.1
+    // allows a 101 with none, though, and API servers in the field take it: the
+    // accept already proved the peer read the request, so a missing echo is not
+    // a reason to fail the upgrade.
     const std::string_view chosen = headerValue(head, "sec-websocket-protocol");
-    return !chosen.empty() && chosen == subprotocol;
+    return chosen.empty() || chosen == subprotocol;
 }
 
 

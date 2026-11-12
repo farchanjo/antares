@@ -76,6 +76,9 @@ private:
     /// actually requested.
     void storeCookies(const domain::http::Response &response);
 
+    /// The `authorization` line for a hand-written request, or nothing.
+    [[nodiscard]] std::string authorizationHead() const;
+
     /// Revalidate: keep a validator from a 200, and hand back the stored answer
     /// when the origin answers 304.
     void cached(domain::http::Response &response);

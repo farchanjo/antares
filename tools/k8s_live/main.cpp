@@ -236,7 +236,9 @@ bool probeLogs(ports::k8s::Reader &reader, const std::string &ns, const std::str
             }
             gate.open();
         }));
-    if (!gate.wait(std::chrono::seconds{20})) {
+    // The API server ignores `timeoutSeconds` on `/log` and sends the whole
+    // buffer, so a chatty pod runs long.
+    if (!gate.wait(std::chrono::seconds{90})) {
         step(false, "LOGS  timed out locally");
         return false;
     }

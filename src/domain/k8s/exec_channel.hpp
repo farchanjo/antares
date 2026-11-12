@@ -30,7 +30,11 @@ struct ExecFrame {
 };
 
 /// The subprotocol token to offer in the upgrade.
-inline constexpr std::string_view execSubprotocol = "v5.channel.k8s.io";
+///
+/// Version 4 is what every server in the field answers, `kubectl` included. The
+/// fifth only adds a channel for half-close, which this client does not use, and
+/// offering it fails outright against an API server that does not know it.
+inline constexpr std::string_view execSubprotocol = "v4.channel.k8s.io";
 
 /// Prefix `payload` with its channel.
 [[nodiscard]] std::string encodeExecFrame(ExecChannel channel, std::string_view payload);

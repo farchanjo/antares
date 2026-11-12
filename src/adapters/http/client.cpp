@@ -379,6 +379,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                     if (end == std::string::npos) {
                         return;
                     }
+
                     if (pending->rfind("HTTP/1.1 101", 0) != 0) {
                         socket->abort(domain::http::HttpError::protocol);
                         return;
@@ -429,6 +430,7 @@ void HttpClient::openWebSocket(domain::http::Url url, std::string subprotocol, S
                 if (!subprotocol.empty()) {
                     request += "Sec-WebSocket-Protocol: " + subprotocol + "\r\n";
                 }
+                request += self->authorizationHead();
                 // permessage-deflate (RFC 7692). Only offered when the caller
                 // did not name its own extensions, which would be overwritten.
                 if (!extensions.empty()) {
@@ -754,6 +756,17 @@ void HttpClient::cached(domain::http::Response &response)
     if (response.status == 200) {
         cache_.store(cacheKey(current_), response);
     }
+}
+
+std::string HttpClient::authorizationHead() const
+{
+    // The upgrade is a normal request as far as authentication goes, and it is
+    // written out by hand, so the credential is applied by hand too.
+    const auto credential = config_.auth.authorizationValue();
+    if (!credential || credential->empty()) {
+        return {};
+    }
+    return "Authorization: " + *credential + "\r\n";
 }
 
 void HttpClient::storeCookies(const domain::http::Response &response)
