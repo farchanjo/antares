@@ -164,6 +164,12 @@ private:
     void fireDueTimers();
     [[nodiscard]] int nextWaitMilliseconds() const;
     void drainUntil(std::chrono::steady_clock::time_point deadline);
+
+    /// Settle one op as cancelled: the shared tail of `cancelPending` and `stop`.
+    void completeCancelled(PendingOp &op);
+
+    /// Settle every pending op as cancelled. Caller drains, or is off-loop.
+    void cancelAll();
     void completeFileRead(PendingOp &op);
     void completeFileWrite(PendingOp &op);
 
@@ -224,6 +230,8 @@ private:
 
     std::atomic<TaskNode *> head_{nullptr};
     std::atomic<bool> stopped_{false};
+    std::atomic<bool> loopStarted_{false};
+    std::atomic<bool> loopRunning_{false};
     std::atomic<std::thread::id> loopThread_{};
     int wake_[2] = {-1, -1};
 };

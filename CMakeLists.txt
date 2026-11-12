@@ -322,7 +322,10 @@ set(ANTARES_IO_CASES
     counters-move
     backend-name-matches-engine
     queue-four-producers
-    queue-deadline-keeps-order)
+    queue-deadline-keeps-order
+    cancel-walks-under-lock
+    stop-settles-pending
+    stop-is-reversible)
 
 add_executable(antares_http_conformance tests/http/conformance.cpp)
 target_link_libraries(antares_http_conformance PRIVATE antares_http)
@@ -470,9 +473,11 @@ endforeach()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT APPLE)
     add_library(antares_io_uring_shim SHARED tests/io/io_uring_shim.cpp)
     target_link_libraries(antares_io_uring_shim PRIVATE PkgConfig::LIBURING)
-    add_test(NAME "epoll/ring-refused-falls-back"
+    # Not in the loop above: without the shim this case fails, so it gets its
+    # own registration instead of running on every backend.
+    add_test(NAME "shim/ring-refused-falls-back"
              COMMAND antares_io_conformance ring-refused-falls-back)
-    set_tests_properties("epoll/ring-refused-falls-back" PROPERTIES
+    set_tests_properties("shim/ring-refused-falls-back" PROPERTIES
         ENVIRONMENT "LD_PRELOAD=$<TARGET_FILE:antares_io_uring_shim>;ANTARES_IO_BACKEND="
         TIMEOUT 30)
 endif()

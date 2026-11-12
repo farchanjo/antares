@@ -223,13 +223,23 @@ void caseStopEndsCallbacks()
         return;
     }
     IoEngine &engine = **built;
-    auto runner = makeRunner(engine);
-    runner.stop();
-    runner.stop();
 
+    // Declared before the Runner: the runner joins on destruction, so a task it
+    // may still run has to outlive it.
     std::atomic<int> after{0};
-    engine.post([&] { after.fetch_add(1); });
-    check(after.load() <= 1, "post after stop is not double counted");
+    antares::test::Await ran;
+    {
+        auto runner = makeRunner(engine);
+        runner.stop();
+        runner.stop();
+
+        engine.post([&] {
+            after.fetch_add(1);
+            ran.signal();
+        });
+        check(ran.wait(), "a post after stop still runs");
+    }
+    check(after.load() == 1, "post after stop is not double counted");
 }
 
 void caseNoCallbackAfterStop()
@@ -248,22 +258,26 @@ void caseNoCallbackAfterStop()
 
     auto runner = makeRunner(**built);
     std::atomic<int> completions{0};
-    std::atomic<bool> late{false};
-    bool stopped = false;
+    std::atomic<bool> cancelled{false};
+    antares::test::Await settled;
 
     (void)(*built)->submitRead(*handle, std::nullopt, Bytes{16},
-                               [&](std::expected<Buffer, IoError>) {
-                                   ++completions;
-                                   if (stopped) {
-                                       late.store(true);
+                               [&](std::expected<Buffer, IoError> result) {
+                                   if (!result && result.error() == IoError::cancelled) {
+                                       cancelled.store(true);
                                    }
+                                   completions.fetch_add(1);
+                                   settled.signal();
                                });
 
     runner.stop();
-    stopped = true;
 
-    // The callback runs on the loop thread; once stopped, none may start.
-    const int settled = completions.load();
+    // `stop()` settles what is pending (FR-005), so the completion is expected —
+    // it just may not arrive after the drain.
+    check(settled.wait(), "the pending read settled on stop");
+    check(cancelled.load(), "it settled as cancelled");
+
+    const int after = completions.load();
     antares::test::Await tick;
     std::thread assist([&] {
         std::this_thread::yield();
@@ -271,9 +285,7 @@ void caseNoCallbackAfterStop()
     });
     assist.join();
     check(tick.wait(), "the assist signalled before the wait timed out");
-
-    check(completions.load() == settled, "no completion after stop returned");
-    check(!late.load(), "nothing arrived late");
+    check(completions.load() == after, "no further completion after the drain");
 
     ::close(pair[1]);
 }
@@ -502,6 +514,96 @@ void caseRingRefusedFallsBack()
     check(antares::application::io::selectedBackendName() == "epoll", "the name says epoll");
 }
 
+/// Cancelling repeatedly while the loop completes and releases ops must not
+/// walk a freed store; ASan is the oracle (FR-004).
+void caseCancelWalksUnderLock()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    std::atomic<int> completions{0};
+    constexpr int ROUNDS = 200;
+    for (int i = 0; i < ROUNDS; ++i) {
+        (void)engine.submitRead(*handle, std::nullopt, Bytes{8},
+                                [&](std::expected<Buffer, IoError>) { completions.fetch_add(1); });
+        engine.cancelPending(*handle);
+    }
+
+    antares::test::Await settled;
+    engine.post([&] { settled.signal(); });
+    check(settled.wait(), "the loop kept running through the cancels");
+    check(completions.load() <= ROUNDS, "never more completions than submissions");
+
+    ::close(pair[1]);
+}
+
+/// `stop()` settles what is pending, exactly once, as cancelled (FR-005).
+void caseStopSettlesPending()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+    auto runner = makeRunner(engine);
+
+    int pair[2] = {-1, -1};
+    check(::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0, "socket pair");
+    auto handle = IoHandle::adopt(pair[0]);
+    check(handle.has_value(), "adopted");
+
+    std::atomic<int> completions{0};
+    std::atomic<bool> wasCancelled{false};
+    antares::test::Await settled;
+    (void)engine.submitRead(*handle, std::nullopt, Bytes{8},
+                            [&](std::expected<Buffer, IoError> result) {
+                                wasCancelled.store(!result && result.error() == IoError::cancelled);
+                                completions.fetch_add(1);
+                                settled.signal();
+                            });
+
+    engine.stop();
+    check(settled.wait(), "the pending read settled");
+    check(wasCancelled.load(), "settled as cancelled");
+    check(completions.load() == 1, "settled exactly once");
+
+    ::close(pair[1]);
+}
+
+/// A stopped engine runs again, and serves work (FR-006).
+void caseStopIsReversible()
+{
+    auto built = makeEngine();
+    check(built.has_value(), "factory built an engine");
+    if (!built) {
+        return;
+    }
+    IoEngine &engine = **built;
+
+    {
+        auto first = makeRunner(engine);
+        engine.stop();
+    }
+
+    auto second = makeRunner(engine);
+    antares::test::Await ran;
+    engine.post([&] { ran.signal(); });
+    check(ran.wait(), "the loop serves work after a stop");
+
+    engine.stop();
+}
+
 struct Case {
     const char *name;
     void (*run)();
@@ -521,6 +623,9 @@ std::span<const Case> cases()
         {"queue-four-producers", caseQueueFourProducers},
         {"queue-deadline-keeps-order", caseQueueDeadlineKeepsOrder},
         {"ring-refused-falls-back", caseRingRefusedFallsBack},
+        {"cancel-walks-under-lock", caseCancelWalksUnderLock},
+        {"stop-settles-pending", caseStopSettlesPending},
+        {"stop-is-reversible", caseStopIsReversible},
     };
     return table;
 }

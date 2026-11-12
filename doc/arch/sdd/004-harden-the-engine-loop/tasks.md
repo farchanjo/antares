@@ -22,19 +22,19 @@ have caught it is not done. Order follows the risk: the Darwin UAF first.
       drains; every task runs once (FR-003).
 - [x] T008 Give the drain the turn deadline and prepend the unrun tail with one
       compare-exchange; case `queue-deadline-keeps-order` (FR-009).
-- [ ] T009 Take `opsMutex_` in `cancelPending`, copy the doomed pointers, and
+- [x] T009 Take `opsMutex_` in `cancelPending`, copy the doomed pointers, and
       complete after releasing (FR-004).
-- [ ] T010 Add the case `cancel/walks-under-lock`: cancel while the loop
+- [x] T010 Add the case `cancel/walks-under-lock`: cancel while the loop
       releases an op (FR-004).
-- [ ] T011 Make `stop()` complete every pending op with `IoError::cancelled`
+- [x] T011 Make `stop()` complete every pending op with `IoError::cancelled`
       before the resolver join, reusing the `cancelPending` switch (FR-005).
 - [ ] T012 Map `IoError::cancelled` to `HttpError::cancelled` in `HttpClient`
       so the completion is terminal (FR-005).
-- [ ] T013 Add the case `stop/settles-pending`: an op in flight at `stop()`
+- [x] T013 Add the case `stop/settles-pending`: an op in flight at `stop()`
       completes once with `cancelled` (FR-005).
-- [ ] T014 Clear `stopped_` on `run()` entry and move the double-`stop()` guard
+- [x] T014 Clear `stopped_` on `run()` entry and move the double-`stop()` guard
       to a one-shot (FR-006).
-- [ ] T015 Add the case `stop/reversible`: `run()` after `stop()` serves work
+- [x] T015 Add the case `stop/reversible`: `run()` after `stop()` serves work
       again (FR-006).
 - [ ] T016 Follow the factory branch in `selectedBackendName` so io_uring
       reports itself (FR-007).

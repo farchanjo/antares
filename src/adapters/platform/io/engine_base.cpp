@@ -350,31 +350,41 @@ void EngineBase::cancelPending(const IoHandle &handle)
     // the caller's thread.
     post([this, descriptor = handle.native()] {
         std::vector<PendingOp *> doomed;
-        for (const auto &op : ops_) {
-            if (op->handle != nullptr && op->handle->native() == descriptor) {
-                doomed.push_back(op.get());
+        {
+            // The walk takes the lock; the completions below do not, because a
+            // completion re-enters `release` and would deadlock on a held lock.
+            const std::lock_guard<std::mutex> guard{opsMutex_};
+            for (const auto &op : ops_) {
+                if (op->handle != nullptr && op->handle->native() == descriptor) {
+                    doomed.push_back(op.get());
+                }
             }
         }
 
         for (PendingOp *op : doomed) {
-            switch (op->kind) {
-            case OpKind::read:
-                completeRead(*op, std::unexpected(IoError::cancelled));
-                break;
-            case OpKind::write:
-                completeWrite(*op, std::unexpected(IoError::cancelled));
-                break;
-            case OpKind::connect:
-                completeConnect(*op, std::unexpected(IoError::cancelled));
-                break;
-            case OpKind::accept:
-                completeAccept(*op, std::unexpected(IoError::cancelled));
-                break;
-            }
-            forget(*op);
-            release(op);
+            completeCancelled(*op);
         }
     });
+}
+
+void EngineBase::completeCancelled(PendingOp &op)
+{
+    switch (op.kind) {
+    case OpKind::read:
+        completeRead(op, std::unexpected(IoError::cancelled));
+        break;
+    case OpKind::write:
+        completeWrite(op, std::unexpected(IoError::cancelled));
+        break;
+    case OpKind::connect:
+        completeConnect(op, std::unexpected(IoError::cancelled));
+        break;
+    case OpKind::accept:
+        completeAccept(op, std::unexpected(IoError::cancelled));
+        break;
+    }
+    forget(op);
+    release(&op);
 }
 
 void EngineBase::pushTask(PostedTask task)
@@ -407,12 +417,31 @@ void EngineBase::post(PostedTask task)
     poke();
 }
 
+void EngineBase::cancelAll()
+{
+    std::vector<PendingOp *> doomed;
+    {
+        const std::lock_guard<std::mutex> guard{opsMutex_};
+        doomed.reserve(ops_.size());
+        for (const auto &op : ops_) {
+            doomed.push_back(op.get());
+        }
+    }
+    for (PendingOp *op : doomed) {
+        completeCancelled(*op);
+    }
+}
+
 void EngineBase::run()
 {
-    // Do not reset the flag here: a stop() issued before the thread reaches the
-    // loop must survive, or the loop runs forever.
+    // The first run must keep a stop() issued before the thread got here, or the
+    // loop runs forever; a later run clears it (FR-006).
+    if (loopStarted_.exchange(true)) {
+        stopped_.store(false);
+    }
     tuning::tuneLoopThread("antares.io");
     loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+    loopRunning_.store(true, std::memory_order_release);
     armWakeup();
     while (!stopped_.load()) {
         drainWakeup();
@@ -423,15 +452,22 @@ void EngineBase::run()
         }
         (void)waitReady(nextWaitMilliseconds());
     }
+
+    // Whatever was queued behind the stop still has to run: `stop()` posts the
+    // cancellation precisely so it lands here, on the loop.
+    drainUntil(std::chrono::steady_clock::time_point::max());
+    loopRunning_.store(false, std::memory_order_release);
 }
 
 void EngineBase::stop()
 {
-    // Completing callbacks run on the loop thread only, so once `run()` is back
-    // no completion can start. Pending operations are dropped, not completed.
+    // Completion callbacks run on the loop only, so the cancellation is posted
+    // and the loop drains it on the way out. With no loop running it runs here,
+    // where nothing else can be touching the store.
     if (stopped_.exchange(true)) {
         return;
     }
+    post([this] { cancelAll(); });
     {
         const std::lock_guard<std::mutex> guard{resolveMutex_};
         resolveStop_ = true;
@@ -450,6 +486,11 @@ void EngineBase::stop()
     if (wake_[1] >= 0) {
         const char byte = 1;
         (void)::write(wake_[1], &byte, 1);
+    }
+
+    // No loop to drain it: settle the queue here, on the caller.
+    if (!loopRunning_.load(std::memory_order_acquire)) {
+        drainUntil(std::chrono::steady_clock::time_point::max());
     }
 }
 
