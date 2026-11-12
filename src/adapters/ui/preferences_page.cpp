@@ -7,7 +7,6 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QScrollArea>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -90,11 +89,9 @@ PreferencesPage::PreferencesPage(QWidget *parent)
 
 QWidget *PreferencesPage::buildPage(const QString &title)
 {
-    auto *scroll = new QScrollArea{pages_};
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-
-    auto *page = new QWidget{scroll};
+    // No scroll area: a page is short, and a wrapped label inside one measures
+    // zero high before its width settles, which swallowed every description.
+    auto *page = new QWidget{pages_};
     auto *layout = new QVBoxLayout{page};
     layout->setContentsMargins(24, 18, 24, 18);
     layout->setSpacing(18);
@@ -105,16 +102,13 @@ QWidget *PreferencesPage::buildPage(const QString &title)
     heading->setFont(font);
     layout->addWidget(heading);
     layout->addStretch(1);
-
-    scroll->setWidget(page);
-    return scroll;
+    return page;
 }
 
 void PreferencesPage::addSection(QWidget *page, const QString &title, const QString &description,
                                  QWidget *control)
 {
-    auto *scroll = qobject_cast<QScrollArea *>(page);
-    QWidget *host = scroll != nullptr ? scroll->widget() : page;
+    QWidget *host = page;
     auto *layout = dynamic_cast<QVBoxLayout *>(host->layout());
     if (layout == nullptr) {
         return;
