@@ -29,6 +29,10 @@ struct RecordedOp {
 /// requires instead of trusting it.
 class RecordingSink : public adapters::ui::ModelSink {
 public:
+    std::size_t resets = 0;
+
+    void rowsReset() override { ++resets; }
+
     void rowsInserted(std::uint32_t first, std::uint32_t last) override
     {
         record(RecordedOp::Kind::inserted, first, last);

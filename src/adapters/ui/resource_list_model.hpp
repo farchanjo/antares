@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <vector>
 #include <span>
 #include <string>
 #include <thread>
@@ -81,6 +82,13 @@ public:
     /// Drop the retry row and ask again. The only way a failure is retried.
     void retry();
 
+    /// Narrow the rows to those whose name contains `needle`, case-folded. The
+    /// filter is the model's, not the view's, so a repaint never re-scans.
+    void setFilter(std::string needle);
+
+    /// Drop the rows and ask for the first page again.
+    void refresh();
+
     /// Replay one batch as row operations (FR-004, FR-005). Removals descend,
     /// insertions ascend, changes follow, moves last: the order Qt requires and
     /// the only one under which the set's indices stay valid while it is replayed.
@@ -111,6 +119,9 @@ private:
     [[nodiscard]] const application::k8s::StoreScope *stored() const noexcept;
     [[nodiscard]] std::uint32_t storedRows() const noexcept;
 
+    /// Rebuild the row map from the store under the current filter.
+    void rebuildVisible();
+
     void onPage(PageOutcome outcome);
     void settlePage(PageOutcome outcome);
     void showRetry(PageError error);
@@ -130,6 +141,9 @@ private:
     bool fetching_ = false;
     bool started_ = false;
     std::optional<PageError> failure_;
+    std::string filter_;
+    /// Row in the store for each visible row, in store order.
+    std::vector<std::uint32_t> visible_;
 };
 
 } // namespace antares::adapters::ui

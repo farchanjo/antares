@@ -31,6 +31,9 @@ public:
     virtual ~ModelSink() = default;
 
     /// `[first, last]` arrived.
+    /// Everything changed at once: a filter, a refresh, a new scope.
+    virtual void rowsReset() = 0;
+
     virtual void rowsInserted(std::uint32_t first, std::uint32_t last) = 0;
 
     /// `[first, last]` left.

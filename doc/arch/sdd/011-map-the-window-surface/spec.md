@@ -119,6 +119,39 @@ Two things worth not copying: the icon rail duplicates the navigator for the
 common families, and there is no empty state — an unconnected cluster shows a
 watermark and nothing else.
 
+### Exact tree, captured
+
+Read with `agent-desktop snapshot` on the acceptance platform, 2026-11-12. The
+content of the navigator is drawn on a canvas, so the tree stops at the
+containers; the labels below come from the screenshot beside it.
+
+| Order | Role | Name | Notes |
+|---|---|---|---|
+| 1 | button | — | back, icon only, disabled at the first entry |
+| 2 | button | — | forward, icon only |
+| 3 | button | Configure AI | label plus icon, right-aligned group |
+| 4 | combobox | arrow_drop_down | overflow of the toolbar |
+| 5 | button | notifications | icon plus label |
+| 6 | button | — | account, icon only |
+| 7 | main | — | the content region |
+| 8 | button | SA | cluster avatar, initials, red |
+| 9 | button | SE | cluster avatar, initials, blue |
+| 10 | button | HO | cluster avatar, initials, green, selected |
+| 11 | button | GR | cluster avatar, initials, grey |
+| 12 | button | — | add cluster |
+| 13 | button | 1 | terminal, with a count badge |
+| 14 | button | — | settings |
+| 15 | group | support / Support | status bar, right-aligned |
+
+The navigator itself, top to bottom: the title `Navigator`; a search field
+holding the current cluster name with a filter icon and a magnifier; the tree,
+whose root is the cluster with a green connected dot, expanded to `Overview`,
+`Applications`, `Argo CD`, `Nodes`, `Workloads`, `Config`, `Network`, `Storage`,
+`Device Resources`, `Namespaces`, `Events`, `Helm`, `Access Control`, `Custom
+Resources`, `Security Center`. `Argo CD` and `Device Resources` carry a `NEW`
+badge. The content region shows the product watermark while no view is open. The
+status bar carries two counters on the left and `Support` on the right.
+
 ### Region map, ported
 
 Each region below is a requirement of this feature, in the order the port lands.

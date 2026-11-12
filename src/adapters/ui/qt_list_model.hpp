@@ -63,6 +63,7 @@ public:
     void retry();
 
     // ModelSink — the rows are already in the store.
+    void rowsReset() override;
     void rowsInserted(std::uint32_t first, std::uint32_t last) override;
     void rowsRemoved(std::uint32_t first, std::uint32_t last) override;
     void rowsMoved(std::uint32_t first, std::uint32_t last,

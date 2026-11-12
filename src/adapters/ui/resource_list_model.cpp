@@ -53,18 +53,70 @@ std::uint32_t ResourceListModel::storedRows() const noexcept
 
 std::uint32_t ResourceListModel::rowCount() const noexcept
 {
-    return storedRows() + (failure_ ? 1U : 0U);
+    return static_cast<std::uint32_t>(visible_.size()) + (failure_ ? 1U : 0U);
+}
+
+void ResourceListModel::rebuildVisible()
+{
+    visible_.clear();
+    const application::k8s::StoreScope *scope = stored();
+    if (scope == nullptr) {
+        return;
+    }
+    const std::uint32_t rows = storedRows();
+    visible_.reserve(rows);
+    for (std::uint32_t row = 0; row < rows; ++row) {
+        if (filter_.empty()) {
+            visible_.push_back(row);
+            continue;
+        }
+        const std::string &name = scope->at(row).identity.name;
+        // Case-folded so a lower-case needle finds a CamelCase name.
+        const auto found = std::search(
+            name.begin(), name.end(), filter_.begin(), filter_.end(),
+            [](char left, char right) {
+                return std::tolower(static_cast<unsigned char>(left)) ==
+                       std::tolower(static_cast<unsigned char>(right));
+            });
+        if (found != name.end()) {
+            visible_.push_back(row);
+        }
+    }
+}
+
+void ResourceListModel::setFilter(std::string needle)
+{
+    if (needle == filter_) {
+        return;
+    }
+    filter_ = std::move(needle);
+    rebuildVisible();
+    sink_.rowsReset();
+}
+
+void ResourceListModel::refresh()
+{
+    continueToken_.clear();
+    started_ = false;
+    failure_.reset();
+    fetching_ = false;
+    visible_.clear();
+    sink_.rowsReset();
+    if (canFetchMore()) {
+        fetchMore();
+    }
 }
 
 std::optional<std::string> ResourceListModel::data(std::uint32_t row, RowRole role) const
 {
-    const std::uint32_t rows = storedRows();
+    const std::uint32_t rows = static_cast<std::uint32_t>(visible_.size());
     if (row < rows) {
+        const std::uint32_t rowInStore = visible_[row];
         const application::k8s::StoreScope *scope = stored();
         if (scope == nullptr) {
             return std::nullopt;
         }
-        return rowText(scope->at(row), scope_, role);
+        return rowText(scope->at(rowInStore), scope_, role);
     }
     if (row == rows && failure_) {
         if (role == RowRole::name) {

@@ -102,6 +102,12 @@ void QtListModel::retry()
     model_->retry();
 }
 
+void QtListModel::rowsReset()
+{
+    beginResetModel();
+    endResetModel();
+}
+
 void QtListModel::rowsInserted(std::uint32_t first, std::uint32_t last)
 {
     beginInsertRows(QModelIndex(), static_cast<int>(first), static_cast<int>(last));
