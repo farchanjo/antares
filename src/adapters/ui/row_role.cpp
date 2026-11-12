@@ -117,6 +117,8 @@ std::string_view rowRoleName(RowRole role) noexcept
         return "completions";
     case RowRole::argocd:
         return "argocd";
+    case RowRole::actions:
+        return "actions";
     }
     return "name";
 }
@@ -208,6 +210,8 @@ std::string_view rowRoleLabel(RowRole role) noexcept
         return "Completions";
     case RowRole::argocd:
         return "ArgoCD";
+    case RowRole::actions:
+        return "";
     }
     return "Name";
 }
@@ -299,6 +303,8 @@ std::optional<RowRole> roleForIndex(std::uint32_t index) noexcept
         return RowRole::completions;
     case 298:
         return RowRole::argocd;
+    case 299:
+        return RowRole::actions;
     default:
         return std::nullopt;
     }

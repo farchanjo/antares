@@ -122,6 +122,16 @@ void RowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
         paintMeter(painter, option, index.data(Qt::DisplayRole).toString());
         return;
     }
+    case RowRole::actions: {
+        QStyleOptionViewItem base = option;
+        base.text.clear();
+        QStyledItemDelegate::paint(painter, base, index);
+        painter->save();
+        painter->setPen(option.palette.mid().color());
+        painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("\u22EE"));
+        painter->restore();
+        return;
+    }
     case RowRole::status:
     case RowRole::conditions: {
         QStyleOptionViewItem base = option;

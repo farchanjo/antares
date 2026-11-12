@@ -7,73 +7,69 @@ namespace antares::adapters::ui {
 namespace {
 
 // One table per family, exactly the columns the reference shows.
-constexpr std::array<RowRole, 10> PODS{
+constexpr std::array<RowRole, 11> PODS{
     RowRole::name,      RowRole::namespaceName, RowRole::cpu,
     RowRole::memory,    RowRole::restarts,      RowRole::controlledBy,
     RowRole::node,      RowRole::qos,           RowRole::status,
-    RowRole::age,
-};
-constexpr std::array<RowRole, 4> WORKLOAD{RowRole::name, RowRole::namespaceName, RowRole::status,
-                                          RowRole::age};
-constexpr std::array<RowRole, 7> JOBS{RowRole::name, RowRole::namespaceName, RowRole::completions,
+    RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 5> WORKLOAD{RowRole::name, RowRole::namespaceName, RowRole::status,
+                                          RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 8> JOBS{RowRole::name, RowRole::namespaceName, RowRole::completions,
                                       RowRole::age,  RowRole::conditions,    RowRole::argocd,
-                                      RowRole::status};
-constexpr std::array<RowRole, 11> CRON_JOBS{
+                                      RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 12> CRON_JOBS{
     RowRole::name,        RowRole::namespaceName, RowRole::schedule,     RowRole::suspend,
     RowRole::active,      RowRole::lastSchedule,  RowRole::nextExecution, RowRole::argocd,
-    RowRole::timezone,    RowRole::age,           RowRole::status,
-};
-constexpr std::array<RowRole, 9> NODES{RowRole::name,   RowRole::cpu,        RowRole::memory,
+    RowRole::timezone,    RowRole::age,           RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 10> NODES{RowRole::name,   RowRole::cpu,        RowRole::memory,
                                        RowRole::disk,   RowRole::taints,     RowRole::roles,
-                                       RowRole::version, RowRole::age,       RowRole::conditions};
-constexpr std::array<RowRole, 4> NAMESPACES{RowRole::name, RowRole::status, RowRole::age,
-                                            RowRole::labels};
-constexpr std::array<RowRole, 7> EVENTS{RowRole::name, RowRole::namespaceName, RowRole::type,
+                                       RowRole::version, RowRole::age,       RowRole::conditions, RowRole::actions};
+constexpr std::array<RowRole, 5> NAMESPACES{RowRole::name, RowRole::status, RowRole::age,
+                                            RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 8> EVENTS{RowRole::name, RowRole::namespaceName, RowRole::type,
                                         RowRole::conditions, RowRole::node, RowRole::age,
-                                        RowRole::status};
-constexpr std::array<RowRole, 9> SERVICES{
+                                        RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 10> SERVICES{
     RowRole::name,     RowRole::namespaceName, RowRole::type,   RowRole::clusterIp,
     RowRole::ports,    RowRole::externalIp,    RowRole::selector, RowRole::age,
-    RowRole::status,
-};
-constexpr std::array<RowRole, 4> ENDPOINTS{RowRole::name, RowRole::namespaceName, RowRole::ports,
-                                           RowRole::age};
-constexpr std::array<RowRole, 4> INGRESSES{RowRole::name, RowRole::namespaceName, RowRole::ports,
-                                           RowRole::age};
-constexpr std::array<RowRole, 5> POLICIES{RowRole::name, RowRole::namespaceName, RowRole::labels,
-                                          RowRole::age, RowRole::status};
-constexpr std::array<RowRole, 5> CONFIG_MAPS{RowRole::name, RowRole::namespaceName, RowRole::keys,
-                                             RowRole::age, RowRole::labels};
-constexpr std::array<RowRole, 6> SECRETS{RowRole::name, RowRole::namespaceName, RowRole::labels,
-                                         RowRole::keys, RowRole::type, RowRole::age};
-constexpr std::array<RowRole, 4> QUOTAS{RowRole::name, RowRole::namespaceName, RowRole::age,
-                                        RowRole::status};
-constexpr std::array<RowRole, 10> AUTOSCALERS{
+    RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 5> ENDPOINTS{RowRole::name, RowRole::namespaceName, RowRole::ports,
+                                           RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 5> INGRESSES{RowRole::name, RowRole::namespaceName, RowRole::ports,
+                                           RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 6> POLICIES{RowRole::name, RowRole::namespaceName, RowRole::labels,
+                                          RowRole::age, RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 6> CONFIG_MAPS{RowRole::name, RowRole::namespaceName, RowRole::keys,
+                                             RowRole::age, RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 7> SECRETS{RowRole::name, RowRole::namespaceName, RowRole::labels,
+                                         RowRole::keys, RowRole::type, RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 5> QUOTAS{RowRole::name, RowRole::namespaceName, RowRole::age,
+                                        RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 11> AUTOSCALERS{
     RowRole::name,        RowRole::namespaceName, RowRole::metrics,        RowRole::minPods,
     RowRole::maxPods,     RowRole::replicas,      RowRole::age,            RowRole::status,
-    RowRole::conditions,  RowRole::labels,
-};
-constexpr std::array<RowRole, 8> BUDGETS{RowRole::name,           RowRole::namespaceName,
+    RowRole::conditions,  RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 9> BUDGETS{RowRole::name,           RowRole::namespaceName,
                                          RowRole::minAvailable,   RowRole::maxUnavailable,
                                          RowRole::currentHealthy, RowRole::desiredHealthy,
-                                         RowRole::age,            RowRole::status};
-constexpr std::array<RowRole, 5> PRIORITY{RowRole::name, RowRole::value, RowRole::globalDefault,
-                                          RowRole::age, RowRole::labels};
-constexpr std::array<RowRole, 4> RUNTIME{RowRole::name, RowRole::holder, RowRole::age,
-                                         RowRole::labels};
-constexpr std::array<RowRole, 5> LEASES{RowRole::name, RowRole::namespaceName, RowRole::holder,
-                                        RowRole::age, RowRole::status};
-constexpr std::array<RowRole, 6> CLAIMS{RowRole::name, RowRole::namespaceName, RowRole::status,
-                                        RowRole::age,  RowRole::labels,        RowRole::conditions};
-constexpr std::array<RowRole, 8> VOLUMES{RowRole::name,   RowRole::status, RowRole::age,
+                                         RowRole::age,            RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 6> PRIORITY{RowRole::name, RowRole::value, RowRole::globalDefault,
+                                          RowRole::age, RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 5> RUNTIME{RowRole::name, RowRole::holder, RowRole::age,
+                                         RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 6> LEASES{RowRole::name, RowRole::namespaceName, RowRole::holder,
+                                        RowRole::age, RowRole::status, RowRole::actions};
+constexpr std::array<RowRole, 7> CLAIMS{RowRole::name, RowRole::namespaceName, RowRole::status,
+                                        RowRole::age,  RowRole::labels,        RowRole::conditions, RowRole::actions};
+constexpr std::array<RowRole, 9> VOLUMES{RowRole::name,   RowRole::status, RowRole::age,
                                          RowRole::labels, RowRole::age,    RowRole::conditions,
-                                         RowRole::type,   RowRole::node};
-constexpr std::array<RowRole, 5> CLASSES{RowRole::name, RowRole::type, RowRole::globalDefault,
-                                         RowRole::age, RowRole::labels};
-constexpr std::array<RowRole, 3> ACCOUNTS{RowRole::name, RowRole::namespaceName, RowRole::age};
-constexpr std::array<RowRole, 4> BINDINGS{RowRole::name, RowRole::namespaceName, RowRole::roles,
-                                          RowRole::age};
-constexpr std::array<RowRole, 3> CUSTOM{RowRole::name, RowRole::namespaceName, RowRole::age};
+                                         RowRole::type,   RowRole::node, RowRole::actions};
+constexpr std::array<RowRole, 6> CLASSES{RowRole::name, RowRole::type, RowRole::globalDefault,
+                                         RowRole::age, RowRole::labels, RowRole::actions};
+constexpr std::array<RowRole, 4> ACCOUNTS{RowRole::name, RowRole::namespaceName, RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 5> BINDINGS{RowRole::name, RowRole::namespaceName, RowRole::roles,
+                                          RowRole::age, RowRole::actions};
+constexpr std::array<RowRole, 4> CUSTOM{RowRole::name, RowRole::namespaceName, RowRole::age, RowRole::actions};
 
 } // namespace
 

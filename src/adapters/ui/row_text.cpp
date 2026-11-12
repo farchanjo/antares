@@ -151,6 +151,7 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
     case RowRole::holder:
     case RowRole::completions:
     case RowRole::argocd:
+    case RowRole::actions:
         // The projection does not carry these yet; an empty cell is honest and
         // the column keeps its place.
         return {};

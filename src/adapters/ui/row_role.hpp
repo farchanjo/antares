@@ -61,10 +61,12 @@ enum class RowRole : std::uint8_t {
     holder,
     completions,
     argocd,
+    /// The trailing menu column. Every family ends with it.
+    actions,
 };
 
 /// Roles one row can paint. Fixed so `rolesFor` never allocates.
-inline constexpr std::size_t ROW_ROLE_COUNT = 42;
+inline constexpr std::size_t ROW_ROLE_COUNT = 43;
 
 /// The integer a role is registered under, exactly `#RoleIndex`.
 [[nodiscard]] constexpr std::uint32_t roleIndex(RowRole role) noexcept

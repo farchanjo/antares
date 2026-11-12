@@ -70,6 +70,7 @@ public:
         ColumnWidth{RowRole::holder, 140},
         ColumnWidth{RowRole::completions, 100},
         ColumnWidth{RowRole::argocd, 90},
+        ColumnWidth{RowRole::actions, 32},
     };
 
     ViewConfig() noexcept;

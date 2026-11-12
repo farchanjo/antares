@@ -1,12 +1,16 @@
 #include "adapters/ui/main_window.hpp"
 
+#include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QCursor>
 #include <QLineEdit>
+#include <QMenu>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
@@ -307,6 +311,24 @@ QWidget *MainWindow::buildTablePage()
                      [this](const QModelIndex &current, const QModelIndex &) {
                          showDetail(current);
                      });
+    // The trailing column opens the row menu; every other click keeps the
+    // selection behaviour the view already has.
+    QObject::connect(view_, &QTreeView::clicked, this, [this](const QModelIndex &index) {
+        const std::span<const RowRole> columns = familyColumns(model_.family());
+        if (!index.isValid() || index.column() < 0 ||
+            index.column() >= static_cast<int>(columns.size()) ||
+            columns[static_cast<std::size_t>(index.column())] != RowRole::actions) {
+            return;
+        }
+        QMenu menu{this};
+        menu.addAction(tr("Edit"), this, [] {});
+        menu.addAction(tr("Delete"), this, [] {});
+        menu.addSeparator();
+        menu.addAction(tr("Copy name"), this, [this, index] {
+            QApplication::clipboard()->setText(index.sibling(index.row(), 0).data().toString());
+        });
+        menu.exec(QCursor::pos());
+    });
     view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     emptyState_ = new QLabel{tr("No objects in this scope."), stack};
