@@ -501,3 +501,11 @@ like a priority class.
 `Horizontal Pod Autoscalers`, `Pod Disruption Budgets`, `Priority Classes`,
 `Runtime Classes`, `Leases`, `Mutating Webhook Configurations`,
 `Validating Webhook Configurations`, `Admission Policies`.
+
+## Table view (Jobs)
+
+Columns: `☐` · `Name` · `Namespace` · `Completions` · `Age` · `Conditions` ·
+`ArgoCD` · `⋮`. `0 items` here.
+
+`Completions` is a bare count. `Conditions` is the pill stack again; `ArgoCD` is
+the sync column and is empty without an Argo application.
