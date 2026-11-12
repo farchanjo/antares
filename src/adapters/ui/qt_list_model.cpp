@@ -65,12 +65,6 @@ QVariant QtListModel::data(const QModelIndex &index, int role) const
         return {};
     }
     const auto raw = model_->data(static_cast<std::uint32_t>(index.row()), *wanted);
-    static int logged = 0;
-    if (logged < 6) {
-        std::fprintf(stderr, "  [data] row=%d col=%d role=%d ok=%d\n", index.row(), index.column(),
-                     role, raw ? 1 : 0);
-        ++logged;
-    }
     const std::string text = raw.value_or(std::string{});
     return QVariant{toQt(text)};
 }
@@ -131,11 +125,6 @@ void QtListModel::rowsMoved(std::uint32_t first, std::uint32_t last,
 int QtListModel::columnCount(const QModelIndex &parent) const
 {
     const int columns = parent.isValid() ? 0 : static_cast<int>(ROW_ROLE_COUNT);
-    static int once = 0;
-    if (once < 3) {
-        std::fprintf(stderr, "  [columnCount] %d\n", columns);
-        ++once;
-    }
     return columns;
 }
 

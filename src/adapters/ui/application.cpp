@@ -51,9 +51,6 @@ constexpr domain::Duration DRAIN_BOUND = std::chrono::seconds{5};
 extern "C" void onTerminate(int /*signal*/)
 {
     const int fd = signalWriteFd().load(std::memory_order_relaxed);
-    if (fd < 0) {
-        return;
-    }
     const char byte = 1;
     (void)::write(fd, &byte, 1);
 }
