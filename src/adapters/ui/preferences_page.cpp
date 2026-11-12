@@ -97,15 +97,15 @@ PreferencesPage::PreferencesPage(QWidget *parent)
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
         button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         button->setChecked(index == 0);
-        rail_hat_[static_cast<std::size_t>(index)] = button;
+        QObject::connect(button, &QToolButton::clicked, pages_,
+                         [pages = pages_, index] { pages->setCurrentIndex(index); });
         rail_->addButton(button, index);
         railLayout->addWidget(button);
     }
     railLayout->addStretch(1);
 
     QObject::connect(rail_, &QButtonGroup::idClicked, this, [this](int id) {
-        std::fprintf(stderr, "  [rail] botao=%d\n", id);
-        pages_->setCurrentIndex(id);
+        std::fprintf(stderr, "  [grupo] id=%d\n", id);
     });
 
 }
