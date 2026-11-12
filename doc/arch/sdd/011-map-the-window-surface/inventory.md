@@ -397,3 +397,42 @@ user can attach them. `License` shows the bundled open-source notices.
 
 `Lens` (application menu: About, Check for Updates, Preferences ⌘,, Services,
 Hide ⌘H, Hide Others ⌥⌘H, Show All, Quit ⌘Q), `File`, `Edit`, `View`, `Help`.
+
+## Table view (Secrets)
+
+Tab `Secrets - hood`. Namespace selector reads `fp-prod`. `20 items`.
+
+Columns: `☐` · `Name` · `Namespace` · `Labels` · `Keys` · `Type` · `ArgoCD` ·
+`Age` · `⋮`
+
+- **`Keys`** lists the key *names* of the secret, comma separated and truncated
+  (`ca.crt, ca.p12, ca.pas…`). The values are never fetched for the list.
+- **`Type`** carries the Kubernetes secret type (`Opaque`,
+  `kubernetes.io/dock…`) and is truncated the same way.
+- **`Labels`** renders `key=value` pairs, truncated.
+- **`ArgoCD`** is a column of its own; empty here.
+- A secret row is **not** expanded: the value is behind the detail pane.
+
+## Column vocabulary, collected
+
+Every family reuses a small set of cell types:
+
+| Cell | Families | Rendering |
+|---|---|---|
+| name | all | text, link-styled |
+| namespace | namespaced | text |
+| labels | resources with labels | `k=v`, truncated |
+| keys | secrets, config maps | key names, comma separated, truncated |
+| type | secrets | text, truncated |
+| cpu / memory / disk | nodes, pods | meter bar, coloured |
+| restarts | pods | integer, dot when non-zero |
+| controlled by | pods | owner kind |
+| node | pods | node name |
+| qos | pods | text |
+| status | pods, others | coloured word |
+| conditions | nodes | stack of coloured pills |
+| webhooks | webhook configs | integer |
+| version | nodes | text |
+| age | all | compact duration |
+| `⋮` | all | row menu |
+| `☐` | all | selection checkbox |
