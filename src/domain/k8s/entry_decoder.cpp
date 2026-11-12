@@ -684,6 +684,45 @@ std::expected<Entry, StoreError> decodeEntry(json::ScalarScan &cursor, bool *sca
     return decodeEntry(slice, scannerRefused);
 }
 
+namespace {
+
+/// The multipliers the metrics API suffixes. CPU is nano-cores and memory a
+/// power of two; a bare number is already in the base unit.
+struct Step {
+    std::string_view suffix;
+    std::uint64_t factor;
+};
+constexpr std::array<Step, 4> NANO{Step{"n", 1}, Step{"u", 1'000}, Step{"m", 1'000'000},
+                                   Step{"", 1'000'000'000}};
+constexpr std::array<Step, 5> BINARY{Step{"Ki", 1024}, Step{"Mi", 1024ULL * 1024},
+                                     Step{"Gi", 1024ULL * 1024 * 1024},
+                                     Step{"Ti", 1024ULL * 1024 * 1024 * 1024}, Step{"", 1}};
+
+/// Read `<number><suffix>` against a table. A shape that matches nothing is zero,
+/// which is what a missing sample gives.
+[[nodiscard]] std::uint64_t scale(std::string_view text, const auto &table)
+{
+    std::size_t digits = 0;
+    while (digits < text.size() && text[digits] >= '0' && text[digits] <= '9') {
+        ++digits;
+    }
+    if (digits == 0) {
+        return 0;
+    }
+    std::uint64_t value = 0;
+    for (std::size_t at = 0; at < digits; ++at) {
+        value = (value * 10) + static_cast<std::uint64_t>(text[at] - '0');
+    }
+    for (const auto &[suffix, factor] : table) {
+        if (text.substr(digits) == suffix) {
+            return value * factor;
+        }
+    }
+    return value;
+}
+
+} // namespace
+
 std::expected<Entry, StoreError> decodeEntry(const json::Value &object)
 {
     if (!object.isObject()) {
@@ -723,6 +762,15 @@ std::expected<Entry, StoreError> decodeEntry(const json::Value &object)
 
     readLabels(meta, entry.labels);
     readStatus(object, entry.status);
+
+    // The metrics API answers `containers[].usage` with a unit suffix: nano-cores
+    // for CPU and a binary multiple for memory. A pod object has no such member,
+    // so this is a no-op on the normal list and the fields stay zero.
+    for (const json::Value &container : object.member("containers").items()) {
+        const json::Value &usage = container.member("usage");
+        entry.cpuNano += scale(usage.textAt("cpu"), NANO);
+        entry.memoryBytes += scale(usage.textAt("memory"), BINARY);
+    }
     return entry;
 }
 

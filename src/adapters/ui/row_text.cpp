@@ -120,7 +120,15 @@ std::string rowText(const domain::k8s::Entry &entry, const domain::k8s::Scope &s
         return entry.status.restarts == 0 ? std::string{}
                                           : std::to_string(entry.status.restarts);
     case RowRole::cpu:
+        if (entry.cpuNano > 0) {
+            return std::to_string(entry.cpuNano / 1'000'000) + "m";
+        }
+        return {};
     case RowRole::memory:
+        if (entry.memoryBytes > 0) {
+            return std::to_string(entry.memoryBytes / (1024ULL * 1024)) + "Mi";
+        }
+        return {};
     case RowRole::disk:
     case RowRole::version:
     case RowRole::keys:
