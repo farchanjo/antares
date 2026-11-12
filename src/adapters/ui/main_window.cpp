@@ -12,6 +12,7 @@
 #include <QTabWidget>
 #include <QStatusBar>
 #include <QStyle>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeView>
@@ -273,7 +274,7 @@ QWidget *MainWindow::buildTablePage()
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
     view_->setAlternatingRowColors(true);
     view_->header()->setStretchLastSection(false);
-    view_->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    view_->header()->setSectionResizeMode(QHeaderView::Fixed);
     view_->header()->setMinimumSectionSize(60);
     view_->header()->setDefaultSectionSize(160);
     applyColumnWidths();
@@ -448,7 +449,8 @@ void MainWindow::applyColumnWidths()
 void MainWindow::showEvent(QShowEvent *event)
 {
     QMainWindow::showEvent(event);
-    applyColumnWidths();
+    // After the first layout pass, so the sections exist at their final count.
+    QTimer::singleShot(0, this, [this] { applyColumnWidths(); });
 }
 
 QLabel *MainWindow::status() const noexcept { return status_; }
