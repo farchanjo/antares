@@ -480,3 +480,10 @@ Columns: `☐` · `Name` · `Namespace` · `Min Available` · `Max Unavailable` 
 
 `Max Unavailable` renders `N/A` when the budget states a minimum instead — an
 either/or pair, only one of which is set. `8 items`.
+
+## Table view (Priority Classes)
+
+Columns: `☐` · `Name` · `Value` · `Global Default` · `Age` · `⋮`. `2 items`.
+
+`Value` is a raw integer (`2000000000`). `Global Default` is the literal `false`
+— a boolean renders as the word, not a tick.
