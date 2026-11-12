@@ -94,7 +94,8 @@ void listContexts(const k8s::Kubeconfig &config)
 }
 
 /// The full reading slice against one context.
-int smoke(const std::string &contextName, const std::vector<std::string> &paths)
+int smoke(const std::string &contextName, const std::string &namespaceOverride,
+          const std::vector<std::string> &paths)
 {
     auto config = adapters::k8s::KubeconfigLoader::load(paths);
     if (!config) {
@@ -125,6 +126,12 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
 
     adapters::log::ConsoleLogger logger;
     binding->http.logger = &logger;
+
+    // The context usually names no namespace, and `default` is the API server's
+    // own answer for that; the override exists so a populated namespace can be
+    // exercised without editing the kubeconfig.
+    const std::string ns =
+        namespaceOverride.empty() ? binding->defaultNamespace : namespaceOverride;
 
     application::io::EnginePool pool{1};
     pool.start();
@@ -188,9 +195,9 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
             step(false, "pods descriptor");
         } else {
             auto scoped = k8s::ApiPath{*podType, std::nullopt, std::nullopt, k8s::Subresource::none}
-                              .inNamespace(binding->defaultNamespace);
+                              .inNamespace(ns);
             if (!scoped) {
-                step(false, "namespace is not a DNS label: " + binding->defaultNamespace);
+                step(false, "namespace is not a DNS label: " + ns);
             } else {
                 k8s::ListOptions options;
                 options.watch = true;
@@ -207,7 +214,7 @@ int smoke(const std::string &contextName, const std::vector<std::string> &paths)
                                    [&](ports::k8s::StatusResult result) {
                                        if (result) {
                                            step(true, "WATCH pods/" +
-                                                          binding->defaultNamespace + "  " +
+                                                          ns + "  " +
                                                           std::to_string(seen.load()) +
                                                           " object(s)");
                                        } else if (result.error().reason == k8s::Reason::timeout) {
@@ -258,11 +265,16 @@ int main(int argc, char **argv)
     (void)std::setvbuf(stdout, nullptr, _IOLBF, 0);
 
     std::string context;
+    std::string nsArg;
     std::vector<std::string> paths;
 
     for (int index = 1; index < argc; ++index) {
         if (std::strcmp(argv[index], "--context") == 0 && index + 1 < argc) {
             context = argv[++index];
+            continue;
+        }
+        if (std::strcmp(argv[index], "--namespace") == 0 && index + 1 < argc) {
+            nsArg = argv[++index];
             continue;
         }
         if (std::strcmp(argv[index], "--kubeconfig") == 0 && index + 1 < argc) {
@@ -271,7 +283,7 @@ int main(int argc, char **argv)
         }
         if (std::strcmp(argv[index], "--help") == 0) {
             std::printf(
-                "usage: antares_k8s_live [--context NAME] [--kubeconfig PATH]...\n"
+                "usage: antares_k8s_live [--context NAME] [--namespace NS] [--kubeconfig PATH]...\n"
                 "  Reads a kubeconfig, resolves one context and exercises only:\n"
                 "    GET /version, GET /api/v1/namespaces, WATCH pods/<namespace>\n"
                 "  It never writes. There is no verb to write with.\n");
@@ -281,5 +293,5 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    return smoke(context, paths);
+    return smoke(context, nsArg, paths);
 }

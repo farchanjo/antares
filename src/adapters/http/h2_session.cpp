@@ -315,8 +315,9 @@ void H2Session::onGoaway(std::int32_t lastStreamId)
 
 void H2Session::receive(const std::byte *data, std::size_t length)
 {
-    std::fprintf(stderr, "  h2 recv %zu closed=%d\n", length, static_cast<int>(closed_));
-    if (session_ == nullptr || closed_) {
+    // A GOAWAY stops new streams, not the ones already open: the peer still owes
+    // their frames, and dropping them is what stranded the request.
+    if (session_ == nullptr) {
         return;
     }
 
@@ -359,6 +360,7 @@ void H2Session::reset(std::int32_t streamId)
 
 void H2Session::fail(domain::http::HttpError error)
 {
+    std::fprintf(stderr, "  h2 FAIL %s\n", std::string{domain::http::describe(error)}.c_str());
     closed_ = true;
     std::vector<std::int32_t> ids;
     ids.reserve(streams_.size());

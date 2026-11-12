@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/x509v3.h>
 
 namespace antares::adapters::http {
@@ -34,6 +35,39 @@ int selectProtocol(SSL * /*ssl*/, const unsigned char **out, unsigned char *outL
     return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
+/// Load the PEM identity into the context. Both halves are needed, and OpenSSL
+/// checks they match on the way in.
+[[nodiscard]] bool installIdentity(SSL_CTX *context, const domain::http::Auth &auth)
+{
+    BIO *certificate = BIO_new_mem_buf(auth.certificatePem.data(),
+                                       static_cast<int>(auth.certificatePem.size()));
+    BIO *key = BIO_new_mem_buf(auth.privateKeyPem.data(),
+                               static_cast<int>(auth.privateKeyPem.size()));
+    if (certificate == nullptr || key == nullptr) {
+        BIO_free(certificate);
+        BIO_free(key);
+        return false;
+    }
+
+    X509 *leaf = PEM_read_bio_X509(certificate, nullptr, nullptr, nullptr);
+    EVP_PKEY *privateKey = PEM_read_bio_PrivateKey(key, nullptr, nullptr, nullptr);
+    BIO_free(certificate);
+    BIO_free(key);
+
+    if (leaf == nullptr || privateKey == nullptr) {
+        X509_free(leaf);
+        EVP_PKEY_free(privateKey);
+        return false;
+    }
+
+    const bool loaded = SSL_CTX_use_certificate(context, leaf) == 1 &&
+                        SSL_CTX_use_PrivateKey(context, privateKey) == 1 &&
+                        SSL_CTX_check_private_key(context) == 1;
+    X509_free(leaf);
+    EVP_PKEY_free(privateKey);
+    return loaded;
+}
+
 } // namespace
 
 TlsContext::TlsContext(SSL_CTX *context)
@@ -49,7 +83,7 @@ TlsContext::~TlsContext()
 }
 
 std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2,
-                                               [[maybe_unused]] const domain::http::Auth &auth,
+                                               const domain::http::Auth &auth,
                                                std::string_view trustBundlePem)
 {
     SSL_CTX *context = SSL_CTX_new(TLS_client_method());
@@ -100,6 +134,16 @@ std::unique_ptr<TlsContext> TlsContext::create(bool verifyPeer, bool http2,
         BIO_free(bundle);
 
         if (anchors == 0) {
+            SSL_CTX_free(context);
+            return nullptr;
+        }
+    }
+
+    // A client certificate is what the API server authenticates on: without it the
+    // handshake succeeds and every verb comes back Forbidden as system:anonymous.
+    if (auth.kind == domain::http::AuthKind::clientCertificate &&
+        !auth.certificatePem.empty() && !auth.privateKeyPem.empty()) {
+        if (!installIdentity(context, auth)) {
             SSL_CTX_free(context);
             return nullptr;
         }
