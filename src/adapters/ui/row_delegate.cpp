@@ -143,7 +143,7 @@ void RowDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
         QStyledItemDelegate::paint(painter, base, index);
         painter->save();
         painter->setPen(option.palette.mid().color());
-        painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("...));
+        painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("..."));
         painter->restore();
         return;
     }
