@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 deciders: [Fabricio Archanjo]
 consulted: []
@@ -104,7 +104,8 @@ after `app.exec()` returns, so `drain()` runs the loop instead of waiting on it
 The hosted mode is proved without Qt: a `poll()`-based host in `tests/io/`
 drives `runOnce()` over `waitHandle()` and `nextDeadline()` on all four
 backends, so the Linux suite gates it. The `QSocketNotifier` glue is Darwin
-only and is proved by a spike on the macOS host before this record is accepted.
+only and is proved by a spike on the macOS host, which ran on 2026-11-12 and is
+recorded in `doc/arch/spikes/hosted-loop/`.
 
 ### Consequences
 
@@ -163,3 +164,29 @@ Also left open by this record: the Linux build links `-stdlib=libc++`
 (`CMakeLists.txt:29-30`) while a distro Qt is built against libstdc++, so the
 two do not share an ABI. It does not bite yet because no UI is built on Linux;
 it bites on the first Linux UI build.
+
+## Measurements
+
+`doc/arch/spikes/hosted-loop/` on macOS 27.0.1 arm64, `-O2`, 2026-11-12. Every
+threshold in the spec held.
+
+| Ref | What it proves | Number |
+|---|---|---|
+| FR-001 | the notifier wakes on the backend descriptor | 5 wakes, 240 µs |
+| FR-002 | a turn does not block the paint | 64.6 idle fps against 62.6 saturated, ratio 0.969 |
+| FR-003 | a modal opened from a completion does not deadlock | opens; 99.3 MB delivered under it |
+| FR-004 | nested Cocoa loops still deliver socket events | 99.4 MB through a resize, 116.2 MB through a held menu |
+| FR-005 | `nextDeadline` drives a host timer | 254.8 ms against a 200 ms request, on the main thread |
+| FR-006 | a turn honours its deadline | p99 1 007 µs, 40 overruns in 20 765 turns |
+| FR-007 | App Nap does not stall the loop | occluded p99 255.9 ms against 253.3 ms with activity |
+| FR-008 | one loop carries thirty-two watches | 62 fps, 643.1 MB |
+
+FR-005 and FR-007 sit near 255 ms rather than 200 ms and 33 ms: the offscreen
+platform plugin clamps the timer to its own quantum. What the record reads is the
+ratio between the occluded and the active run, which is 1.01.
+
+## Consequences
+
+The loop is hosted, so the engine owns no thread in the windowed path. A
+completion that blocks blocks the paint; the turn budget is the only bound. The
+spike numbers above are the floor a regression is measured against.
