@@ -434,7 +434,7 @@ void MainWindow::showDetail(const QModelIndex &index)
             continue;
         }
         lines.append(QStringLiteral("%1: %2")
-                         .arg(QString::fromUtf8(rowRoleName(columns[at])), value));
+                         .arg(QString::fromUtf8(rowRoleLabel(columns[at])), value));
     }
     detail_->show(QString::fromUtf8(familyLabel(model_.family())),
                   model_.data(model_.index(index.row(), 0), Qt::DisplayRole).toString(), lines);

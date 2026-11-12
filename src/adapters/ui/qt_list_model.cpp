@@ -170,7 +170,7 @@ QVariant QtListModel::headerData(int section, Qt::Orientation orientation, int r
         return {};
     }
     // The header is the only translatable part of the table; a cell is data.
-    return tr(rowRoleName(columns[static_cast<std::size_t>(section)]).data());
+    return tr(rowRoleLabel(columns[static_cast<std::size_t>(section)]).data());
 }
 
 void QtListModel::dataChanged(std::uint32_t first, std::uint32_t last,

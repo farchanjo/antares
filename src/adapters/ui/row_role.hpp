@@ -161,6 +161,11 @@ inline constexpr std::size_t ROW_ROLE_COUNT = 42;
 /// The registered name of a role, for the delegate and the log line.
 [[nodiscard]] std::string_view rowRoleName(RowRole role) noexcept;
 
+/// The column heading a reader sees, in the reference's casing: `CPU`, `Memory`,
+/// `Controlled By`. Separate from `rowRoleName` because the log wants the stable
+/// identifier and the header wants prose.
+[[nodiscard]] std::string_view rowRoleLabel(RowRole role) noexcept;
+
 /// The role an integer id names, or nothing for an id the model never
 /// registered.
 [[nodiscard]] std::optional<RowRole> roleForIndex(std::uint32_t index) noexcept;

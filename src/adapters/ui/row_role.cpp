@@ -121,6 +121,97 @@ std::string_view rowRoleName(RowRole role) noexcept
     return "name";
 }
 
+std::string_view rowRoleLabel(RowRole role) noexcept
+{
+    switch (role) {
+    case RowRole::name:
+        return "Name";
+    case RowRole::namespaceName:
+        return "Namespace";
+    case RowRole::status:
+        return "Status";
+    case RowRole::age:
+        return "Age";
+    case RowRole::labels:
+        return "Labels";
+    case RowRole::keys:
+        return "Keys";
+    case RowRole::type:
+        return "Type";
+    case RowRole::cpu:
+        return "CPU";
+    case RowRole::memory:
+        return "Memory";
+    case RowRole::disk:
+        return "Disk";
+    case RowRole::restarts:
+        return "Restarts";
+    case RowRole::controlledBy:
+        return "Controlled By";
+    case RowRole::node:
+        return "Node";
+    case RowRole::qos:
+        return "QoS";
+    case RowRole::conditions:
+        return "Conditions";
+    case RowRole::webhooks:
+        return "Webhooks";
+    case RowRole::version:
+        return "Version";
+    case RowRole::taints:
+        return "Taints";
+    case RowRole::roles:
+        return "Roles";
+    case RowRole::clusterIp:
+        return "Cluster IP";
+    case RowRole::ports:
+        return "Ports";
+    case RowRole::externalIp:
+        return "External IP";
+    case RowRole::selector:
+        return "Selector";
+    case RowRole::schedule:
+        return "Schedule";
+    case RowRole::suspend:
+        return "Suspend";
+    case RowRole::active:
+        return "Active";
+    case RowRole::lastSchedule:
+        return "Last Schedule";
+    case RowRole::nextExecution:
+        return "Next Execution";
+    case RowRole::timezone:
+        return "Time Zone";
+    case RowRole::metrics:
+        return "Metrics";
+    case RowRole::minPods:
+        return "Min Pods";
+    case RowRole::maxPods:
+        return "Max Pods";
+    case RowRole::replicas:
+        return "Replicas";
+    case RowRole::minAvailable:
+        return "Min Available";
+    case RowRole::maxUnavailable:
+        return "Max Unavailable";
+    case RowRole::currentHealthy:
+        return "Current Healthy";
+    case RowRole::desiredHealthy:
+        return "Desired Healthy";
+    case RowRole::value:
+        return "Value";
+    case RowRole::globalDefault:
+        return "Global Default";
+    case RowRole::holder:
+        return "Holder";
+    case RowRole::completions:
+        return "Completions";
+    case RowRole::argocd:
+        return "ArgoCD";
+    }
+    return "Name";
+}
+
 std::optional<RowRole> roleForIndex(std::uint32_t index) noexcept
 {
     switch (index) {
