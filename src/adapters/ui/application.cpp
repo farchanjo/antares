@@ -209,6 +209,11 @@ std::expected<void, StartupError> Application::build()
     store_ = std::make_unique<application::k8s::ObjectStore>();
     pages_ = std::make_unique<KubePageSource>(*kube_, *store_);
     model_ = std::make_unique<QtListModel>(*store_, scope_, *pages_, &logger_);
+    // Nothing else asks: a view only calls `fetchMore` on a scroll, so without
+    // this the window opens on an empty list.
+    if (model_->canFetchMore({})) {
+        model_->fetchMore({});
+    }
     window_ = std::make_unique<MainWindow>(*model_, context, message);
     if (!window_) {
         destroy();
