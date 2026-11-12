@@ -33,6 +33,24 @@ constexpr std::string_view HEX_DIGITS = "0123456789abcdef";
 
 } // namespace
 
+Uid Uid::ofName(std::string_view name) noexcept
+{
+    // FNV-1a, twice with different offsets, so the sixteen bytes spread over the
+    // whole name instead of repeating one value.
+    Uid out;
+    for (std::size_t pass = 0; pass < 2; ++pass) {
+        std::uint64_t hash = pass == 0 ? 1469598103934665603ULL : 1099511628211ULL;
+        for (const char at : name) {
+            hash ^= static_cast<std::uint8_t>(at);
+            hash *= 1099511628211ULL;
+        }
+        for (std::size_t at = 0; at < 8; ++at) {
+            out.bytes_[(pass * 8) + at] = static_cast<std::byte>((hash >> (at * 8)) & 0xFF);
+        }
+    }
+    return out;
+}
+
 std::expected<Uid, StoreError> Uid::parse(std::string_view text) noexcept
 {
     Uid parsed;

@@ -26,6 +26,10 @@ public:
 
     Uid() = default;
 
+    /// A value derived from a name, for APIs that list by name and carry no uid.
+    /// Stable across calls and distinct per name; not a real uid.
+    [[nodiscard]] static Uid ofName(std::string_view name) noexcept;
+
     /// Parse the dashed (`8-4-4-4-12`) or the bare hexadecimal form.
     [[nodiscard]] static std::expected<Uid, StoreError> parse(std::string_view text) noexcept;
 

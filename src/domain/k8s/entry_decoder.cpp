@@ -682,11 +682,14 @@ std::expected<Entry, json::ScanError> scanEntry(json::ScalarScan &scan)
 
     // The order is the parser path's, so both refuse the same document for the
     // same reason (FR-001).
-    if (!haveUid) {
-        return std::unexpected(json::ScanError{json::ScanReason::refusedUid, scan.offset()});
-    }
     if (!haveName) {
         return std::unexpected(json::ScanError{json::ScanReason::refusedName, scan.offset()});
+    }
+    if (!haveUid) {
+        // The metrics API lists by name and carries no uid. A key is still needed,
+        // so one is derived from the name: stable across calls, and unique per
+        // object within the page. A document that does bring a uid keeps it.
+        entry.identity.uid = Uid::ofName(entry.identity.name);
     }
     // An item of a list carries no `kind`; the scope around it already names the
     // resource, so only an over-long one is refused here.
